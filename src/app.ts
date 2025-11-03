@@ -28,11 +28,11 @@ import rateLimit from 'express-rate-limit';
 
 import { isDev } from '@/config/env-validation';
 import { swaggerDocs } from '@/config/swagger';
-import { logger } from '@/logger/logger';
-import { errorHandler } from '@/middleware/error-handler';
+import { logger } from '@/services/logger';
+import { errorHandler } from '@/core/middleware/error-handler';
 
-import users from '@/routes/users';
-import health from '@/routes/health';
+import users from '@/api/routes/users';
+import health from '@/api/routes/health';
 
 /**
  * Factory function that constructs and configures an Express application instance.

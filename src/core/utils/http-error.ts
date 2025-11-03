@@ -1,6 +1,6 @@
 /**
  * @fileoverview HTTP error utilities for consistent API error handling.
- * @module utils/http-error
+ * @module core/utils/http-error
  * @description
  *  Defines custom error classes extending the native `Error` object to provide
  *  standardized HTTP status codes and optional error codes for API responses.

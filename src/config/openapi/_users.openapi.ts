@@ -17,8 +17,8 @@
  */
 
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
-import { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from '@/schemas/user.schema';
-import { UserIdSchema } from '@/schemas/id.schema';
+import { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from '@/api/schemas/user.schema';
+import { UserIdSchema } from '@/api/schemas/id.schema';
 
 /**
  * Registers all user-related API paths in the provided OpenAPI registry.

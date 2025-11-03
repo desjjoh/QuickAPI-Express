@@ -2,7 +2,7 @@
  * @fileoverview
  *  Centralized application lifecycle manager for graceful startup and shutdown.
  *
- * @module system/lifecycle
+ * @module core/system/lifecycle
  * @description
  *  Coordinates clean termination of all registered services (e.g., HTTP server,
  *  database clients, queues, etc.) when receiving process signals (`SIGINT`, `SIGTERM`)
@@ -33,7 +33,7 @@
  */
 
 import { performance } from 'node:perf_hooks';
-import { logger } from '@/logger/logger';
+import { logger } from '@/services/logger';
 import type { Server } from 'node:http';
 
 /**

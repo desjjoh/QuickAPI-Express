@@ -19,8 +19,8 @@
  */
 
 import { Router } from 'express';
-import { prisma } from '@/db/prisma';
-import { logger } from '@/logger/logger';
+import { prisma } from '@/services/prisma';
+import { logger } from '@/services/logger';
 
 /** Express router instance containing all health and metrics endpoints. */
 const router = Router();

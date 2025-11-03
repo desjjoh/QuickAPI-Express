@@ -1,6 +1,6 @@
 /**
  * @fileoverview Request validation middleware using Zod.
- * @module middleware/validate
+ * @module core/middleware/validate
  * @description
  *  Provides centralized validation for incoming request bodies.
  *  Parses the request payload using a Zod schema and forwards errors
@@ -24,7 +24,7 @@
 import { ZodError } from 'zod';
 import type { ZodObject } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
-import { BadRequestError } from '@/utils/http-error';
+import { BadRequestError } from '@/core/utils/http-error';
 
 /**
  * Middleware factory that validates incoming request bodies.

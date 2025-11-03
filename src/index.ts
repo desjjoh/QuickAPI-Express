@@ -25,10 +25,10 @@
  */
 
 import { createApp } from '@/app';
-import { prisma } from '@/db/prisma';
+import { prisma } from '@/services/prisma';
 import { env, isDev } from '@/config/env-validation';
-import { logger } from '@/logger/logger';
-import { SystemLifecycle } from './system/lifecycle';
+import { logger } from '@/services/logger';
+import { SystemLifecycle } from './core/system/lifecycle';
 
 /**
  * Bootstraps the Express application and manages the complete server lifecycle.

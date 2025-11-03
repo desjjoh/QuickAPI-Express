@@ -1,6 +1,6 @@
 /**
  * @fileoverview Pino logger configuration.
- * @module logger/logger
+ * @module services/logger/logger
  * @description
  *  Provides a preconfigured Pino logger instance for structured and performant
  *  application logging. Uses human-readable formatting in development and JSON

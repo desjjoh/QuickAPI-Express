@@ -21,7 +21,7 @@ import {
   HealthResponseSchema,
   ReadyResponseSchema,
   MetricsResponseSchema,
-} from '@/schemas/system.schema';
+} from '@/api/schemas/system.schema';
 
 /**
  * Registers all system health and metrics paths with the provided OpenAPI registry.

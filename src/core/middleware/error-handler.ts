@@ -1,6 +1,6 @@
 /**
  * @fileoverview Global Express error-handling middleware.
- * @module middleware/error-handler
+ * @module core/middleware/error-handler
  * @description
  *  Centralized middleware for handling application and runtime errors.
  *  Ensures consistent error logging, structured JSON responses, and graceful
@@ -21,8 +21,8 @@
 
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
-import { HttpError } from '@/utils/http-error.js';
-import { logger } from '@/logger/logger.js';
+import { HttpError } from '@/core/utils/http-error.js';
+import { logger } from '@/services/logger.js';
 
 /**
  * Express global error handler.

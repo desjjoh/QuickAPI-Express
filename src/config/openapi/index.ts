@@ -18,7 +18,7 @@
 
 import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { OpenAPIObject } from 'openapi3-ts/oas30';
-import { env } from '@/config/env-validation';
+import { env } from '@/core/config/env-validation';
 import { registerUserPaths } from './_users.openapi';
 import { registerHealthPaths } from './_health.openapi';
 
