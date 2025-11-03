@@ -1,8 +1,43 @@
+/**
+ * @fileoverview OpenAPI path registration for User routes.
+ * @module openapi/_users
+ * @description
+ *  Defines and registers all OpenAPI-compliant path definitions for user-related endpoints.
+ *  These definitions are consumed by `@asteasolutions/zod-to-openapi` to generate the
+ *  full API specification document dynamically.
+ *
+ * @remarks
+ *  - Each route mirrors the actual Express endpoints in `/routes/users.ts`.
+ *  - Schemas are linked via `$ref` to maintain consistency with runtime validation.
+ *  - All responses use JSON content types with schema references.
+ *
+ * @example
+ *  import { registerUserPaths } from "@/config/_users.openapi";
+ *  registerUserPaths(registry);
+ */
+
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from '@/schemas/user.schema';
 import { UserIdSchema } from '@/schemas/id.schema';
 
-export function registerUserPaths(registry: OpenAPIRegistry) {
+/**
+ * Registers all user-related API paths in the provided OpenAPI registry.
+ *
+ * @param {OpenAPIRegistry} registry - The central OpenAPI registry to which
+ *  all user endpoint definitions will be attached.
+ *
+ * @returns {void}
+ *
+ * @description
+ *  The function registers CRUD paths for the `/users` resource, including:
+ *  - POST `/users`: Create a user
+ *  - GET `/users`: Retrieve all users
+ *  - GET `/users/{id}`: Retrieve a user by ID
+ *  - PUT `/users/{id}`: Update a user
+ *  - DELETE `/users/{id}`: Delete a user
+ */
+export function registerUserPaths(registry: OpenAPIRegistry): void {
+  // Register component schemas
   registry.register('User', UserResponseSchema);
   registry.register('CreateUser', CreateUserSchema);
   registry.register('UserId', UserIdSchema);
@@ -105,7 +140,7 @@ export function registerUserPaths(registry: OpenAPIRegistry) {
     },
     responses: {
       200: {
-        description: 'User updated',
+        description: 'User updated successfully',
         content: {
           'application/json': {
             schema: { $ref: '#/components/schemas/User' },

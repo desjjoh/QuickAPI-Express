@@ -1,3 +1,24 @@
+/**
+ * @fileoverview Express application factory and middleware configuration.
+ * @module app
+ * @description
+ *  Creates and configures the Express application with logging, security,
+ *  compression, rate limiting, and route registration. Serves as the root
+ *  composition layer for the API server.
+ *
+ * @remarks
+ *  - All middleware and route registrations are centralized here.
+ *  - Security hardening via Helmet and CORS is enabled by default.
+ *  - Logging is handled by `pino-http`, integrated with the global `pino` logger.
+ *  - Development mode enables verbose request context logging.
+ *
+ * @example
+ *  import { createApp } from '@/app';
+ *
+ *  const app = createApp();
+ *  app.listen(3000);
+ */
+
 import express from 'express';
 import pinoHttp from 'pino-http';
 import helmet from 'helmet';
@@ -13,15 +34,34 @@ import { errorHandler } from '@/middleware/error-handler';
 import users from '@/routes/users';
 import health from '@/routes/health';
 
+/**
+ * Factory function that constructs and configures an Express application instance.
+ *
+ * @function createApp
+ * @returns {import('express').Express} A fully configured Express application ready to run.
+ *
+ * @example
+ *  const app = createApp();
+ *  app.listen(env.PORT, () => logger.info(`Server listening on port ${env.PORT}`));
+ */
 export function createApp() {
+  /** Express application instance. */
   const app = express();
 
+  /**
+   * Trust reverse proxy headers (e.g., `X-Forwarded-For`) — required for rate limiting
+   * and accurate client IP detection when deployed behind a load balancer.
+   */
   app.set('trust proxy', 1);
+
+  /** Structured HTTP request logging via Pino. */
   app.use(pinoHttp({ logger, quietReqLogger: !isDev }));
 
+  /** Request body parsing (JSON + URL-encoded). */
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
 
+  /** HTTP security headers — disables conflicting policies for dev/test environments. */
   app.use(
     helmet({
       contentSecurityPolicy: false,
@@ -29,6 +69,7 @@ export function createApp() {
     }),
   );
 
+  /** Cross-Origin Resource Sharing (CORS) configuration. */
   app.use(
     cors({
       origin: ['*'],
@@ -37,8 +78,13 @@ export function createApp() {
     }),
   );
 
+  /** Response compression for performance optimization. */
   app.use(compression());
 
+  /**
+   * Basic global rate limiting to prevent abuse and DoS attempts.
+   * Limit thresholds are environment-aware (`isDev` allows higher limits).
+   */
   app.use(
     rateLimit({
       windowMs: 60 * 1000,
@@ -56,18 +102,28 @@ export function createApp() {
     }),
   );
 
+  /**
+   * Optional development-mode debug logger.
+   * Emits request metadata such as IP and User-Agent for diagnostic visibility.
+   */
   if (isDev)
     app.use((req, _res, next) => {
       logger.debug({ ip: req.ip, ua: req.headers['user-agent'] }, 'debug: request context');
       next();
     });
 
+  /** Swagger / OpenAPI documentation endpoint. */
   app.use('/docs', ...swaggerDocs);
 
+  /** Health-check route for uptime monitoring and readiness probes. */
   app.use('/', health);
+
+  /** User resource routes (CRUD, authentication, etc.). */
   app.use('/users', users);
 
+  /** Global error handler middleware for consistent JSON error responses. */
   app.use(errorHandler);
 
+  /** Returns the configured Express application. */
   return app;
 }
