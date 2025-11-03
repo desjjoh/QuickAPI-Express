@@ -44,7 +44,7 @@ import health from '@/routes/health';
  *  const app = createApp();
  *  app.listen(env.PORT, () => logger.info(`Server listening on port ${env.PORT}`));
  */
-export function createApp() {
+export function createApp(): import('express').Express {
   /** Express application instance. */
   const app = express();
 
