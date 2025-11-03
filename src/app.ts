@@ -28,7 +28,7 @@ import rateLimit from 'express-rate-limit';
 
 import { isDev } from '@/config/env-validation';
 import { swaggerDocs } from '@/config/swagger';
-import { logger } from '@/services/logger';
+import { logger } from '@/services/pino';
 import { errorHandler } from '@/core/middleware/error-handler';
 
 import users from '@/api/routes/users';

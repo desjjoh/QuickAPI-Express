@@ -16,7 +16,7 @@
  */
 
 import swaggerUi from 'swagger-ui-express';
-import { openApiSpec } from '@/core/config/openapi';
+import { openApiSpec } from '@/config/openapi';
 import type { RequestHandler } from 'express';
 
 /**

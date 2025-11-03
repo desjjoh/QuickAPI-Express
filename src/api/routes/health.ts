@@ -20,7 +20,7 @@
 
 import { Router } from 'express';
 import { prisma } from '@/services/prisma';
-import { logger } from '@/services/logger';
+import { logger } from '@/services/pino';
 
 /** Express router instance containing all health and metrics endpoints. */
 const router = Router();

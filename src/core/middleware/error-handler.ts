@@ -22,7 +22,7 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { HttpError } from '@/core/utils/http-error.js';
-import { logger } from '@/services/logger.js';
+import { logger } from '@/services/pino';
 
 /**
  * Express global error handler.

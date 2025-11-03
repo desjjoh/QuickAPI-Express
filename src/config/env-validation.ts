@@ -18,7 +18,7 @@
 
 import 'dotenv/config';
 import { z, ZodError } from 'zod';
-import { logger } from '@/core/logger/logger.js';
+import { logger } from '@/services/pino';
 
 /**
  * Environment schema definition.

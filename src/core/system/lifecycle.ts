@@ -33,7 +33,7 @@
  */
 
 import { performance } from 'node:perf_hooks';
-import { logger } from '@/services/logger';
+import { logger } from '@/services/pino';
 import type { Server } from 'node:http';
 
 /**
