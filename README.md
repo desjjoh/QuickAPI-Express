@@ -1,63 +1,64 @@
-# 🚀 QuickAPI-Express
+# 🧩 QuickAPI-Express
 
-A modern, production-ready **Express + TypeScript + Prisma (SQLite)** microservice template — containerized with Docker and documented via Swagger.  
-Designed for rapid prototyping and internal service development.
-
----
-
-## ✨ Features
-
-- ⚙️ **TypeScript (ESM)** — strict mode, modern syntax, clean path aliases
-- 🧩 **Prisma ORM (SQLite)** — lightweight and schema-driven persistence layer
-- 🧾 **Zod Validation** — runtime validation for environment variables and request payloads
-- 🧠 **OpenAPI 3.1 (Swagger)** — auto-generated documentation from Zod schemas
-- 🔒 **Security Middleware** — Helmet, CORS, compression, and rate limiting out of the box
-- 🪵 **Structured Logging** — Pino + pino-http for rich request and system logs
-- 💉 **Graceful Shutdown** — clean Prisma disconnects and signal handling (SIGINT/SIGTERM)
-- 🐳 **Docker & Compose** — minimal multi-stage build for local or CI/CD deployments
+A modular, production-grade Express.js API template designed for rapid service creation and deployment.  
+Implements consistent architecture patterns from the **QuickAPI family** — including FastAPI, NestJS, and others — emphasizing scalability, observability, and clean shutdown behavior.
 
 ---
 
-## 🧱 Project Structure
+## 🚀 Features
+
+- **TypeScript-first architecture** with strict linting & type safety
+- **Prisma ORM (SQLite)** for lightweight, zero-config persistence
+- **Zod validation** for schema-driven request validation
+- **OpenAPI (Swagger)** auto-generation using `zod-to-openapi`
+- **Pino logging** for structured, contextual logs
+- **Centralized error handling** with consistent response format
+- **Graceful shutdown** via `SystemLifecycle` utility
+- **Security middleware**: Helmet, CORS, Compression, Rate Limiting
+- **Dockerized build** with multi-stage image and healthchecks
+- **Fully documented and modular folder structure**
+
+---
+
+## 🧱 Folder Structure
 
 ```bash
-├── src/
-│   ├── app.ts                # Express app initialization
-│   ├── index.ts              # Entry point, graceful shutdown logic
-│   ├── config/               # Zod env validation, Swagger config
-│   ├── db/
-│   │   ├── prisma.ts         # Prisma client connection
-│   │   └── generated/        # Generated Prisma client (after build)
-│   ├── logger/               # Pino logger configuration
-│   ├── middleware/           # Error handler, validation middleware
-│   ├── routes/
-│   │   ├── health.ts         # Health/metrics endpoint
-│   │   └── users.ts          # CRUD example route
-│   └── schemas/              # Zod schemas for validation and OpenAPI
-│
-├── prisma/
-│   └── schema.prisma         # Prisma schema (SQLite)
-│
-├── Dockerfile
-├── docker-compose.yaml
-├── tsconfig.json
-├── package.json
-└── README.md
+src/
+ ├── core/
+ │    └── middleware/
+ │         ├── error-handler.ts      # Centralized error handling
+ │         └── validate.ts           # Request validation wrapper
+ │
+ ├── routes/
+ │    ├── health.ts                  # Health & readiness endpoints
+ │    └── users.ts                   # User CRUD endpoints
+ │
+ ├── schemas/
+ │    ├── id.schema.ts               # Generic ID schema
+ │    ├── system.schema.ts           # Health schemas
+ │    └── user.schema.ts             # User validation & DTOs
+ │
+ ├── services/
+ │    ├── openapi/                   # Swagger + Zod integration
+ │    ├── env-validation.ts          # Zod environment validation
+ │    ├── prisma.ts                  # Prisma client setup
+ │    ├── pino.ts                    # Logger configuration
+ │    ├── swagger.ts                 # OpenAPI setup entry
+ │    └── index.ts                   # Service exports
+ │
+ ├── system/
+ │    └── lifecycle.ts               # Graceful shutdown & signal handling
+ │
+ ├── utils/
+ │    └── http-errors.ts             # Typed HTTP error classes
+ │
+ └── app.ts                          # Express app factory
+ └── index.ts                        # Application entrypoint
 ```
 
 ---
 
-## 🧩 Setup
-
-### 1. Install dependencies
-
-```bash
-npm ci
-```
-
-### 2. Environment setup
-
-Create a `.env` file in the project root:
+## ⚙️ Environment Variables (`.env`)
 
 ```bash
 NODE_ENV=development
@@ -66,81 +67,73 @@ LOG_LEVEL=info
 DATABASE_URL="file:./dev.db"
 ```
 
-### 3. Generate Prisma client
-
-```bash
-npx prisma generate
-```
-
-### 4. Run locally
-
-```bash
-npm run dev
-```
-
-### 5. Build and start
-
-```bash
-npm run build
-npm run start
-```
-
 ---
 
-## 🐳 Docker
+## 🐳 Docker Deployment
 
-### Build & run with Docker Compose
+### Build and run locally
 
 ```bash
-npm run docker:up
+docker compose up --build
 ```
 
-Accessible at:
+### Healthcheck
 
-- API → [http://localhost:3000](http://localhost:3000)
-- Swagger Docs → [http://localhost:3000/docs](http://localhost:3000/docs)
-
-### Stop containers
+The service exposes a readiness probe at:
 
 ```bash
-npm run docker:down
+GET /health/ready
+→ 200 OK
 ```
 
 ---
 
-## 🧠 API Overview
+## 📘 API Documentation
 
-| Method | Endpoint      | Description            |
-| ------ | ------------- | ---------------------- |
-| GET    | `/health`     | Service health check   |
-| GET    | `/users`      | List all users         |
-| GET    | `/users/{id}` | Retrieve a single user |
-| POST   | `/users`      | Create new user        |
-| PUT    | `/users/{id}` | Update user            |
-| DELETE | `/users/{id}` | Delete user            |
+The OpenAPI specification is auto-generated from Zod schemas.  
+Swagger UI is available at:
 
-All routes are automatically documented in Swagger using **Zod-to-OpenAPI**.
+```bash
+http://localhost:3000/docs
+```
 
 ---
 
-## 🧹 Scripts
+## 🧩 Lifecycle Management
 
-| Command               | Description                  |
-| --------------------- | ---------------------------- |
-| `npm run dev`         | Start in watch mode          |
-| `npm run build`       | Compile TypeScript           |
-| `npm run start`       | Run compiled app             |
-| `npm run docker:up`   | Build and start containers   |
-| `npm run docker:down` | Stop containers              |
-| `npm run lint`        | Run ESLint + Prettier checks |
+The `SystemLifecycle` utility manages process signals (`SIGINT`, `SIGTERM`) to:
+
+- Gracefully close the HTTP server
+- Disconnect from Prisma ORM
+- Log total uptime and shutdown duration
+
+Example usage:
+
+```ts
+SystemLifecycle.register(start, [
+  { name: 'server', stop: async () => SystemLifecycle.closeServer(server) },
+  { name: 'prisma', stop: async () => prisma.$disconnect() },
+]);
+```
 
 ---
 
-## 📄 License
+## 🧠 Development Scripts
 
-MIT © 2025 Your Name  
-You’re free to use, modify, and distribute this project with attribution.
+| Command                   | Description                            |
+| ------------------------- | -------------------------------------- |
+| `npm run dev`             | Start with hot reload (TS)             |
+| `npm run build`           | Compile TypeScript and rewrite aliases |
+| `npm start`               | Run compiled JS                        |
+| `npm run prisma:generate` | Generate Prisma client                 |
+| `npm run docker:up`       | Build and run via Docker Compose       |
 
 ---
 
-> _QuickAPI-Express is part of the “QuickAPI” family — a series of small, self-contained microservice templates across modern frameworks (Express, NestJS, FastAPI, etc.)._
+## 🧾 License
+
+Licensed under the [MIT License](./LICENSE).
+
+---
+
+**QuickAPI-Express** — a part of the **QuickAPI** family of backend templates designed by John Desjardins.

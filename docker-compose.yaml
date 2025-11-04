@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: quickapi-express:latest
     container_name: quickapi-express
     ports:
       - '3000:3000'
@@ -10,5 +11,11 @@ services:
       - .env
     volumes:
       - ./prisma/dev.db:/app/prisma/dev.db
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/ready']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     command: ['npm', 'start']
