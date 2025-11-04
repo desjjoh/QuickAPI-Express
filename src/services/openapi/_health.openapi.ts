@@ -12,7 +12,7 @@
  *  - Designed for integration with orchestration probes (e.g., Kubernetes liveness/readiness).
  *
  * @example
- *  import { registerHealthPaths } from "@/config/_health.openapi";
+ *  import { registerHealthPaths } from "@/services/openapi/_health.openapi";
  *  registerHealthPaths(registry);
  */
 

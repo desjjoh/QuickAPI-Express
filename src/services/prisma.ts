@@ -11,7 +11,7 @@
  *  - Does not perform automatic migrations — migrations should be applied manually via CLI.
  *
  * @example
- *  import { prisma } from "@/db/prisma";
+ *  import { prisma } from "@/services/prisma";
  *  const users = await prisma.user.findMany();
  */
 

@@ -13,7 +13,7 @@
  *  - Intended to be caught by centralized error-handling middleware.
  *
  * @example
- *  import { NotFoundError } from '@/utils/http-error';
+ *  import { NotFoundError } from '@/core/utils/http-error';
  *  throw new NotFoundError('User not found');
  */
 

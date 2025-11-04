@@ -12,13 +12,13 @@
  *  - Avoids manual OpenAPI YAML maintenance — generated dynamically at runtime.
  *
  * @example
- *  import { openApiSpec } from "@/config/openapi";
+ *  import { openApiSpec } from "@/services/openapi";
  *  console.log(openApiSpec.info.title); // "QuickAPI Express"
  */
 
 import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { OpenAPIObject } from 'openapi3-ts/oas30';
-import { env } from '@/config/env-validation';
+import { env } from '@/services/env-validation';
 import { registerUserPaths } from './_users.openapi';
 import { registerHealthPaths } from './_health.openapi';
 

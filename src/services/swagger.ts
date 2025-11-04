@@ -1,9 +1,9 @@
 /**
  * @fileoverview Swagger UI configuration.
- * @module config/swagger
+ * @module services/swagger
  * @description
  *  Integrates Swagger UI with the application to provide interactive API documentation.
- *  Uses the OpenAPI specification generated and exported from `@/config/openapi`.
+ *  Uses the OpenAPI specification generated and exported from `@/services/openapi`.
  *
  * @remarks
  *  - Exposes API documentation at the `/docs` route.
@@ -11,12 +11,12 @@
  *  - Does not require manual UI setup — handled by `swagger-ui-express`.
  *
  * @example
- *  import { swaggerDocs } from "@/config/swagger";
+ *  import { swaggerDocs } from "@/services/swagger";
  *  app.use("/docs", ...swaggerDocs);
  */
 
 import swaggerUi from 'swagger-ui-express';
-import { openApiSpec } from '@/config/openapi';
+import { openApiSpec } from '@/services/openapi';
 import type { RequestHandler } from 'express';
 
 /**

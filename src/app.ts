@@ -26,8 +26,8 @@ import cors from 'cors';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
-import { isDev } from '@/config/env-validation';
-import { swaggerDocs } from '@/config/swagger';
+import { isDev } from '@/services/env-validation';
+import { swaggerDocs } from '@/services/swagger';
 import { logger } from '@/services/pino';
 import { errorHandler } from '@/core/middleware/error-handler';
 

@@ -17,7 +17,7 @@
  *
  * @example
  *  ```ts
- *  import { SystemLifecycle } from '@/system/lifecycle';
+ *  import { SystemLifecycle } from '@/core/system/lifecycle';
  *  import { prisma } from '@/db/prisma';
  *  import { logger } from '@/logger/logger';
  *  import { app } from '@/app';

@@ -26,7 +26,7 @@
 
 import { createApp } from '@/app';
 import { prisma } from '@/services/prisma';
-import { env, isDev } from '@/config/env-validation';
+import { env, isDev } from '@/services/env-validation';
 import { logger } from '@/services/pino';
 import { SystemLifecycle } from './core/system/lifecycle';
 

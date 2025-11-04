@@ -1,6 +1,6 @@
 /**
  * @fileoverview Environment variable validation and configuration.
- * @module config/env-validation
+ * @module services/env-validation
  * @description
  *  Loads, validates, and exports application environment variables using Zod.
  *  Ensures the process environment contains all required configuration keys
@@ -12,7 +12,7 @@
  *  - Terminates startup immediately if environment configuration is invalid.
  *
  * @example
- *  import { env, isDev } from "@/config/env-validation";
+ *  import { env, isDev } from "@/services/env-validation";
  *  if (isDev) logger.info("Running in development mode");
  */
 

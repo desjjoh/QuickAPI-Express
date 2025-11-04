@@ -12,7 +12,7 @@
  *  - All responses use JSON content types with schema references.
  *
  * @example
- *  import { registerUserPaths } from "@/config/_users.openapi";
+ *  import { registerUserPaths } from "@/services/openapi/_users.openapi";
  *  registerUserPaths(registry);
  */
 

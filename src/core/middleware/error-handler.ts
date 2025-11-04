@@ -15,7 +15,7 @@
  *  - Prevents raw stack traces or internal messages from leaking to clients.
  *
  * @example
- *  import { errorHandler } from "@/middleware/error-handler";
+ *  import { errorHandler } from "@/core/middleware/error-handler";
  *  app.use(errorHandler);
  */
 

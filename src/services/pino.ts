@@ -1,6 +1,6 @@
 /**
  * @fileoverview Pino logger configuration.
- * @module services/logger/logger
+ * @module services/pino
  * @description
  *  Provides a preconfigured Pino logger instance for structured and performant
  *  application logging. Uses human-readable formatting in development and JSON
@@ -12,7 +12,7 @@
  *  - Avoids heavy transformations or async transports for production stability.
  *
  * @example
- *  import { logger } from "@/logger/logger";
+ *  import { logger } from "@/services/pino";
  *  logger.info("Server started");
  *  logger.error({ err }, "Unhandled exception");
  */

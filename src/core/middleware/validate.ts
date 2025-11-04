@@ -12,7 +12,7 @@
  *  - If validation fails, a descriptive error is propagated to the error handler.
  *
  * @example
- *  import { validate } from "@/middleware/validate";
+ *  import { validate } from "@/core/middleware/validate";
  *  import { CreateUserSchema } from "@/schemas/user.schema";
  *
  *  router.post("/users", validate(CreateUserSchema), (req, res) => {
