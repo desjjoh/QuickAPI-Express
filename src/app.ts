@@ -9,7 +9,7 @@
  * @remarks
  *  - All middleware and route registrations are centralized here.
  *  - Security hardening via Helmet and CORS is enabled by default.
- *  - Logging is handled by `pino-http`, integrated with the global `pino` logger.
+ *  - Logging is handled by http-logger, integrated with the global `pino` logger.
  *  - Development mode enables verbose request context logging.
  *
  * @example
