@@ -1,6 +1,6 @@
 /**
  * @fileoverview System health, readiness, and metrics endpoints.
- * @module routes/health
+ * @module api/routes/health
  * @description
  *  Exposes HTTP endpoints that report application status, database connectivity,
  *  and process metrics. Used by uptime monitors, orchestration probes, and

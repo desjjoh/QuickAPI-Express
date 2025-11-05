@@ -1,6 +1,6 @@
 /**
  * @fileoverview User entity validation and OpenAPI schemas.
- * @module schemas/user
+ * @module api/schemas/user
  * @description
  *  Defines Zod schemas for validating and documenting user data across
  *  API routes. Includes base entity definition, input validation for

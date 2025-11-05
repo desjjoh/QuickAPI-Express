@@ -1,6 +1,6 @@
 /**
  * @fileoverview Health, readiness, and metrics response schemas.
- * @module schemas/health
+ * @module api/schemas/health
  * @description
  *  Defines structured Zod schemas for system health, readiness, and metrics endpoints.
  *  These schemas ensure that monitoring, orchestration, and client integrations receive

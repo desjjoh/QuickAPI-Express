@@ -1,6 +1,6 @@
 /**
  * @fileoverview Shared Zod schema for numeric identifier validation.
- * @module schemas/id
+ * @module api/schemas/id
  * @description
  *  Defines a reusable schema for validating positive integer identifiers (IDs)
  *  across API routes and entity definitions. Extends Zod with OpenAPI metadata

@@ -1,6 +1,6 @@
 /**
  * @fileoverview User API routes.
- * @module routes/users
+ * @module api/routes/users
  * @description
  *  Defines RESTful CRUD endpoints for managing users.
  *  Integrates schema validation, structured error handling, and Prisma ORM operations.
