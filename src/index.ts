@@ -40,11 +40,11 @@ import { SystemLifecycle } from '@/core/system/lifecycle';
  * @throws {Error} If the server or any critical dependency fails to initialize.
  */
 async function bootstrap(): Promise<void> {
-  /** The primary Express application instance, created through the app factory. */
-  const app = createApp();
-
   /** High-resolution startup timestamp, used for measuring initialization duration. */
   const start = performance.now();
+
+  /** The primary Express application instance, created through the app factory. */
+  const app = createApp();
 
   /**
    * Launch the HTTP server and log key initialization details.
