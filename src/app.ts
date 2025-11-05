@@ -38,13 +38,13 @@ import { httpLogger } from '@/core/middleware/http-logger';
  * Factory function that constructs and configures an Express application instance.
  *
  * @function createApp
- * @returns {import('express').Express} A fully configured Express application ready to run.
+ * @returns {express.Express} A fully configured Express application ready to run.
  *
  * @example
  *  const app = createApp();
  *  app.listen(env.PORT, () => logger.info(`Server listening on port ${env.PORT}`));
  */
-export function createApp(): import('express').Express {
+export function createApp(): express.Express {
   /** Express application instance. */
   const app = express();
 
