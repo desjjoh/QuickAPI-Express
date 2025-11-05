@@ -20,7 +20,6 @@
  */
 
 import express from 'express';
-import pinoHttp from 'pino-http';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -33,6 +32,7 @@ import { errorHandler } from '@/core/middleware/error-handler';
 
 import users from '@/api/routes/users';
 import health from '@/api/routes/health';
+import { httpLogger } from '@/core/middleware/http-logger';
 
 /**
  * Factory function that constructs and configures an Express application instance.
@@ -54,8 +54,8 @@ export function createApp(): import('express').Express {
    */
   app.set('trust proxy', 1);
 
-  /** Structured HTTP request logging via Pino. */
-  app.use(pinoHttp({ logger, quietReqLogger: !isDev }));
+  /** Structured HTTP request logging via httpLogger. */
+  app.use(httpLogger);
 
   /** Request body parsing (JSON + URL-encoded). */
   app.use(express.json({ limit: '1mb' }));

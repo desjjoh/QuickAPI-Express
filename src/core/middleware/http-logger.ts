@@ -49,7 +49,7 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
   const { method, originalUrl } = req;
 
   // Initial request log (entry point)
-  logger.info({ method, url: originalUrl, ip: req.ip }, `[request] → ${method} ${originalUrl}`);
+  logger.info({ method, url: originalUrl, ip: req.ip }, `${method} ${originalUrl}`);
 
   // Log response details once the request completes
   res.on('finish', () => {
@@ -66,7 +66,7 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
 
     const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
-    logger[level](logContext, `[${statusCode}] ${method} / ${originalUrl} → ${duration}ms`);
+    logger[level](logContext, `[${statusCode}] ${method} ${originalUrl} in ${duration}ms`);
   });
 
   next();

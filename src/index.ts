@@ -29,7 +29,6 @@ import { prisma } from '@/services/prisma';
 import { env, isDev } from '@/services/env-validation';
 import { logger } from '@/services/pino';
 import { SystemLifecycle } from '@/core/system/lifecycle';
-import { httpLogger } from '@/core/middleware/http-logger';
 
 /**
  * Bootstraps the Express application and manages the complete server lifecycle.
@@ -46,8 +45,6 @@ async function bootstrap(): Promise<void> {
 
   /** High-resolution startup timestamp, used for measuring initialization duration. */
   const start = performance.now();
-
-  app.use(httpLogger);
 
   /**
    * Launch the HTTP server and log key initialization details.
