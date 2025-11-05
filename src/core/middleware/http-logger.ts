@@ -48,9 +48,6 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
   const start = performance.now();
   const { method, originalUrl } = req;
 
-  // Initial request log (entry point)
-  logger.info({ method, url: originalUrl, ip: req.ip }, `${method} ${originalUrl}`);
-
   // Log response details once the request completes
   res.on('finish', () => {
     const duration = (performance.now() - start).toFixed(2);
