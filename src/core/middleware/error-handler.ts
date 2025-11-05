@@ -40,7 +40,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   let status = 500;
   let message = 'Internal Server Error';
 
-  // ✅ Identify and classify known error types
+  // Identify and classify known error types
   if (err instanceof HttpError) {
     status = err.status;
     message = err.message;
