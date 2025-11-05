@@ -89,7 +89,7 @@ router.get('/:id', async (req, res, next) => {
 /**
  * Update an existing user.
  *
- * @route PUT /users/:id
+ * @route PATCH /users/:id
  * @group Users
  * @param {number} id.path.required - User ID
  * @param {UpdateUserInput.model} request.body.required - Fields to update
@@ -97,7 +97,7 @@ router.get('/:id', async (req, res, next) => {
  * @throws {400} If payload is invalid
  * @throws {404} If user not found
  */
-router.put('/:id', validate(UpdateUserSchema), async (req, res, next) => {
+router.patch('/:id', validate(UpdateUserSchema), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return next(new NotFoundError('Invalid user ID'));

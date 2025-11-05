@@ -33,7 +33,7 @@ import { UserIdSchema } from '@/api/schemas/id.schema';
  *  - POST `/users`: Create a user
  *  - GET `/users`: Retrieve all users
  *  - GET `/users/{id}`: Retrieve a user by ID
- *  - PUT `/users/{id}`: Update a user
+ *  - PATCH `/users/{id}`: Update a user
  *  - DELETE `/users/{id}`: Delete a user
  */
 export function registerUserPaths(registry: OpenAPIRegistry): void {
@@ -117,9 +117,9 @@ export function registerUserPaths(registry: OpenAPIRegistry): void {
     },
   });
 
-  // PUT /users/{id}
+  // PATCH /users/{id}
   registry.registerPath({
-    method: 'put',
+    method: 'patch',
     path: '/users/{id}',
     tags: ['Users'],
     summary: 'Update a user',
