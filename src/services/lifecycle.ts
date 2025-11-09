@@ -18,7 +18,7 @@ export class SystemLifecycle {
       try {
         for (const service of services) {
           try {
-            logger.info(`  - Stopping service → ${service.name}`);
+            logger.info(`Stopping service → ${service.name}`);
             await service.stop();
           } catch {
             logger.error(`Failed to stop service: ${service.name}`);

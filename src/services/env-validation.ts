@@ -26,8 +26,8 @@ try {
         .trim();
 
       const formatted = received
-        ? `  - Invalid ${field} → ${message} got "${received}"`
-        : `  - Invalid ${field} → ${message}`;
+        ? `Invalid ${field} → ${message} got "${received}"`
+        : `Invalid ${field} → ${message}`;
 
       logger.fatal(formatted);
     }
