@@ -1,6 +1,6 @@
 import moment from 'moment';
 import pino, { type Logger } from 'pino';
-import { gray, cyan, yellow, red, green, magenta, dim } from 'colorette';
+import { gray, cyan, yellow, red, green, magenta, blue, dim } from 'colorette';
 
 import { env } from './env-validation';
 
@@ -25,18 +25,33 @@ function colorLevel(level: string): string {
   return color(`[${level}]`);
 }
 
-function formatLog(level: string, msg: string): string {
+function formatLog(level: string, msg: string, context: Record<string, unknown>): string {
   const timestamp = dim(green(formatTimestamp()));
   const levelLabel = colorLevel(level);
 
-  return `${timestamp} ${levelLabel} ${msg}`;
+  let line = `${timestamp} ${levelLabel} ${msg}`;
+
+  const meta = { ...context };
+
+  delete meta.msg;
+  delete meta.level;
+  delete meta.levelLabel;
+
+  if (Object.keys(meta).length) {
+    const metaStr = Object.entries(meta)
+      .map(([k, v]) => `${blue(k)}${gray(`=${String(v)}`)}`)
+      .join(' ');
+    line += ` ${metaStr}`;
+  }
+
+  return line;
 }
 
 const stream = {
   write(raw: string) {
     try {
       const log = JSON.parse(raw);
-      const formatted = formatLog(log.levelLabel || log.level, log.msg);
+      const formatted = formatLog(log.levelLabel || log.level, log.msg, log);
       process.stdout.write(formatted + '\n');
     } catch {
       process.stdout.write(raw);
@@ -52,6 +67,7 @@ export const logger: Logger = pino(
         return { levelLabel: label };
       },
     },
+    base: undefined,
     timestamp: false,
   },
   isDev ? stream : undefined,

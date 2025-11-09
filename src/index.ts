@@ -12,8 +12,8 @@ async function bootstrap(): Promise<void> {
   const app = createApp();
 
   SystemLifecycle.register([
-    { name: 'server', stop: async () => SystemLifecycle.closeServer(server) },
     { name: 'prisma', stop: async () => prisma.$disconnect() },
+    { name: 'server', stop: async () => SystemLifecycle.closeServer(server) },
   ]);
 
   const server = app.listen(env.PORT, () => {
