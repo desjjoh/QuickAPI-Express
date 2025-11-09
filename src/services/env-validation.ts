@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import { z, ZodError } from 'zod';
-import { logger } from '@/services/pino';
 
-const EnvSchema: z.ZodObject = z.object({
+const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
@@ -14,7 +13,7 @@ try {
   env = EnvSchema.parse(process.env);
 } catch (err) {
   if (err instanceof ZodError) {
-    logger.fatal('Invalid environment configuration');
+    process.stdout.write('Invalid environment configuration');
 
     for (const issue of err.issues) {
       const field = issue.path.join('.') || '(root)';
@@ -26,13 +25,13 @@ try {
         .trim();
 
       const formatted = received
-        ? `Invalid ${field} → ${message} got "${received}"`
-        : `Invalid ${field} → ${message}`;
+        ? `  ↳ Invalid ${field} → ${message} got "${received}"`
+        : `  ↳ Invalid ${field} → ${message}`;
 
-      logger.fatal(formatted);
+      process.stdout.write(formatted);
     }
   } else {
-    logger.fatal('Unexpected error during environment validation');
+    process.stdout.write('Unexpected error during environment validation');
   }
 
   process.exit(1);

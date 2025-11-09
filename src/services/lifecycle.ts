@@ -13,20 +13,20 @@ export class SystemLifecycle {
       this.shutdownStarted = true;
 
       const initiated = performance.now();
-      logger.warn(`${signal} received — initiating graceful shutdown`);
+      logger.warn(`${signal} received — initiating graceful shutdown...`);
 
       try {
         for (const service of services) {
           try {
-            logger.info(`Stopping service → ${service.name}`);
+            logger.info(`  ↳ stopping service → ${service.name}`);
             await service.stop();
           } catch {
-            logger.error(`Failed to stop service: ${service.name}`);
+            logger.error(`Failed to stop service`);
           }
         }
 
         const duration = (performance.now() - initiated).toFixed(2);
-        logger.info(`Shutdown completed in ${duration}ms`);
+        logger.info(`Shutdown complete (${duration}ms)`);
 
         process.exit(0);
       } catch {

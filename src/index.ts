@@ -6,19 +6,22 @@ import { logger } from '@/services/pino';
 import { SystemLifecycle } from '@/services/lifecycle';
 
 async function bootstrap(): Promise<void> {
+  logger.info('Starting QuickAPI — Express...');
+  logger.info(`  ↳ Node.js ${process.version} initialized`);
+
   const app = createApp();
-
-  const server = app.listen(env.PORT, () => {
-    const mode = isDev ? 'development' : 'production';
-
-    logger.info(`Server running in ${mode} mode at http://localhost:${env.PORT}`);
-    logger.info(`Swagger docs available at http://localhost:${env.PORT}/docs`);
-  });
 
   SystemLifecycle.register([
     { name: 'server', stop: async () => SystemLifecycle.closeServer(server) },
     { name: 'prisma', stop: async () => prisma.$disconnect() },
   ]);
+
+  const server = app.listen(env.PORT, () => {
+    const mode = isDev ? 'development' : 'production';
+
+    logger.info(`  ↳ HTTP server running in ${mode} mode at http://localhost:${env.PORT}`);
+    logger.info(`  ↳ API documentation available at http://localhost:${env.PORT}/docs`);
+  });
 }
 
 bootstrap().catch((err: unknown) => {
