@@ -24,14 +24,7 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-bootstrap().catch((err: unknown) => {
-  const error = err instanceof Error ? err : new Error(String(err));
-
-  try {
-    logger.fatal('Fatal error during application bootstrap');
-  } catch {
-    process.stderr.write(`Fatal error during bootstrap: ${error.message}\n`);
-  }
-
+bootstrap().catch(() => {
+  logger.fatal('Fatal error during application bootstrap');
   process.exit(1);
 });
