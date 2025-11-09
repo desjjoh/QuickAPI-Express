@@ -14,11 +14,10 @@ router.get('/health', (_req, res) => {
 
 router.get('/ready', async (_req, res) => {
   try {
-    // Minimal lightweight connectivity check to confirm database health.
     await prisma.$queryRaw`SELECT 1`;
     res.json({ status: 'ready', db: 'connected' });
-  } catch (err) {
-    logger.error({ err }, 'Database readiness check failed');
+  } catch {
+    logger.error('Database readiness check failed');
     res.status(503).json({ status: 'error', db: 'unreachable' });
   }
 });

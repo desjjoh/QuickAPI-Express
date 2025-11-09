@@ -6,8 +6,8 @@ extendZodWithOpenApi(z);
 export const UserSchema = z.object({
   id: z.number().int().openapi({ example: 1 }),
   name: z.string().openapi({ example: 'John Doe' }),
-  email: z.string().email().openapi({ example: 'john@example.com' }),
-  createdAt: z.string().datetime().openapi({ example: '2025-10-29T14:30:00Z' }),
+  email: z.email().openapi({ example: 'john@example.com' }),
+  createdAt: z.iso.datetime().openapi({ example: '2025-10-29T14:30:00Z' }),
 });
 
 export const CreateUserSchema = UserSchema.pick({

@@ -6,7 +6,6 @@ import rateLimit from 'express-rate-limit';
 
 import { isDev } from '@/services/env-validation';
 import { swaggerDocs } from '@/services/swagger';
-import { logger } from '@/services/pino';
 import { errorHandler } from '@/core/middleware/error-handler';
 
 import users from '@/api/routes/users';
@@ -56,12 +55,6 @@ export function createApp(): express.Express {
       },
     }),
   );
-
-  if (isDev)
-    app.use((req, _res, next) => {
-      logger.debug({ ip: req.ip, ua: req.headers['user-agent'] }, 'debug: request context');
-      next();
-    });
 
   app.use('/docs', ...swaggerDocs);
 

@@ -1,9 +1,9 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
-import { HttpError } from '@/core/utils/http-error.js';
-import { logger } from '@/services/pino';
 
-export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+import { HttpError } from '@/core/exceptions/http-error.js';
+
+export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   void next;
 
   let status = 500;
@@ -16,16 +16,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     status = 400;
     message = err.issues.map(e => e.message).join(', ');
   }
-
-  logger.error(
-    {
-      err,
-      method: req.method,
-      url: req.originalUrl,
-      requestId: res.locals.requestId,
-    },
-    'Request failed',
-  );
 
   res.status(status).json({
     status,

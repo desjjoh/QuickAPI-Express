@@ -9,17 +9,9 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
     const duration = (performance.now() - start).toFixed(2);
     const { statusCode } = res;
 
-    const logContext = {
-      method,
-      url: originalUrl,
-      statusCode,
-      duration: `${duration}ms`,
-      ip: req.ip,
-    };
-
     const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
-    logger[level](logContext, `${method} ${originalUrl} ${statusCode} → ${duration}`);
+    logger[level](`${method} ${originalUrl} ${statusCode} → ${duration}ms`);
   });
 
   next();

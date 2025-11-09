@@ -16,5 +16,5 @@ export const MetricsResponseSchema = z.object({
   uptime: z.number(),
   rss: z.number().describe('Resident Set Size - total memory usage'),
   heapUsed: z.number().describe('Heap memory currently in use'),
-  timestamp: z.string().datetime(),
+  timestamp: z.iso.datetime(),
 });

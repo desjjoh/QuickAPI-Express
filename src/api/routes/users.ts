@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validate } from '@/core/middleware/validate.js';
-import { NotFoundError } from '@/core/utils/http-error.js';
+import { NotFoundError } from '@/core/exceptions/http-error.js';
 import { prisma } from '@/services/prisma';
 import { CreateUserSchema, UpdateUserSchema } from '@/api/schemas/user.schema';
 
