@@ -21,7 +21,7 @@ export class SystemLifecycle {
             logger.info(`  - Stopping service → ${service.name}`);
             await service.stop();
           } catch {
-            logger.error(`  - Failed to stop service → ${service.name}`);
+            logger.error(`Failed to stop service: ${service.name}`);
           }
         }
 
