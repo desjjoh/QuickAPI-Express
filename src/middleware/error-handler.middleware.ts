@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 
-import { HttpError } from '@/core/exceptions/http-error.js';
+import { HttpError } from '@/exceptions/http.exception';
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   void next;

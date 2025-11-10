@@ -1,8 +1,9 @@
 import { performance } from 'node:perf_hooks';
-import { logger } from '@/services/pino';
 import type { Server } from 'node:http';
 
-export class SystemLifecycle {
+import { logger } from '@/config/pino.config';
+
+export class GracefulShutdown {
   private static shutdownStarted = false;
 
   public static register(

@@ -1,7 +1,8 @@
 import { ZodError } from 'zod';
 import type { ZodObject } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
-import { BadRequestError } from '@/core/exceptions/http-error';
+
+import { BadRequestError } from '@/exceptions/http.exception';
 
 export const validate =
   (schema: ZodObject) =>

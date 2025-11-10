@@ -1,9 +1,10 @@
 import { createApp } from '@/app';
 
-import { prisma } from '@/services/prisma';
-import { env, isDev } from '@/services/env-validation';
-import { logger } from '@/services/pino';
-import { SystemLifecycle } from '@/services/lifecycle';
+import { prisma } from '@/config/prisma.config';
+import { env, isDev } from '@/config/env-validation.config';
+import { logger } from '@/config/pino.config';
+
+import { GracefulShutdown } from '@/handlers/graceful-shutdown.handler';
 
 async function bootstrap(): Promise<void> {
   logger.info('Starting QuickAPI — Express...');
@@ -11,9 +12,11 @@ async function bootstrap(): Promise<void> {
 
   const app = createApp();
 
-  SystemLifecycle.register([
+  const { register, closeServer } = GracefulShutdown;
+
+  register([
     { name: 'prisma', stop: async () => prisma.$disconnect() },
-    { name: 'server', stop: async () => SystemLifecycle.closeServer(server) },
+    { name: 'express', stop: async () => closeServer(server) },
   ]);
 
   const server = app.listen(env.PORT, () => {

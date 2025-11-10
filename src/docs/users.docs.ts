@@ -1,11 +1,11 @@
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
-import { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from '@/api/schemas/user.schema';
-import { UserIdSchema } from '@/api/schemas/id.schema';
+import { CreateUserSchema, UpdateUserSchema, UserResponseSchema } from '@/models/user.model';
+import { IdSchema } from '@/models/id.model';
 
 export function registerUserPaths(registry: OpenAPIRegistry): void {
   registry.register('User', UserResponseSchema);
   registry.register('CreateUser', CreateUserSchema);
-  registry.register('UserId', UserIdSchema);
+  registry.register('UserId', IdSchema);
   registry.register('UpdateUser', UpdateUserSchema);
 
   // POST /users

@@ -4,13 +4,14 @@ import cors from 'cors';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
-import { isDev } from '@/services/env-validation';
-import { swaggerDocs } from '@/services/swagger';
-import { errorHandler } from '@/core/middleware/error-handler';
+import { isDev } from '@/config/env-validation.config';
+import { swaggerDocs } from '@/config/swagger.config';
 
-import users from '@/api/routes/users';
-import health from '@/api/routes/health';
-import { httpLogger } from '@/core/middleware/http-logger';
+import { errorHandler } from '@/middleware/error-handler.middleware';
+import { httpLogger } from '@/middleware/http-logger.middleware';
+
+import users from '@/controllers/users.controller';
+import health from '@/controllers/health.controller';
 
 export function createApp(): express.Express {
   const app = express();

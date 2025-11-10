@@ -1,5 +1,6 @@
-import { logger } from '@/services/pino';
 import type { Request, Response, NextFunction } from 'express';
+
+import { logger } from '@/config/pino.config';
 
 export function httpLogger(req: Request, res: Response, next: NextFunction): void {
   const start = performance.now();

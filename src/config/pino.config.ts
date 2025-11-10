@@ -2,7 +2,7 @@ import moment from 'moment';
 import pino, { type Logger } from 'pino';
 import { gray, cyan, yellow, red, green, magenta, blue, dim } from 'colorette';
 
-import { env } from './env-validation';
+import { env } from './env-validation.config';
 
 const defaultLevel = env.LOG_LEVEL || 'info';
 const isDev = env.NODE_ENV !== 'production';

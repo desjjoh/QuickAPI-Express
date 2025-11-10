@@ -1,8 +1,10 @@
 import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { OpenAPIObject } from 'openapi3-ts/oas30';
-import { env } from '@/services/env-validation';
-import { registerUserPaths } from './_users.openapi';
-import { registerHealthPaths } from './_health.openapi';
+
+import { env } from '@/config/env-validation.config';
+
+import { registerUserPaths } from '@/docs/users.docs';
+import { registerHealthPaths } from '@/docs/health.docs';
 
 const registry = new OpenAPIRegistry();
 

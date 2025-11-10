@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { prisma } from '@/services/prisma';
-import { logger } from '@/services/pino';
+
+import { prisma } from '@/config/prisma.config';
+import { logger } from '@/config/pino.config';
 
 const router = Router();
 

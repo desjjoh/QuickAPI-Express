@@ -12,6 +12,8 @@
     "clean": "rimraf dist && npm run build",
     "start": "node dist/index.js",
     "rebuild": "npm run build && npm start",
+    "test": "vitest",
+    "test:run": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",

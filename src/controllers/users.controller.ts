@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { validate } from '@/core/middleware/validate.js';
-import { NotFoundError } from '@/core/exceptions/http-error.js';
-import { prisma } from '@/services/prisma';
-import { CreateUserSchema, UpdateUserSchema } from '@/api/schemas/user.schema';
+
+import { validate } from '@/middleware/validate.middleware';
+import { NotFoundError } from '@/exceptions/http.exception';
+import { CreateUserSchema, UpdateUserSchema } from '@/models/user.model';
+import { prisma } from '@/config/prisma.config';
 
 const router = Router();
 

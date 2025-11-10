@@ -3,7 +3,7 @@ import {
   HealthResponseSchema,
   ReadyResponseSchema,
   MetricsResponseSchema,
-} from '@/api/schemas/system.schema';
+} from '@/models/system.model';
 
 export function registerHealthPaths(registry: OpenAPIRegistry): void {
   registry.register('HealthResponse', HealthResponseSchema);
