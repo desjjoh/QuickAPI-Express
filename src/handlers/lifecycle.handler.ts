@@ -17,17 +17,15 @@ export class LifecycleHandler {
 
   public static register = (services: LifecycleService[]): void => {
     const start = performance.now();
-    logger.debug(`Initiating service registration...`);
+    logger.debug(`Initiating registration...`);
 
     for (const service of services) {
       this.startupServices.push(service);
       this.shutdownServices.unshift(service);
     }
 
-    logger.debug(`↳ registered services: ${this.startupServices.length}`);
-
-    this.registerProcess();
-    logger.debug(`↳ registered lifecycle events`);
+    this.registerListeners();
+    logger.debug(`↳ registered services: ${services.length}`);
 
     const duration = (performance.now() - start).toFixed(2);
     logger.debug(`↳ registration complete (${duration}ms)`);
@@ -84,7 +82,7 @@ export class LifecycleHandler {
     process.exit(0);
   };
 
-  private static registerProcess = (): void => {
+  private static registerListeners = (): void => {
     ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
       process.once(sig, () => void this.shutdown(sig));
     });
