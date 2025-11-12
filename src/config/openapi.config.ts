@@ -20,5 +20,5 @@ export const openApiSpec: OpenAPIObject = generator.generateDocument({
     version: '1.0.0',
     description: 'Auto-generated documentation from Zod schemas',
   },
-  servers: [{ url: `http://localhost:${env.PORT}` }],
+  servers: [{ url: `http://localhost:${env.PORT}/api` }],
 });

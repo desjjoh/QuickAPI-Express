@@ -1,33 +1,27 @@
-import { createApp } from '@/app';
+import 'reflect-metadata';
+import 'dotenv/config';
 
-import { prisma } from '@/config/prisma.config';
-import { env, isDev } from '@/config/env-validation.config';
 import { logger } from '@/config/pino.config';
+import { connectDatabase, destroyServer } from '@/config/typeorm.config';
 
-import { GracefulShutdown } from '@/handlers/graceful-shutdown.handler';
+import { LifecycleHandler } from '@/handlers/lifecycle.handler';
+import { HttpServerHandler } from '@/handlers/http-server.handler';
 
 async function bootstrap(): Promise<void> {
-  logger.info('Starting QuickAPI — Express...');
-  logger.info(`  ↳ Node.js ${process.version} initialized`);
-
-  const app = createApp();
-
-  const { register, closeServer } = GracefulShutdown;
+  const { register, startup } = LifecycleHandler;
+  const { registerServer, closeServer } = HttpServerHandler;
 
   register([
-    { name: 'prisma', stop: async () => prisma.$disconnect() },
-    { name: 'express', stop: async () => closeServer(server) },
+    { name: 'typeorm', start: connectDatabase, stop: destroyServer },
+    { name: 'express', start: registerServer, stop: closeServer },
   ]);
 
-  const server = app.listen(env.PORT, () => {
-    const mode = isDev ? 'development' : 'production';
-
-    logger.info(`  ↳ HTTP server running in ${mode} mode at http://localhost:${env.PORT}`);
-    logger.info(`  ↳ API documentation available at http://localhost:${env.PORT}/docs`);
-  });
+  await startup();
 }
 
-bootstrap().catch(() => {
-  logger.fatal('Fatal error during application bootstrap');
+bootstrap().catch(async (err: unknown) => {
+  const error = err instanceof Error ? err : new Error(String(err));
+
+  logger.fatal({ error: error.stack }, 'Fatal error during application bootstrap');
   process.exit(1);
 });

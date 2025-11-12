@@ -3,6 +3,10 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import fs from 'fs';
+
+import { fileURLToPath } from 'url';
 
 import { isDev } from '@/config/env-validation.config';
 import { swaggerDocs } from '@/config/swagger.config';
@@ -10,8 +14,7 @@ import { swaggerDocs } from '@/config/swagger.config';
 import { errorHandler } from '@/middleware/error-handler.middleware';
 import { httpLogger } from '@/middleware/http-logger.middleware';
 
-import users from '@/controllers/users.controller';
-import health from '@/controllers/health.controller';
+import api from '@/routes/api.routes';
 
 export function createApp(): express.Express {
   const app = express();
@@ -51,16 +54,24 @@ export function createApp(): express.Express {
         message: 'Too many requests — please slow down.',
       },
       handler: (req, res, _next, options) => {
-        req.app.locals.logger?.warn({ ip: req.ip, url: req.originalUrl }, 'Rate limit triggered');
         res.status(options.statusCode).json(options.message);
       },
     }),
   );
 
-  app.use('/docs', ...swaggerDocs);
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
 
-  app.use('/', health);
-  app.use('/users', users);
+  const rootPath = path.resolve(__dirname, '..');
+  const publicPath = path.join(rootPath, 'public');
+
+  if (!fs.existsSync(publicPath)) {
+    fs.mkdirSync(publicPath, { recursive: true });
+  }
+
+  app.use('/api', api);
+  app.use('/docs', ...swaggerDocs);
+  app.use('/public', express.static(publicPath));
 
   app.use(errorHandler);
 

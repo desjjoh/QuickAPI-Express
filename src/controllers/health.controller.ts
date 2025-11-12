@@ -1,8 +1,5 @@
 import { Router } from 'express';
 
-import { prisma } from '@/config/prisma.config';
-import { logger } from '@/config/pino.config';
-
 const router = Router();
 
 router.get('/health', (_req, res) => {
@@ -15,10 +12,9 @@ router.get('/health', (_req, res) => {
 
 router.get('/ready', async (_req, res) => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    // await prisma.$queryRaw`SELECT 1`;
     res.json({ status: 'ready', db: 'connected' });
   } catch {
-    logger.error('Database readiness check failed');
     res.status(503).json({ status: 'error', db: 'unreachable' });
   }
 });

@@ -10,7 +10,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./prisma/dev.db:/app/prisma/dev.db
+      - ./public:/usr/src/app/public
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/ready']
       interval: 30s
