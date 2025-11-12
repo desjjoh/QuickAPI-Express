@@ -10,7 +10,7 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
     const duration = (performance.now() - start).toFixed(2);
     const { statusCode } = res;
 
-    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'debug';
 
     logger[level](`${method} ${originalUrl} ${statusCode} → ${duration}ms`);
   });

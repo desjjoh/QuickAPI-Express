@@ -16,14 +16,21 @@ export class LifecycleHandler {
   private static shutdownStarted = false;
 
   public static register = (services: LifecycleService[]): void => {
+    const start = performance.now();
+    logger.debug(`Initiating service registration...`);
+
     for (const service of services) {
       this.startupServices.push(service);
       this.shutdownServices.unshift(service);
     }
 
-    ['SIGINT', 'SIGTERM'].forEach(sig => {
-      process.once(sig, () => void this.shutdown(sig));
-    });
+    logger.debug(`↳ registered services: ${this.startupServices.length}`);
+
+    this.registerProcess();
+    logger.debug(`↳ registered lifecycle events`);
+
+    const duration = (performance.now() - start).toFixed(2);
+    logger.debug(`↳ registration complete (${duration}ms)`);
   };
 
   public static startup = async (): Promise<void> => {
@@ -31,22 +38,22 @@ export class LifecycleHandler {
     this.startupStarted = true;
 
     const start = performance.now();
+    logger.debug(`Initiating startup sequence...`);
 
     try {
       for (const service of this.startupServices) {
         if (!service.start) continue;
 
         await service.start();
-        logger.info(`↳ successfully started service → ${service.name}`);
+        logger.debug(`↳ successfully started service → ${service.name}`);
       }
 
       const duration = (performance.now() - start).toFixed(2);
-      logger.info(`Startup complete (${duration}ms)`);
+      logger.debug(`↳ startup complete (${duration}ms)`);
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
 
       await this.shutdown('STARTUP_FAILURE');
-
       throw error;
     }
   };
@@ -56,23 +63,46 @@ export class LifecycleHandler {
     this.shutdownStarted = true;
 
     const start = performance.now();
+
     logger.warn(`${signal} received — initiating graceful shutdown...`);
 
     for (const service of this.shutdownServices) {
       try {
         if (!service.stop) continue;
-        logger.info(`↳ successfully stopped service → ${service.name}`);
         await service.stop();
+        logger.debug(`↳ successfully stopped service → ${service.name}`);
       } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));
 
-        logger.error(`failed to stop service → ${service.name}`);
-        throw error;
+        logger.error({ error: error.stack }, `Failed to stop service → ${service.name}`);
       }
     }
 
     const duration = (performance.now() - start).toFixed(2);
-    logger.info(`Shutdown complete (${duration}ms)`);
+    logger.debug(`↳ shutdown complete (${duration}ms)`);
+
     process.exit(0);
+  };
+
+  private static registerProcess = (): void => {
+    ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
+      process.once(sig, () => void this.shutdown(sig));
+    });
+
+    process.on('uncaughtException', (err: unknown) => {
+      const error = err instanceof Error ? err : new Error(String(err));
+
+      logger.fatal({ error: error.stack }, 'Uncaught exception — forcing exit');
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason: unknown) => {
+      logger.fatal(`Unhandled promise rejection: ${String(reason)}`);
+      process.exit(1);
+    });
+
+    process.on('exit', (code: number) => {
+      logger.info(`Application exited with code ${code}`);
+    });
   };
 }

@@ -62,7 +62,7 @@ export function createApp(): express.Express {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
-  const rootPath = path.resolve(__dirname, '..');
+  const rootPath = path.resolve(__dirname, '../..');
   const publicPath = path.join(rootPath, 'public');
 
   if (!fs.existsSync(publicPath)) {

@@ -7,9 +7,15 @@ import { connectDatabase, destroyServer } from '@/config/typeorm.config';
 import { LifecycleHandler } from '@/handlers/lifecycle.handler';
 import { HttpServerHandler } from '@/handlers/http-server.handler';
 
+import { env, isDev } from '@/config/env-validation.config';
+
 async function bootstrap(): Promise<void> {
   const { register, startup } = LifecycleHandler;
   const { registerServer, closeServer } = HttpServerHandler;
+
+  const mode = isDev ? 'development' : 'production';
+
+  logger.info(`Starting application in ${mode} mode using Node.js ${process.version}`);
 
   register([
     { name: 'typeorm', start: connectDatabase, stop: destroyServer },
@@ -17,6 +23,8 @@ async function bootstrap(): Promise<void> {
   ]);
 
   await startup();
+
+  logger.info(`HTTP server running on port ${env.PORT} at http://localhost:${env.PORT}`);
 }
 
 bootstrap().catch(async (err: unknown) => {
