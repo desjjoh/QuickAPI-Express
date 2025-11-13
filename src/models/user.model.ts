@@ -5,9 +5,9 @@ extendZodWithOpenApi(z);
 
 export const UserSchema = z.object({
   id: z.number().int().openapi({ example: 1 }),
+  createdAt: z.iso.datetime().openapi({ example: '2025-10-29T14:30:00Z' }),
   name: z.string().openapi({ example: 'John Doe' }),
   email: z.email().openapi({ example: 'john@example.com' }),
-  createdAt: z.iso.datetime().openapi({ example: '2025-10-29T14:30:00Z' }),
 });
 
 export const CreateUserSchema = UserSchema.pick({
@@ -24,4 +24,5 @@ export const UpdateUserSchema = CreateUserSchema.partial()
 export const UserResponseSchema = UserSchema.openapi('UserResponse');
 
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 export type UserResponse = z.infer<typeof UserResponseSchema>;

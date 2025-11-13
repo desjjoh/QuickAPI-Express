@@ -1,72 +1,50 @@
-// import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import {
+  CreateUserSchema,
+  UpdateUserSchema,
+  type CreateUserInput,
+  type UpdateUserInput,
+} from '@/models/user.model';
+import { validateRequest } from '@/middleware/validate-request.middleware';
+import { IdParams, type IdRouteParams } from '@/models/id.model';
 
-// import { validate } from '@/middleware/validate.middleware';
-// import { NotFoundError } from '@/exceptions/http.exception';
-// import { CreateUserSchema, UpdateUserSchema } from '@/models/user.model';
+const router = Router();
 
-// const router = Router();
+router.post(
+  '/',
+  validateRequest({ body: CreateUserSchema }),
+  async (req: Request<never, never, CreateUserInput>, res: Response) => {
+    const { email, name } = req.body;
 
-// router.post('/', validate(CreateUserSchema), async (req, res) => {
-//   const { email, name } = req.body;
+    res.status(201).json({ email, name });
+  },
+);
 
-//   const user = await prisma.user.create({
-//     data: { name, email },
-//   });
+router.get('/', async (_req: Request, res: Response) => {
+  res.json([]);
+});
 
-//   res.status(201).json({ message: 'User created', user });
-// });
+router.get(
+  '/:id',
+  validateRequest({ params: IdParams }),
+  async (req: Request<IdRouteParams>, res: Response) => {
+    const id = Number(req.params.id);
+    res.json(id);
+  },
+);
 
-// router.get('/', async (_req, res) => {
-//   const users = await prisma.user.findMany();
-//   res.json(users);
-// });
+router.patch(
+  '/:id',
+  validateRequest({ params: IdParams, body: UpdateUserSchema }),
+  async (req: Request<IdRouteParams, never, UpdateUserInput>, res: Response) => {
+    const id = Number(req.params.id);
+    res.json(id);
+  },
+);
 
-// router.get('/:id', async (req, res, next) => {
-//   try {
-//     const id = Number(req.params.id);
-//     if (isNaN(id)) return next(new NotFoundError('Invalid user ID'));
+router.delete('/:id', async (req: Request<IdRouteParams>, res: Response) => {
+  const id = Number(req.params.id);
+  res.json(id);
+});
 
-//     const user = await prisma.user.findUnique({ where: { id } });
-//     if (!user) return next(new NotFoundError('User not found'));
-
-//     res.json(user);
-//   } catch (err) {
-//     next(err);
-//   }
-// });
-
-// router.patch('/:id', validate(UpdateUserSchema), async (req, res, next) => {
-//   try {
-//     const id = Number(req.params.id);
-//     if (isNaN(id)) return next(new NotFoundError('Invalid user ID'));
-
-//     const updated = await prisma.user.update({
-//       where: { id },
-//       data: req.body,
-//     });
-
-//     res.json({ message: 'User updated', user: updated });
-//   } catch (err) {
-//     if (err instanceof Error && 'code' in err && (err as { code: string }).code === 'P2025')
-//       return next(new NotFoundError('User not found'));
-
-//     next(err);
-//   }
-// });
-
-// router.delete('/:id', async (req, res, next) => {
-//   try {
-//     const id = Number(req.params.id);
-//     if (isNaN(id)) return next(new NotFoundError('Invalid user ID'));
-
-//     await prisma.user.delete({ where: { id } });
-//     res.status(204).send();
-//   } catch (err) {
-//     if (err instanceof Error && 'code' in err && (err as { code: string }).code === 'P2025')
-//       return next(new NotFoundError('User not found'));
-
-//     next(err);
-//   }
-// });
-
-// export default router;
+export default router;
