@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import 'dotenv/config';
 
 import { logger } from '@/config/pino.config';
@@ -15,11 +14,11 @@ async function bootstrap(): Promise<void> {
 
   const mode = isDev ? 'development' : 'production';
 
-  logger.info(`Starting application in ${mode} mode using Node.js ${process.version}`);
+  logger.info(`Booting application (${mode}) — Node.js ${process.version}`);
 
   register([
-    { name: 'typeorm', start: connectDatabase, stop: destroyServer },
-    { name: 'express', start: registerServer, stop: closeServer },
+    { name: 'database (typeorm)', start: connectDatabase, stop: destroyServer },
+    { name: 'http server (express)', start: registerServer, stop: closeServer },
   ]);
 
   await startup();
@@ -30,6 +29,6 @@ async function bootstrap(): Promise<void> {
 bootstrap().catch(async (err: unknown) => {
   const error = err instanceof Error ? err : new Error(String(err));
 
-  logger.fatal({ error: error.stack }, 'Fatal error during application bootstrap');
+  logger.fatal({ error: error.stack }, 'Fatal error during application bootstrap — forcing exit');
   process.exit(1);
 });

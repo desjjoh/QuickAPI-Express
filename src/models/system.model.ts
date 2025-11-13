@@ -6,7 +6,7 @@ extendZodWithOpenApi(z);
 export const HealthResponseSchema = z.object({
   status: z.literal('ok'),
   uptime: z.number().describe('Service uptime in seconds'),
-  timestamp: z.string().datetime(),
+  timestamp: z.iso.datetime(),
 });
 
 export const ReadyResponseSchema = z.object({
@@ -21,3 +21,5 @@ export const MetricsResponseSchema = z.object({
   heapUsed: z.number().describe('Heap memory currently in use'),
   timestamp: z.iso.datetime(),
 });
+
+export type HealthResponse = z.infer<typeof HealthResponseSchema>;

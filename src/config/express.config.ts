@@ -14,7 +14,8 @@ import { swaggerDocs } from '@/config/swagger.config';
 import { errorHandler } from '@/middleware/error-handler.middleware';
 import { httpLogger } from '@/middleware/http-logger.middleware';
 
-import api from '@/routes/api.routes';
+import api_routes from '@/routes/api.routes';
+import system_controller from '@/controllers/system.controller';
 
 export function createApp(): express.Express {
   const app = express();
@@ -69,7 +70,10 @@ export function createApp(): express.Express {
     fs.mkdirSync(publicPath, { recursive: true });
   }
 
-  app.use('/api', api);
+  app.use('/', system_controller);
+
+  app.use('/api', api_routes);
+
   app.use('/docs', ...swaggerDocs);
   app.use('/public', express.static(publicPath));
 

@@ -22,7 +22,7 @@ const levelColors: Record<string, (_str: string) => string> = {
 
 function colorLevel(level: string): string {
   const color = levelColors[level] || gray;
-  return color(`[${level}]`);
+  return color(`[${level.padEnd(5, ' ')}]`);
 }
 
 function formatLog(level: string, msg: string, context: Record<string, unknown>): string {

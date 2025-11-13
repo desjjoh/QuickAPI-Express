@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { createApp } from '@/config/express.config';
+import { env } from '@/config/env-validation.config';
 
 describe('Server lifecycle', () => {
   it('starts and stops without error', async () => {
     const app = createApp();
 
-    const server = app.listen(0);
+    const server = app.listen(env.PORT);
     const address = server.address();
 
     expect(address).not.toBeNull();

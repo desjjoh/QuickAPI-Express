@@ -1,11 +1,9 @@
 import express from 'express';
 
-import users from '@/controllers/users.controller';
-import health from '@/controllers/health.controller';
+import items from '@/controllers/items.controller';
 
 const api = express.Router();
 
-api.use('/', health);
-api.use('/users', users);
+api.use('/items', items);
 
 export default api;

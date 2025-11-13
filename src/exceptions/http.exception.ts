@@ -1,3 +1,5 @@
+import type { z } from 'zod';
+
 export class HttpError extends Error {
   public status: number;
   public code?: string;
@@ -18,5 +20,14 @@ export class NotFoundError extends HttpError {
 export class BadRequestError extends HttpError {
   constructor(message = 'Bad Request') {
     super(400, message);
+  }
+}
+
+export class OutputValidationError extends HttpError {
+  public issues: z.core.$ZodIssue[];
+
+  constructor(message: string, issues: z.core.$ZodIssue[]) {
+    super(500, message, 'OUTPUT_VALIDATION_ERROR');
+    this.issues = issues;
   }
 }

@@ -1,15 +1,16 @@
 import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { OpenAPIObject } from 'openapi3-ts/oas30';
 
-import { env } from '@/config/env-validation.config';
-
-import { registerUserPaths } from '@/docs/users.docs';
-import { registerHealthPaths } from '@/docs/health.docs';
+import { registerItemPaths } from '@/docs/items.docs';
+// import { registerHealthPaths } from '@/docs/system.docs';
 
 const registry = new OpenAPIRegistry();
 
-registerHealthPaths(registry);
-registerUserPaths(registry);
+// System + diagnostics endpoints
+// registerHealthPaths(registry);
+
+// Main API endpoints
+registerItemPaths(registry);
 
 const generator = new OpenApiGeneratorV3(registry.definitions);
 
@@ -20,5 +21,8 @@ export const openApiSpec: OpenAPIObject = generator.generateDocument({
     version: '1.0.0',
     description: 'Auto-generated documentation from Zod schemas',
   },
-  servers: [{ url: `http://localhost:${env.PORT}/api` }],
+  servers: [
+    { url: '/', description: 'System + diagnostics endpoints' },
+    { url: '/api', description: 'Main API endpoints' },
+  ],
 });
