@@ -13,8 +13,8 @@ async function bootstrap(): Promise<void> {
   const { registerServer, closeServer } = HttpServerHandler;
 
   const mode = isDev ? 'development' : 'production';
-
-  logger.info(`Booting application (${mode}) — Node.js ${process.version}`);
+  const { APP_NAME, APP_VERSION } = env;
+  logger.info(`Booting ${APP_NAME} v${APP_VERSION} (${mode}) — Node.js ${process.version}`);
 
   register([
     { name: 'database (typeorm)', start: connectDatabase, stop: destroyServer },

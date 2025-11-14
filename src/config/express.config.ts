@@ -6,8 +6,6 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 
-import { fileURLToPath } from 'url';
-
 import { isDev } from '@/config/env-validation.config';
 import { swaggerDocs } from '@/config/swagger.config';
 
@@ -16,6 +14,7 @@ import { httpLogger } from '@/middleware/http-logger.middleware';
 
 import api_routes from '@/routes/api.routes';
 import system_controller from '@/controllers/system.controller';
+import { rootPath } from '@/config/paths.config';
 
 export function createApp(): express.Express {
   const app = express();
@@ -60,15 +59,8 @@ export function createApp(): express.Express {
     }),
   );
 
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-
-  const rootPath = path.resolve(__dirname, '../..');
   const publicPath = path.join(rootPath, 'public');
-
-  if (!fs.existsSync(publicPath)) {
-    fs.mkdirSync(publicPath, { recursive: true });
-  }
+  if (!fs.existsSync(publicPath)) fs.mkdirSync(publicPath, { recursive: true });
 
   app.use('/', system_controller);
 

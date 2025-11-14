@@ -1,139 +1,149 @@
-# 🧩 QuickAPI-Express
+# QuickAPI-Express
 
 A modular, production-grade Express.js API template designed for rapid service creation and deployment.  
-Implements consistent architecture patterns from the **QuickAPI family** — including FastAPI, NestJS, and others — emphasizing scalability, observability, and clean shutdown behavior.
+Implements consistent architecture patterns from the **QuickAPI family** — including FastAPI, NestJS, and others — emphasizing scalability, observability, strict validation, and graceful shutdown behavior.
 
 ---
 
-## 🚀 Features
+## Features
 
 - **TypeScript-first architecture** with strict linting & type safety
-- **Prisma ORM (SQLite)** for lightweight, zero-config persistence
-- **Zod validation** for schema-driven request validation
+- **TypeORM (MySQL)** as the primary database layer
+- **SQLite support** still available via TypeORM configuration
+- **Vitest** for unit, integration, and E2E testing
+- **Zod validation** for schema-driven request & response validation
 - **OpenAPI (Swagger)** auto-generation using `zod-to-openapi`
-- **Pino logging** for structured, contextual logs
-- **Centralized error handling** with consistent response format
-- **Graceful shutdown** via `SystemLifecycle` utility
-- **Security middleware**: Helmet, CORS, Compression, Rate Limiting
-- **Dockerized build** with multi-stage image and healthchecks
-- **Fully documented and modular folder structure**
+- **Pino logging** with consistent colorized formatting
+- **Centralized error handling** with typed HTTP exceptions
+- **Graceful shutdown** via the SystemLifecycle utility
+- **Security middleware**: Helmet, CORS, compression, rate limiting
+- **Docker Compose MySQL database** included for local development
+- **Modular folder structure** optimized for long-term maintainability
 
 ---
 
-## 🧱 Folder Structure
+## Folder Structure
 
 ```bash
 src/
- ├── core/
- │    └── middleware/
- │         ├── error-handler.ts      # Centralized error handling
- │         └── validate.ts           # Request validation wrapper
- │
- ├── routes/
- │    ├── health.ts                  # Health & readiness endpoints
- │    └── users.ts                   # User CRUD endpoints
- │
- ├── schemas/
- │    ├── id.schema.ts               # Generic ID schema
- │    ├── system.schema.ts           # Health schemas
- │    └── user.schema.ts             # User validation & DTOs
- │
- ├── services/
- │    ├── openapi/                   # Swagger + Zod integration
- │    ├── env-validation.ts          # Zod environment validation
- │    ├── prisma.ts                  # Prisma client setup
- │    ├── pino.ts                    # Logger configuration
- │    ├── swagger.ts                 # OpenAPI setup entry
- │    └── index.ts                   # Service exports
- │
- ├── system/
- │    └── lifecycle.ts               # Graceful shutdown & signal handling
- │
- ├── utils/
- │    └── http-errors.ts             # Typed HTTP error classes
- │
- └── app.ts                          # Express app factory
- └── index.ts                        # Application entrypoint
+ ├── config/                          # Environment, logging, OpenAPI, database config
+ ├── controllers/                     # Route-level orchestration (thin controllers)
+ ├── docs/                            # OpenAPI path + schema registration
+ ├── entities/                        # TypeORM entities (database schema)
+ ├── exceptions/                      # Typed HTTP errors
+ ├── handlers/                        # Process-level + express-level handlers
+ ├── helpers/                         # Small utilities shared across modules
+ ├── mappers/                         # Entity → DTO transformers
+ ├── middleware/                      # Express middleware (validation, errors, security)
+ ├── models/                          # Zod schemas + TypeScript models
+ ├── repositories/                    # TypeORM repositories (DB access layer)
+ ├── routes/                          # Express Router modules
+ ├── services/                        # Business logic layer
+ ├── system/                          # Graceful shutdown infrastructure
+ ├── types/                           # Global/shared TypeScript types
+ └── index.ts                         # Application entrypoint
 ```
 
 ---
 
-## ⚙️ Environment Variables (`.env`)
+## Testing Structure
+
+Vitest is fully configured with support for:
+
+- ESM
+- TypeScript
+- Alias resolution
+- Isolated environment setup
+
+```bash
+test/
+ ├── unit/            # Pure logic tests (services, helpers)
+ ├── integration/     # DB + repository tests
+ └── e2e/             # Full HTTP API tests through the real server
+```
+
+---
+
+## Environment Variables (`.env`)
 
 ```bash
 NODE_ENV=development
-PORT=3000
-LOG_LEVEL=info
-DATABASE_URL="file:./dev.db"
+
+PORT=8080
+LOG_LEVEL=debug
+
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=root
+DB_DATABASE=dev
 ```
+
+Each variable is validated using Zod with strict SemVer enforcement for `APP_VERSION`.
 
 ---
 
-## 🐳 Docker Deployment
+## Docker & Database Setup
 
-### Build and run locally
+A **Docker Compose MySQL service** is included for local development:
 
 ```bash
 docker compose up --build
 ```
 
-### Healthcheck
+The service runs with:
 
-The service exposes a readiness probe at:
+- MySQL 8.x
+- Persisted volume
+- Auto-created development database
 
-```bash
-GET /health/ready
-→ 200 OK
-```
+Your API automatically connects through TypeORM.
 
 ---
 
-## 📘 API Documentation
+## API Documentation
 
-The OpenAPI specification is auto-generated from Zod schemas.  
+OpenAPI documentation is always in sync with Zod schemas.  
 Swagger UI is available at:
 
 ```bash
-http://localhost:3000/docs
+http://localhost:8080/docs
 ```
 
----
-
-## 🧩 Lifecycle Management
-
-The `SystemLifecycle` utility manages process signals (`SIGINT`, `SIGTERM`) to:
-
-- Gracefully close the HTTP server
-- Disconnect from Prisma ORM
-- Log total uptime and shutdown duration
-
-Example usage:
-
-```ts
-SystemLifecycle.register(start, [
-  { name: 'server', stop: async () => SystemLifecycle.closeServer(server) },
-  { name: 'prisma', stop: async () => prisma.$disconnect() },
-]);
-```
+Definitions are generated from Zod with path registration in `/src/docs`.
 
 ---
 
-## 🧠 Development Scripts
+## Lifecycle Management
 
-| Command                   | Description                            |
-| ------------------------- | -------------------------------------- |
-| `npm run dev`             | Start with hot reload (TS)             |
-| `npm run build`           | Compile TypeScript and rewrite aliases |
-| `npm start`               | Run compiled JS                        |
-| `npm run prisma:generate` | Generate Prisma client                 |
-| `npm run docker:up`       | Build and run via Docker Compose       |
+The SystemLifecycle utility handles:
 
----
+- SIGINT / SIGTERM handling
+- Ordered service shutdown
+- Logging shutdown metrics
+- HTTP server closure
+- TypeORM connection teardown
 
-## 🧾 License
-
-Licensed under the [MIT License](./LICENSE).
+This ensures stable behavior inside containers and orchestrators.
 
 ---
 
-**QuickAPI-Express** — a part of the **QuickAPI** family of backend templates designed by John Desjardins.
+## Development Scripts
+
+| Script            | Description                              |
+| ----------------- | ---------------------------------------- |
+| `npm run dev`     | Start development server with hot reload |
+| `npm run build`   | Compile TypeScript + rewrite aliases     |
+| `npm start`       | Start compiled server                    |
+| `npm run rebuild` | Build then start                         |
+| `npm run test`    | Run all tests (unit, integration, E2E)   |
+
+---
+
+## License
+
+MIT License — free for personal and commercial use.
+
+---
+
+QuickAPI-Express — part of the **QuickAPI** template ecosystem by **John Desjardins**.

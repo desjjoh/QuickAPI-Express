@@ -1,10 +1,70 @@
 import { z, ZodError } from 'zod';
+import { createRequire } from 'module';
+
+import { rootPath } from './paths.config';
+import path from 'path';
+
+import { yellow, red, green, dim, bold } from 'colorette';
+
+const require = createRequire(import.meta.url);
+const pkgPath = path.join(rootPath, 'package.json');
+const pkg = require(pkgPath);
 
 const EnvSchema = z.object({
+  APP_NAME: z.string().default(pkg.name),
+  APP_VERSION: z
+    .string()
+    .regex(
+      /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[\da-z-]+(?:\.[\da-z-]+)*)?(?:\+[\da-z-]+(?:\.[\da-z-]+)*)?$/,
+      'APP_VERSION must follow full SemVer (e.g., 1.2.3 or 1.2.3-beta+001)',
+    )
+    .default(pkg.version),
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
+
+  DB_HOST: z.string(),
+  DB_PORT: z.coerce.number(),
+  DB_USER: z.string(),
+  DB_PASSWORD: z.string(),
+  DB_DATABASE: z.string(),
 });
+
+function formatIssue(issue: z.core.$ZodIssue): string {
+  const field = issue.path.join('.') || '(root)';
+
+  const receivedMatch = issue.message.match(/received\s"?(.*?)"?$/);
+  const received = receivedMatch ? receivedMatch[1] : undefined;
+
+  const cleaned = issue.message
+    .replace(/^Invalid input[:, ]*/, '')
+    .replace(/^Invalid enum value[:, ]*/, '')
+    .replace(/received\s.*$/, '')
+    .trim();
+
+  const msg = received
+    ? `${yellow(field)} → ${cleaned} (received: ${red(`"${received}"`)})`
+    : `${yellow(field)} → ${cleaned}`;
+
+  return `  - ${msg}`;
+}
+
+function printEnvErrors(issues: z.ZodIssue[]): void {
+  const count = issues.length;
+
+  process.stdout.write(
+    red(bold(`❌ Environment validation failed (${count} issue${count !== 1 ? 's' : ''})`)),
+  );
+
+  process.stdout.write('\n\n');
+
+  for (const issue of issues) {
+    process.stdout.write(formatIssue(issue) + '\n');
+  }
+
+  process.stdout.write('\n');
+  process.stdout.write(dim(green('Fix the fields above and restart the application…\n\n')));
+}
 
 let env: z.infer<typeof EnvSchema>;
 
@@ -12,25 +72,9 @@ try {
   env = EnvSchema.parse(process.env);
 } catch (err) {
   if (err instanceof ZodError) {
-    process.stdout.write('Invalid environment configuration');
-
-    for (const issue of err.issues) {
-      const field = issue.path.join('.') || '(root)';
-      const received = issue.message.match(/received\s"?(.*?)"?$/)?.[1];
-      const message = issue.message
-        .replace(/^Invalid input[: ]*/, '')
-        .replace(/^Invalid enum value[,: ]*/, '')
-        .replace(/received\s.*$/, '')
-        .trim();
-
-      const formatted = received
-        ? `  ↳ Invalid ${field} → ${message} got "${received}"`
-        : `  ↳ Invalid ${field} → ${message}`;
-
-      process.stdout.write(formatted);
-    }
+    printEnvErrors(err.issues);
   } else {
-    process.stdout.write('Unexpected error during environment validation');
+    process.stdout.write(red(bold('Unexpected error during environment validation\n\n')));
   }
 
   process.exit(1);

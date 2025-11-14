@@ -12,7 +12,7 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
 
     const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'debug';
 
-    logger[level](`${method} ${originalUrl} ${statusCode} → ${duration}ms`);
+    logger[level](`${method} ${originalUrl} ${statusCode} ~ ${duration}ms`);
   });
 
   next();
