@@ -1,9 +1,10 @@
 import { performance } from 'node:perf_hooks';
 
-import { logger } from '@/config/pino.config';
+import { logger } from '@/config/logger.config';
 
 type LifecycleService = {
   name: string;
+  check?: () => Promise<boolean> | boolean;
   start?: () => Promise<void> | void;
   stop?: () => Promise<void> | void;
 };
@@ -13,7 +14,27 @@ export class LifecycleHandler {
   private static shutdownServices: LifecycleService[] = [];
 
   private static startupStarted = false;
+  private static startupCompleted = false;
+
   private static shutdownStarted = false;
+  private static shutdownCompleted = false;
+
+  public static isAlive(): boolean {
+    return !this.shutdownStarted;
+  }
+
+  public static isReady(): boolean {
+    return this.startupCompleted && !this.shutdownStarted;
+  }
+
+  public static getState() {
+    return {
+      startupStarted: this.startupStarted,
+      startupCompleted: this.startupCompleted,
+      shutdownStarted: this.shutdownStarted,
+      shutdownCompleted: this.shutdownCompleted,
+    };
+  }
 
   public static register = (services: LifecycleService[]): void => {
     const start = performance.now();
@@ -24,11 +45,36 @@ export class LifecycleHandler {
       this.shutdownServices.unshift(service);
     }
 
-    this.registerListeners();
+    ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
+      process.once(sig, () => {
+        logger.warn(`${sig} received — beginning shutdown`);
+        this.shutdown();
+      });
+    });
+
+    this.registerInternalHandlers();
 
     const duration = (performance.now() - start).toFixed(2);
     logger.debug(`Lifecycle registration completed in ${duration}ms`);
   };
+
+  private static registerInternalHandlers(): void {
+    process.on('uncaughtException', (err: unknown) => {
+      const error = err instanceof Error ? err : new Error(String(err));
+
+      logger.fatal({ error: error.stack }, 'Uncaught exception — forcing exit');
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason: unknown) => {
+      logger.fatal({ reason: String(reason) }, 'Unhandled promise rejection — forcing exit');
+      process.exit(1);
+    });
+
+    process.on('exit', (code: number) => {
+      logger.info(`Application exited cleanly (code ${code})`);
+    });
+  }
 
   public static startup = async (): Promise<void> => {
     if (this.startupStarted) return;
@@ -43,6 +89,8 @@ export class LifecycleHandler {
       await service.start();
       logger.debug(`Service started → ${service.name}`);
     }
+
+    this.startupCompleted = true;
 
     const duration = (performance.now() - start).toFixed(2);
     logger.debug(`All services started in ${duration}ms`);
@@ -68,32 +116,11 @@ export class LifecycleHandler {
       }
     }
 
+    this.shutdownCompleted = true;
+
     const duration = (performance.now() - start).toFixed(2);
     logger.debug(`Shutdown completed in ${duration}ms`);
-  };
 
-  private static registerListeners = (): void => {
-    ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
-      process.once(sig, () => {
-        logger.warn(`${sig} received — beginning shutdown`);
-        this.shutdown();
-      });
-    });
-
-    process.on('uncaughtException', (err: unknown) => {
-      const error = err instanceof Error ? err : new Error(String(err));
-
-      logger.fatal({ error: error.stack }, 'Uncaught exception — forcing exit');
-      process.exit(1);
-    });
-
-    process.on('unhandledRejection', (reason: unknown) => {
-      logger.fatal({ reason: String(reason) }, 'Unhandled promise rejection — forcing exit');
-      process.exit(1);
-    });
-
-    process.on('exit', (code: number) => {
-      logger.info(`Application exited cleanly (code ${code})`);
-    });
+    process.exit(0);
   };
 }

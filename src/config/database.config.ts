@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { isDev } from '@/config/env-validation.config';
+import { isDev } from '@/config/env.config';
 import { Item } from '@/entities/item.entity';
 
 export const AppDataSource = new DataSource({
@@ -21,4 +21,8 @@ export async function connectDatabase(): Promise<void> {
 
 export async function destroyServer(): Promise<void> {
   return AppDataSource.destroy();
+}
+
+export function isServerInitialized(): boolean {
+  return AppDataSource.isInitialized;
 }

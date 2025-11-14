@@ -1,22 +1,26 @@
 import os from 'node:os';
 import { Router, type Request, type Response } from 'express';
 
-import type { HealthResponse } from '@/models/system.model';
-import { env } from '@/config/env-validation.config';
+import { env } from '@/config/env.config';
+import { isServerInitialized } from '@/config/database.config';
+import { metricsRegistry } from '@/config/metrics.config';
+
 import { getEventLoopLag } from '@/helpers/timer.helpers';
-import { AppDataSource } from '@/config/typeorm.config';
+import { LifecycleHandler } from '@/handlers/lifecycle.handler';
 
 const router = Router();
 
 // GET /
-router.get('/', (_req: Request, res: Response<{ status: 'ok'; message: string }>) => {
-  res.json({ status: 'ok', message: 'Hello World! Welcome to Express.js' });
+router.get('/', (_req: Request, res: Response) => {
+  res.json({ message: 'Hello World! Welcome to Express.js' });
 });
 
 // GET /health
-router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
+router.get('/health', (_req: Request, res: Response) => {
+  const alive = LifecycleHandler.isAlive();
+
   res.json({
-    status: 'ok',
+    alive,
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
@@ -24,11 +28,20 @@ router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
 
 // GET /ready
 router.get('/ready', async (_req: Request, res: Response) => {
-  try {
-    res.json({ status: 'ready', db: 'connected' });
-  } catch {
-    res.status(503).json({ status: 'error', db: 'unreachable' });
+  const appReady = LifecycleHandler.isReady();
+  const dbReady = isServerInitialized();
+
+  const ready = appReady && dbReady;
+
+  if (!ready) {
+    return res.status(503).json({
+      ready: false,
+      appReady,
+      dbReady,
+    });
   }
+
+  res.json({ ready: true });
 });
 
 // GET /info
@@ -47,7 +60,7 @@ router.get('/system', async (_req: Request, res: Response) => {
   const memory = process.memoryUsage();
   const load = os.loadavg();
 
-  const dbReady = AppDataSource.isInitialized;
+  const dbReady = isServerInitialized();
 
   const eventLoopLag = await getEventLoopLag();
 
@@ -64,17 +77,10 @@ router.get('/system', async (_req: Request, res: Response) => {
 });
 
 // GET /metrics
-router.get('/metrics', (_req: Request, res: Response) => {
-  const memory = process.memoryUsage();
-  const uptime = process.uptime();
+router.get('/metrics', async (_req: Request, res: Response<string>) => {
+  res.set('Content-Type', metricsRegistry.contentType);
 
-  res.json({
-    status: 'ok',
-    uptime,
-    rss: memory.rss,
-    heapUsed: memory.heapUsed,
-    timestamp: new Date(),
-  });
+  res.end(await metricsRegistry.metrics());
 });
 
 export default router;

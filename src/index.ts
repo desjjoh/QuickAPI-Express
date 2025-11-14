@@ -1,16 +1,15 @@
 import 'dotenv/config';
 
-import { logger } from '@/config/pino.config';
-import { connectDatabase, destroyServer } from '@/config/typeorm.config';
+import { logger } from '@/config/logger.config';
+import { connectDatabase, destroyServer } from '@/config/database.config';
 
 import { LifecycleHandler } from '@/handlers/lifecycle.handler';
-import { HttpServerHandler } from '@/handlers/http-server.handler';
+import { registerServer, closeServer } from '@/config/http-server.config';
 
-import { env, isDev } from '@/config/env-validation.config';
+import { env, isDev } from '@/config/env.config';
 
 async function bootstrap(): Promise<void> {
   const { register, startup } = LifecycleHandler;
-  const { registerServer, closeServer } = HttpServerHandler;
 
   const mode = isDev ? 'development' : 'production';
   const { APP_NAME, APP_VERSION } = env;

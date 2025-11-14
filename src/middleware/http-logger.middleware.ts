@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 
-import { logger } from '@/config/pino.config';
+import { logger } from '@/config/logger.config';
 import { shortenPath } from '@/helpers/string.helpers';
 
 export function httpLogger(req: Request, res: Response, next: NextFunction): void {

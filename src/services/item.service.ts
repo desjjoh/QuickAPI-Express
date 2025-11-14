@@ -1,4 +1,4 @@
-import { AppDataSource } from '@/config/typeorm.config';
+import { AppDataSource } from '@/config/database.config';
 import { Item } from '@/entities/item.entity';
 import type { CreateItemInput, UpdateItemInput } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
