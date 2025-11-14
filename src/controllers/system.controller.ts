@@ -3,6 +3,8 @@ import { Router, type Request, type Response } from 'express';
 
 import type { HealthResponse } from '@/models/system.model';
 import { env } from '@/config/env-validation.config';
+import { getEventLoopLag } from '@/helpers/timer.helpers';
+import { AppDataSource } from '@/config/typeorm.config';
 
 const router = Router();
 
@@ -32,7 +34,7 @@ router.get('/ready', async (_req: Request, res: Response) => {
 // GET /info
 router.get('/info', async (_req: Request, res: Response) => {
   res.json({
-    name: 'QuickAPI-Express',
+    name: env.APP_NAME,
     version: env.APP_VERSION,
     environment: env.NODE_ENV,
     hostname: os.hostname(),
@@ -42,7 +44,23 @@ router.get('/info', async (_req: Request, res: Response) => {
 
 // GET /system
 router.get('/system', async (_req: Request, res: Response) => {
-  res.json({ status: 'ready', db: 'connected' });
+  const memory = process.memoryUsage();
+  const load = os.loadavg();
+
+  const dbReady = AppDataSource.isInitialized;
+
+  const eventLoopLag = await getEventLoopLag();
+
+  res.json({
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+
+    memory,
+    load,
+    eventLoopLag,
+
+    db: dbReady ? 'connected' : 'disconnected',
+  });
 });
 
 // GET /metrics

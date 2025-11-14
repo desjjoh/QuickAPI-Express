@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { logger } from '@/config/pino.config';
+import { shortenPath } from '@/helpers/string.helpers';
 
 export function httpLogger(req: Request, res: Response, next: NextFunction): void {
   const start = performance.now();
@@ -12,7 +13,11 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
 
     const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'debug';
 
-    logger[level](`${method} ${originalUrl} ${statusCode} ~ ${duration}ms`);
+    const pathPadded = shortenPath(originalUrl).padEnd(22);
+    const status = String(statusCode).padEnd(3, ' ');
+    const methodPadded = method.padEnd(7, ' ');
+
+    logger[level](`${status} ${methodPadded} ${pathPadded} ${duration}ms`);
   });
 
   next();

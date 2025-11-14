@@ -3,6 +3,7 @@ import { Item } from '@/entities/item.entity';
 import type { CreateItemInput, UpdateItemInput } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
 import type { PaginationQuery } from '@/models/pagination.model';
+import { NotFoundError } from '@/exceptions/http.exception';
 
 export class ItemService {
   private repo = AppDataSource.getRepository(Item);
@@ -27,7 +28,10 @@ export class ItemService {
   }
 
   async get(id: number): Promise<Item> {
-    return this.repo.findOneOrFail({ where: { id } });
+    const item = await this.repo.findOne({ where: { id } });
+    if (!item) throw new NotFoundError();
+
+    return item;
   }
 
   async update(id: number, data: UpdateItemInput): Promise<Item> {
@@ -39,6 +43,7 @@ export class ItemService {
 
   async remove(id: number): Promise<Item> {
     const item = await this.get(id);
+
     return this.repo.remove(item);
   }
 }

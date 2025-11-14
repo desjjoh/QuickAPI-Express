@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 
 import { isDev } from '@/config/env-validation.config';
+import { Item } from '@/entities/item.entity';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -9,7 +10,7 @@ export const AppDataSource = new DataSource({
   username: 'root',
   password: 'root',
   database: 'dev',
-  entities: [],
+  entities: [Item],
   synchronize: isDev,
   logging: false,
 });
