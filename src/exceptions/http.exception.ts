@@ -31,3 +31,9 @@ export class OutputValidationError extends HttpError {
     this.issues = issues;
   }
 }
+
+export class ServiceUnavailableError extends HttpError {
+  constructor(message = 'Service Unavailable') {
+    super(503, message);
+  }
+}

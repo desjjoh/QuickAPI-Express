@@ -31,7 +31,7 @@ src/
  ├── docs/                            # OpenAPI path + schema registration
  ├── entities/                        # TypeORM entities (database schema)
  ├── exceptions/                      # Typed HTTP errors
- ├── handlers/                        # Process-level + express-level handlers
+ ├── handlers/                        # Process-level handlers
  ├── helpers/                         # Small utilities shared across modules
  ├── mappers/                         # Entity → DTO transformers
  ├── middleware/                      # Express middleware (validation, errors, security)

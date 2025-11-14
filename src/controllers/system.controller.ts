@@ -7,6 +7,14 @@ import { metricsRegistry } from '@/config/metrics.config';
 
 import { getEventLoopLag } from '@/helpers/timer.helpers';
 import { LifecycleHandler } from '@/handlers/lifecycle.handler';
+import type { HealthResponse, InfoResponse, ReadyResponse } from '@/models/system.model';
+import {
+  toHealthDTO,
+  toInfoDTO,
+  toReadyDTO,
+  toSystemDiagnosticsDTO,
+} from '@/mappers/system.mapper';
+import { ServiceUnavailableError } from '@/exceptions/http.exception';
 
 const router = Router();
 
@@ -16,44 +24,37 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 // GET /health
-router.get('/health', (_req: Request, res: Response) => {
+router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
   const alive = LifecycleHandler.isAlive();
 
-  res.json({
-    alive,
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
+  const uptime = process.uptime();
+  const timestamp = new Date().toISOString();
+
+  res.json(toHealthDTO({ alive, uptime, timestamp }));
 });
 
 // GET /ready
-router.get('/ready', async (_req: Request, res: Response) => {
+router.get('/ready', async (_req: Request, res: Response<ReadyResponse>) => {
   const appReady = LifecycleHandler.isReady();
   const servicesHealthy = await LifecycleHandler.areAllServicesHealthy();
 
   const ready = appReady && servicesHealthy;
+  if (!ready) throw new ServiceUnavailableError('Application not ready');
 
-  if (!ready) {
-    return res.status(503).json({
-      ready: false,
-      appReady,
-      services: LifecycleHandler.getServiceStatuses(),
-      lifecycle: LifecycleHandler.getState(),
-    });
-  }
-
-  res.json({ ready: true });
+  res.json(toReadyDTO({ ready }));
 });
 
 // GET /info
-router.get('/info', async (_req: Request, res: Response) => {
-  res.json({
-    name: env.APP_NAME,
-    version: env.APP_VERSION,
-    environment: env.NODE_ENV,
-    hostname: os.hostname(),
-    pid: process.pid,
-  });
+router.get('/info', async (_req: Request, res: Response<InfoResponse>) => {
+  res.json(
+    toInfoDTO({
+      name: env.APP_NAME,
+      version: env.APP_VERSION,
+      environment: env.NODE_ENV,
+      hostname: os.hostname(),
+      pid: process.pid,
+    }),
+  );
 });
 
 // GET /system
@@ -65,20 +66,22 @@ router.get('/system', async (_req: Request, res: Response) => {
 
   const eventLoopLag = await getEventLoopLag();
 
-  res.json({
-    uptime: process.uptime(),
-    timestamp: Date.now(),
+  res.json(
+    toSystemDiagnosticsDTO({
+      uptime: process.uptime(),
+      timestamp: Date.now(),
 
-    memory,
-    load,
-    eventLoopLag,
+      memory,
+      load,
+      eventLoopLag,
 
-    db: dbReady ? 'connected' : 'disconnected',
-  });
+      db: dbReady ? 'connected' : 'disconnected',
+    }),
+  );
 });
 
 // GET /metrics
-router.get('/metrics', async (_req: Request, res: Response<string>) => {
+router.get('/metrics', async (_req: Request, res: Response) => {
   res.set('Content-Type', metricsRegistry.contentType);
 
   res.end(await metricsRegistry.metrics());
