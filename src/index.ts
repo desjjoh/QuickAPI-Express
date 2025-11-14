@@ -1,26 +1,33 @@
 import 'dotenv/config';
 
 import { logger } from '@/config/logger.config';
-import { connectDatabase, destroyServer } from '@/config/database.config';
+import { connectDatabase, destroyServer, isServerInitialized } from '@/config/database.config';
 
 import { LifecycleHandler } from '@/handlers/lifecycle.handler';
-import { registerServer, closeServer } from '@/config/http-server.config';
+import { registerServer, closeServer, isServerRunning } from '@/config/http-server.config';
 
 import { env, isDev } from '@/config/env.config';
 
 async function bootstrap(): Promise<void> {
-  const { register, startup } = LifecycleHandler;
-
   const mode = isDev ? 'development' : 'production';
-  const { APP_NAME, APP_VERSION } = env;
-  logger.info(`Booting ${APP_NAME} v${APP_VERSION} (${mode}) — Node.js ${process.version}`);
+  logger.info(`Booting ${env.APP_NAME} v${env.APP_VERSION} (${mode}) — Node.js ${process.version}`);
 
-  register([
-    { name: 'database (typeorm)', start: connectDatabase, stop: destroyServer },
-    { name: 'http server (express)', start: registerServer, stop: closeServer },
+  LifecycleHandler.register([
+    {
+      name: 'database (typeorm)',
+      start: connectDatabase,
+      stop: destroyServer,
+      check: isServerInitialized,
+    },
+    {
+      name: 'http server (express)',
+      start: registerServer,
+      stop: closeServer,
+      check: isServerRunning,
+    },
   ]);
 
-  await startup();
+  await LifecycleHandler.startup();
 
   logger.info(`HTTP server running on port ${env.PORT} at http://localhost:${env.PORT}`);
 }

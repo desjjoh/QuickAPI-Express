@@ -29,15 +29,16 @@ router.get('/health', (_req: Request, res: Response) => {
 // GET /ready
 router.get('/ready', async (_req: Request, res: Response) => {
   const appReady = LifecycleHandler.isReady();
-  const dbReady = isServerInitialized();
+  const servicesHealthy = await LifecycleHandler.areAllServicesHealthy();
 
-  const ready = appReady && dbReady;
+  const ready = appReady && servicesHealthy;
 
   if (!ready) {
     return res.status(503).json({
       ready: false,
       appReady,
-      dbReady,
+      services: LifecycleHandler.getServiceStatuses(),
+      lifecycle: LifecycleHandler.getState(),
     });
   }
 

@@ -13,11 +13,12 @@ export class LifecycleHandler {
   private static startupServices: LifecycleService[] = [];
   private static shutdownServices: LifecycleService[] = [];
 
+  private static serviceHealth: Record<string, boolean> = {};
+
   private static startupStarted = false;
   private static startupCompleted = false;
 
   private static shutdownStarted = false;
-  private static shutdownCompleted = false;
 
   public static isAlive(): boolean {
     return !this.shutdownStarted;
@@ -32,8 +33,22 @@ export class LifecycleHandler {
       startupStarted: this.startupStarted,
       startupCompleted: this.startupCompleted,
       shutdownStarted: this.shutdownStarted,
-      shutdownCompleted: this.shutdownCompleted,
     };
+  }
+
+  public static async areAllServicesHealthy(): Promise<boolean> {
+    for (const service of this.startupServices) {
+      if (service.check) {
+        const healthy = await service.check();
+        if (!healthy) return false;
+      }
+    }
+
+    return true;
+  }
+
+  public static getServiceStatuses() {
+    return { ...this.serviceHealth };
   }
 
   public static register = (services: LifecycleService[]): void => {
@@ -115,8 +130,6 @@ export class LifecycleHandler {
         logger.error({ error: error.stack }, `Failed to stop service → ${service.name}`);
       }
     }
-
-    this.shutdownCompleted = true;
 
     const duration = (performance.now() - start).toFixed(2);
     logger.debug(`Shutdown completed in ${duration}ms`);
