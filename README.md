@@ -39,7 +39,6 @@ src/
  ├── repositories/                    # TypeORM repositories (DB access layer)
  ├── routes/                          # Express Router modules
  ├── services/                        # Business logic layer
- ├── system/                          # Graceful shutdown infrastructure
  ├── types/                           # Global/shared TypeScript types
  └── index.ts                         # Application entrypoint
 ```
@@ -130,13 +129,23 @@ This ensures stable behavior inside containers and orchestrators.
 
 ## Development Scripts
 
-| Script            | Description                              |
-| ----------------- | ---------------------------------------- |
-| `npm run dev`     | Start development server with hot reload |
-| `npm run build`   | Compile TypeScript + rewrite aliases     |
-| `npm start`       | Start compiled server                    |
-| `npm run rebuild` | Build then start                         |
-| `npm run test`    | Run all tests (unit, integration, E2E)   |
+| Script                 | Description                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `npm run dev`          | Start development server with hot reload (TSX + watch mode) |
+| `npm run dev:debug`    | Start development server in Node.js inspector/debug mode    |
+| `npm run build`        | Compile TypeScript and rewrite path aliases                 |
+| `npm run clean`        | Remove `dist` directory                                     |
+| `npm run rebuild`      | Clean, build, and start application                         |
+| `npm run start`        | Start compiled server in production mode                    |
+| `npm run test`         | Run Vitest in interactive mode                              |
+| `npm run coverage`     | Run full test suite with coverage reporting                 |
+| `npm run lint`         | Run ESLint on entire project                                |
+| `npm run lint:fix`     | Automatically fix linting issues                            |
+| `npm run format`       | Check formatting using Prettier                             |
+| `npm run format:fix`   | Format all files using Prettier                             |
+| `npm run docker:build` | Build Docker image                                          |
+| `npm run docker:run`   | Run built Docker container locally                          |
+| `npm run docker:up`    | Start local stack via Docker Compose (API + MySQL)          |
 
 ---
 
