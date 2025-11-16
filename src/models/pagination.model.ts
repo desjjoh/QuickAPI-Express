@@ -5,7 +5,6 @@ extendZodWithOpenApi(z);
 
 export const PaginationQuerySchema = z
   .object({
-    // pagination
     page: z
       .string()
       .optional()
@@ -22,10 +21,7 @@ export const PaginationQuerySchema = z
       .pipe(z.number().int().positive().max(100))
       .openapi({ example: 25 }),
 
-    // filterings
     search: z.string().optional().openapi({ example: 'sword' }),
-
-    // sorting
     sort: z.enum(['name', 'price', 'createdAt']).optional().openapi({
       example: 'price',
     }),

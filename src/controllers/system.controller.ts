@@ -4,7 +4,6 @@ import { Router, type Request, type Response } from 'express';
 import { env } from '@/config/env.config';
 import { isServerInitialized } from '@/config/database.config';
 import { metricsRegistry } from '@/config/metrics.config';
-
 import { getEventLoopLag } from '@/helpers/timer.helpers';
 import { LifecycleHandler } from '@/handlers/lifecycle.handler';
 import type { HealthResponse, InfoResponse, ReadyResponse } from '@/models/system.model';
@@ -19,7 +18,7 @@ import { ServiceUnavailableError } from '@/exceptions/http.exception';
 const router = Router();
 
 // GET /
-router.get('/', (_req: Request, res: Response) => {
+router.get('/', (_req: Request, res: Response<{ message: string }>) => {
   res.json({ message: 'Hello World! Welcome to Express.js' });
 });
 

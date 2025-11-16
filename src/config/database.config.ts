@@ -1,15 +1,15 @@
 import { DataSource } from 'typeorm';
 
-import { isDev } from '@/config/env.config';
+import { env, isDev } from '@/config/env.config';
 import { Item } from '@/entities/item.entity';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
-  host: 'localhost',
-  port: 3306,
-  username: 'root',
-  password: 'root',
-  database: 'dev',
+  host: env.DB_HOST,
+  port: env.DB_PORT,
+  username: env.DB_USER,
+  password: env.DB_PASSWORD,
+  database: env.DB_DATABASE,
   entities: [Item],
   synchronize: isDev,
   logging: false,

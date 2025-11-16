@@ -84,7 +84,7 @@ export const registerServer = async (): Promise<void> => {
   if (instance) return;
 
   const app = createApp();
-  const server = app.listen(env.PORT);
+  const server = app.listen(env.PORT, '0.0.0.0');
 
   instance = server;
 };

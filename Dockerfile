@@ -6,10 +6,9 @@ COPY package*.json ./
 RUN npm ci
 
 COPY tsconfig.json ./
+COPY tsconfig.build.json ./ 
 COPY src ./src
-COPY prisma ./prisma
 
-RUN npm run prisma:generate
 RUN npm run build
 
 # ---------- runtime stage ----------

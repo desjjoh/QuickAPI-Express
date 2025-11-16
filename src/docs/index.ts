@@ -1,12 +1,12 @@
 import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
 import { registerItemPaths } from './_items.docs';
-// import { registerHealthPaths } from '@/docs/system.docs';
+import { registerSystemPaths } from './_system.docs';
 
 const registry = new OpenAPIRegistry();
 
 // System + diagnostics endpoints
-// registerHealthPaths(registry);
+registerSystemPaths(registry);
 
 // Main API endpoints
 registerItemPaths(registry);

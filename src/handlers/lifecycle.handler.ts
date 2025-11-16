@@ -28,14 +28,6 @@ export class LifecycleHandler {
     return this.startupCompleted && !this.shutdownStarted;
   }
 
-  public static getState() {
-    return {
-      startupStarted: this.startupStarted,
-      startupCompleted: this.startupCompleted,
-      shutdownStarted: this.shutdownStarted,
-    };
-  }
-
   public static async areAllServicesHealthy(): Promise<boolean> {
     for (const service of this.startupServices) {
       if (service.check) {
