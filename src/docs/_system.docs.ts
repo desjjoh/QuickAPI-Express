@@ -15,6 +15,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     method: 'get',
     path: '/',
     tags: [tag],
+    summary: 'Return a simple greeting message.',
     description: 'Root endpoint showing application greeting.',
     responses: {
       200: {
@@ -42,6 +43,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     method: 'get',
     path: '/health',
     tags: [tag],
+    summary: 'Report basic process liveness.',
     description: 'Liveness check — verifies the process is alive.',
     responses: {
       200: {
@@ -60,6 +62,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     method: 'get',
     path: '/ready',
     tags: [tag],
+    summary: 'Report application readiness state.',
     description:
       'Readiness check — verifies that the app has completed startup and all required services are healthy.',
     responses: {
@@ -82,6 +85,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     method: 'get',
     path: '/info',
     tags: [tag],
+    summary: 'Return application and runtime metadata.',
     description: 'Returns application metadata and runtime information.',
     responses: {
       200: {
@@ -100,6 +104,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     method: 'get',
     path: '/system',
     tags: [tag],
+    summary: 'Return system-level diagnostics.',
     description:
       'System diagnostics including memory usage, load averages, event loop lag, and database status.',
     responses: {
@@ -119,6 +124,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     method: 'get',
     path: '/metrics',
     tags: [tag],
+    summary: 'Expose Prometheus-formatted metrics.',
     description: 'Prometheus metrics in plaintext exposition format. Not JSON.',
     responses: {
       200: {

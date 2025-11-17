@@ -18,6 +18,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     path: apiPath('/items'),
     tags: [tag],
     summary: 'Create a new item',
+    description:
+      'Creates a new item using validated input. Returns the fully normalized item resource after persistence.',
     request: {
       body: {
         required: true,
@@ -44,6 +46,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     path: apiPath('/items'),
     tags: [tag],
     summary: 'Get a list of items',
+    description:
+      'Retrieves a paginated list of items. Supports page, limit, sorting, and optional filtering.',
     request: {
       query: PaginationQuerySchema,
     },
@@ -65,6 +69,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     path: apiPath('/items/{id}'),
     tags: [tag],
     summary: 'Get a single item by ID',
+    description:
+      'Fetches a single item by its unique identifier. Returns 404 if the item does not exist.',
     request: {
       params: IdParams,
     },
@@ -87,6 +93,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     path: apiPath('/items/{id}'),
     tags: [tag],
     summary: 'Update an item by ID',
+    description:
+      'Applies a partial update to an existing item. Only provided fields are modified. Returns the updated resource.',
     request: {
       params: IdParams,
       body: {
@@ -117,6 +125,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     path: apiPath('/items/{id}'),
     tags: [tag],
     summary: 'Delete an item by ID',
+    description:
+      'Removes an item by its ID. Returns the deleted resource for confirmation. Returns 404 if the item is not found.',
     request: {
       params: IdParams,
     },

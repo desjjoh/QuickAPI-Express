@@ -10,10 +10,10 @@ export const BaseSchema = z.object({
     .openapi({ example: 'A1b2C3d4E5f6G7h8' }),
 
   createdAt: z.union([z.date(), z.string().transform(v => new Date(v))]).openapi({
-    example: '2025-11-17 01:59:41.061333',
+    example: '2025-11-17T01:59:41.061333Z',
   }),
 
   updatedAt: z.union([z.date(), z.string().transform(v => new Date(v))]).openapi({
-    example: '2025-11-17 01:59:41.061333',
+    example: '2025-11-17T01:59:41.061333Z',
   }),
 });
