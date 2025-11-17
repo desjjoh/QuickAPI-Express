@@ -69,7 +69,7 @@ export class LifecycleHandler {
     process.on('uncaughtException', (err: unknown) => {
       const error = err instanceof Error ? err : new Error(String(err));
 
-      logger.fatal({ error: error.stack }, 'Uncaught exception — forcing exit');
+      logger.fatal({ error: error }, 'Uncaught exception — forcing exit');
       process.exit(1);
     });
 
@@ -119,7 +119,7 @@ export class LifecycleHandler {
       } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));
 
-        logger.error({ error: error.stack }, `Failed to stop service → ${service.name}`);
+        logger.error({ error: error }, `Failed to stop service → ${service.name}`);
       }
     }
 

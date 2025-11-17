@@ -18,6 +18,7 @@ import api_routes from '@/routes/api.routes';
 import system_controller from '@/controllers/system.controller';
 import { metricsMiddleware } from '@/middleware/metrics.middleware';
 import { rootPath } from '@/helpers/path.helpers';
+import { requestContextMiddleware } from '@/middleware/request-context.middleware';
 
 let instance: Server | null = null;
 
@@ -62,6 +63,7 @@ export function createApp(): express.Express {
     }),
   );
 
+  app.use(requestContextMiddleware);
   app.use(httpLogger);
   app.use(metricsMiddleware);
 

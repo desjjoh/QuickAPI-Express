@@ -1,8 +1,9 @@
 import moment from 'moment';
-import pino, { type Logger } from 'pino';
-import { gray, cyan, yellow, red, green, magenta, blue, dim } from 'colorette';
+import pino, { type Logger, type SerializedError } from 'pino';
+import { gray, cyan, yellow, red, green, magenta, dim } from 'colorette';
 
 import { env } from '@/config/env.config';
+import { RequestContext } from '@/store/request-context.store';
 
 const defaultLevel = env.LOG_LEVEL || 'info';
 const isDev = env.NODE_ENV !== 'production';
@@ -25,11 +26,23 @@ function colorLevel(level: string): string {
   return color(`[${level.padEnd(5, ' ')}]`);
 }
 
+function isSerializedError(err: unknown): err is SerializedError {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'message' in err &&
+    'type' in err &&
+    typeof err.message === 'string' &&
+    typeof err.type === 'string'
+  );
+}
+
 function formatLog(level: string, msg: string, context: Record<string, unknown>): string {
   const timestamp = dim(green(formatTimestamp()));
   const levelLabel = colorLevel(level);
+  const rid = context.requestId ? magenta(`[${context.requestId}]`) + ' ' : '';
 
-  let line = `${timestamp} ${levelLabel} ${msg}`;
+  let line = `${timestamp} ${levelLabel} ${rid}${msg}`;
 
   const meta = { ...context };
 
@@ -37,11 +50,22 @@ function formatLog(level: string, msg: string, context: Record<string, unknown>)
   delete meta.level;
   delete meta.levelLabel;
 
-  if (Object.keys(meta).length) {
-    const metaStr = Object.entries(meta)
-      .map(([k, v]) => `${blue(k)}${gray(`=${String(v)}`)}`)
-      .join(' ');
-    line += ` ${metaStr}`;
+  if (meta.error && isSerializedError(meta.error)) {
+    const err = meta.error;
+
+    const stackLines = err.stack
+      ? err.stack
+          .split('\n')
+          .slice(1)
+          .map(l => `    ${l.trim()}`)
+          .join('\n')
+      : '';
+
+    const errorBlock = dim(`\n${stackLines}`);
+
+    line += errorBlock;
+
+    delete meta.error;
   }
 
   return line;
@@ -67,8 +91,21 @@ export const logger: Logger = pino(
         return { levelLabel: label };
       },
     },
-    base: undefined,
     timestamp: false,
+    mixin() {
+      const ctx = RequestContext.get();
+      if (!ctx) return {};
+
+      return {
+        requestId: ctx.requestId,
+        method: ctx.method,
+        path: ctx.path,
+        ip: ctx.ip,
+      };
+    },
+    serializers: {
+      error: pino.stdSerializers.err,
+    },
   },
   isDev ? stream : undefined,
 );
