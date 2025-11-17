@@ -13,8 +13,6 @@ export class LifecycleHandler {
   private static startupServices: LifecycleService[] = [];
   private static shutdownServices: LifecycleService[] = [];
 
-  private static serviceHealth: Record<string, boolean> = {};
-
   private static startupStarted = false;
   private static startupCompleted = false;
 
@@ -37,10 +35,6 @@ export class LifecycleHandler {
     }
 
     return true;
-  }
-
-  public static getServiceStatuses() {
-    return { ...this.serviceHealth };
   }
 
   public static register = (services: LifecycleService[]): void => {
