@@ -13,7 +13,7 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
 
     const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'debug';
 
-    const pathPadded = shortenPath(originalUrl).padEnd(22);
+    const pathPadded = shortenPath(originalUrl, 30).padEnd(32);
     const status = String(statusCode).padEnd(3, ' ');
     const methodPadded = method.padEnd(7, ' ');
 
