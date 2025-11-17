@@ -19,6 +19,7 @@ Implements consistent architecture patterns from the **QuickAPI family** — inc
 - **Security middleware**: Helmet, CORS, compression, rate limiting
 - **Docker Compose MySQL database** included for local development
 - **Modular folder structure** optimized for long-term maintainability
+- **Built-in pagination, sorting, and filtering utilities** through shared query schemas
 
 ---
 
@@ -39,6 +40,7 @@ src/
  ├── repositories/                    # TypeORM repositories (DB access layer)
  ├── routes/                          # Express Router modules
  ├── services/                        # Business logic layer
+ ├── store/                           # Context and scoped shared state
  ├── types/                           # Global/shared TypeScript types
  └── index.ts                         # Application entrypoint
 ```
