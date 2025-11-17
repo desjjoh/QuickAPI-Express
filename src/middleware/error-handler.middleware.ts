@@ -20,7 +20,6 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   res.status(status).json({
     status,
     message,
-    requestId: res.locals.requestId,
     timestamp: new Date().toISOString(),
   });
 };

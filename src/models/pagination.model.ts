@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import type { LocalParsedQs } from '@/types/request';
 
 extendZodWithOpenApi(z);
 
@@ -31,9 +32,5 @@ export const PaginationQuerySchema = z
     }),
   })
   .openapi('ItemQuery');
-
-export interface LocalParsedQs {
-  [key: string]: undefined | string | string[] | LocalParsedQs | LocalParsedQs[];
-}
 
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema> & LocalParsedQs;

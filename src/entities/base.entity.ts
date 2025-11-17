@@ -1,8 +1,9 @@
-import { PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { generatePrimaryId } from '@/config/nanoid.config';
+import { CreateDateColumn, UpdateDateColumn, PrimaryColumn } from 'typeorm';
 
 export abstract class BaseEntity {
-  @PrimaryGeneratedColumn()
-  public readonly id!: number;
+  @PrimaryColumn({ type: 'varchar', length: 16 })
+  public readonly id: string = generatePrimaryId();
 
   @CreateDateColumn()
   public readonly createdAt!: Date;

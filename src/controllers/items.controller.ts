@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Response } from 'express';
 import {
   CreateItemSchema,
   UpdateItemSchema,
@@ -12,6 +12,7 @@ import { validateRequest } from '@/middleware/validate-request.middleware';
 import { itemService } from '@/services/item.service';
 import { toItemDTO, toItemListDTO } from '@/mappers/item.mapper';
 import { PaginationQuerySchema, type PaginationQuery } from '@/models/pagination.model';
+import type { ValidatedRequest } from '@/types/request';
 
 const router = Router();
 
@@ -19,8 +20,8 @@ const router = Router();
 router.post(
   '/',
   validateRequest({ body: CreateItemSchema }),
-  async (req: Request<never, never, CreateItemInput>, res: Response<ItemResponse>) => {
-    const item = await itemService.create(req.body);
+  async (req: ValidatedRequest<null, null, CreateItemInput>, res: Response<ItemResponse>) => {
+    const item = await itemService.create(req.validated!.body);
 
     res.status(201).json(toItemDTO(item));
   },
@@ -30,8 +31,8 @@ router.post(
 router.get(
   '/',
   validateRequest({ query: PaginationQuerySchema }),
-  async (req: Request<never, never, never, PaginationQuery>, res: Response<ItemListResponse>) => {
-    const pagination = await itemService.list(req.query);
+  async (req: ValidatedRequest<null, PaginationQuery, null>, res: Response<ItemListResponse>) => {
+    const pagination = await itemService.list(req.validated!.query);
 
     res.json(toItemListDTO(pagination));
   },
@@ -41,8 +42,8 @@ router.get(
 router.get(
   '/:id',
   validateRequest({ params: IdParams }),
-  async (req: Request<IdRouteParams>, res: Response<ItemResponse>) => {
-    const item = await itemService.get(Number(req.params.id));
+  async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
+    const item = await itemService.get(req.validated!.params.id);
 
     res.json(toItemDTO(item));
   },
@@ -52,8 +53,12 @@ router.get(
 router.patch(
   '/:id',
   validateRequest({ params: IdParams, body: UpdateItemSchema }),
-  async (req: Request<IdRouteParams, never, UpdateItemInput>, res: Response) => {
-    const item = await itemService.update(Number(req.params.id), req.body);
+
+  async (
+    req: ValidatedRequest<IdRouteParams, null, UpdateItemInput>,
+    res: Response<ItemResponse>,
+  ) => {
+    const item = await itemService.update(req.validated!.params.id, req.validated!.body);
 
     res.json(toItemDTO(item));
   },
@@ -63,8 +68,8 @@ router.patch(
 router.delete(
   '/:id',
   validateRequest({ params: IdParams }),
-  async (req: Request<IdRouteParams>, res: Response<ItemResponse>) => {
-    const item = await itemService.remove(Number(req.params.id));
+  async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
+    const item = await itemService.remove(req.validated!.params.id);
 
     res.json(toItemDTO(item));
   },

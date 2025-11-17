@@ -27,21 +27,21 @@ export class ItemService {
     return { items, total, page, limit };
   }
 
-  async get(id: number): Promise<Item> {
+  async get(id: string): Promise<Item> {
     const item = await this.repo.findOne({ where: { id } });
     if (!item) throw new NotFoundError();
 
     return item;
   }
 
-  async update(id: number, data: UpdateItemInput): Promise<Item> {
+  async update(id: string, data: UpdateItemInput): Promise<Item> {
     const item = await this.get(id);
     const merged = this.repo.merge(item, data);
 
     return this.repo.save(merged);
   }
 
-  async remove(id: number): Promise<Item> {
+  async remove(id: string): Promise<Item> {
     const item = await this.get(id);
 
     return this.repo.remove(item);

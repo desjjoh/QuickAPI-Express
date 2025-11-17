@@ -27,7 +27,7 @@ export class OutputValidationError extends HttpError {
   public issues: z.core.$ZodIssue[];
 
   constructor(message: string, issues: z.core.$ZodIssue[]) {
-    super(500, message, 'OUTPUT_VALIDATION_ERROR');
+    super(500, message, 'Output Validation Error');
     this.issues = issues;
   }
 }

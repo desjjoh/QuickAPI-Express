@@ -8,8 +8,14 @@ export interface RequestValidationSchemas {
   body?: ZodType;
 }
 
-export function validateRequest(schemas: RequestValidationSchemas) {
+export function validateRequest<S extends RequestValidationSchemas>(schemas: S) {
   return (req: Request, _res: Response, next: NextFunction): void => {
+    req.validated = {
+      params: null,
+      query: null,
+      body: null,
+    };
+
     if (schemas.params) {
       const parsed = schemas.params.safeParse(req.params);
 
@@ -18,6 +24,8 @@ export function validateRequest(schemas: RequestValidationSchemas) {
           'Param validation failed: ' + parsed.error.issues.map(i => i.message).join(', '),
         );
       }
+
+      req.validated.params = parsed.data;
     }
 
     if (schemas.query) {
@@ -28,6 +36,8 @@ export function validateRequest(schemas: RequestValidationSchemas) {
           'Query validation failed: ' + parsed.error.issues.map(i => i.message).join(', '),
         );
       }
+
+      req.validated.query = parsed.data;
     }
 
     if (schemas.body) {
@@ -38,6 +48,8 @@ export function validateRequest(schemas: RequestValidationSchemas) {
           'Body validation failed: ' + parsed.error.issues.map(i => i.message).join(', '),
         );
       }
+
+      req.validated.body = parsed.data;
     }
 
     next();

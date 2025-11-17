@@ -8,8 +8,8 @@ import {
 } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
 
-export function toItemDTO(payload: Item): ItemResponse {
-  const { success, error, data } = ItemResponseSchema.safeParse(payload);
+export function toItemDTO(entity: Item): ItemResponse {
+  const { success, error, data } = ItemResponseSchema.safeParse(entity);
 
   if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
 

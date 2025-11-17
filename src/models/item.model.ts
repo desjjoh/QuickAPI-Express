@@ -6,7 +6,7 @@ extendZodWithOpenApi(z);
 
 export const ItemSchema = BaseSchema.extend({
   name: z.string().min(1).max(120).openapi({ example: 'Iron Sword' }),
-  price: z.number().positive().openapi({ example: 49.99 }),
+  price: z.coerce.number().positive().openapi({ example: 49.99 }),
   description: z.string().max(500).optional().openapi({ example: 'A finely crafted steel blade.' }),
 });
 
