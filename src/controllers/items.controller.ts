@@ -9,7 +9,7 @@ import {
 } from '@/models/item.model';
 import { IdParams, type IdRouteParams } from '@/models/parameters.model';
 import { validateRequest } from '@/middleware/validate-request.middleware';
-import { itemService } from '@/services/item.service';
+import { itemRepository } from '@/repositories/item.repo';
 import { toItemDTO, toItemListDTO } from '@/mappers/item.mapper';
 import { PaginationQuerySchema, type PaginationQuery } from '@/models/pagination.model';
 import type { ValidatedRequest } from '@/types/request';
@@ -21,7 +21,7 @@ router.post(
   '/',
   validateRequest({ body: CreateItemSchema }),
   async (req: ValidatedRequest<null, null, CreateItemInput>, res: Response<ItemResponse>) => {
-    const item = await itemService.create(req.validated!.body);
+    const item = await itemRepository.create(req.validated!.body);
 
     res.status(201).json(toItemDTO(item));
   },
@@ -32,7 +32,7 @@ router.get(
   '/',
   validateRequest({ query: PaginationQuerySchema }),
   async (req: ValidatedRequest<null, PaginationQuery, null>, res: Response<ItemListResponse>) => {
-    const pagination = await itemService.list(req.validated!.query);
+    const pagination = await itemRepository.list(req.validated!.query);
 
     res.json(toItemListDTO(pagination));
   },
@@ -43,7 +43,7 @@ router.get(
   '/:id',
   validateRequest({ params: IdParams }),
   async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
-    const item = await itemService.get(req.validated!.params.id);
+    const item = await itemRepository.get(req.validated!.params.id);
 
     res.json(toItemDTO(item));
   },
@@ -58,7 +58,7 @@ router.patch(
     req: ValidatedRequest<IdRouteParams, null, UpdateItemInput>,
     res: Response<ItemResponse>,
   ) => {
-    const item = await itemService.update(req.validated!.params.id, req.validated!.body);
+    const item = await itemRepository.update(req.validated!.params.id, req.validated!.body);
 
     res.json(toItemDTO(item));
   },
@@ -69,7 +69,7 @@ router.delete(
   '/:id',
   validateRequest({ params: IdParams }),
   async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
-    const item = await itemService.remove(req.validated!.params.id);
+    const item = await itemRepository.remove(req.validated!.params.id);
 
     res.json(toItemDTO(item));
   },

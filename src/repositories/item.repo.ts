@@ -5,7 +5,7 @@ import type { ListDTOParams } from '@/types/pagination';
 import type { PaginationQuery } from '@/models/pagination.model';
 import { NotFoundError } from '@/exceptions/http.exception';
 
-export class ItemService {
+export class ItemRepository {
   private repo = AppDataSource.getRepository(Item);
 
   public async create(data: CreateItemInput): Promise<Item> {
@@ -48,4 +48,4 @@ export class ItemService {
   }
 }
 
-export const itemService = new ItemService();
+export const itemRepository = new ItemRepository();
