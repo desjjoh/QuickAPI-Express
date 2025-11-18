@@ -7,5 +7,5 @@ const __dirname = path.dirname(__filename);
 export const rootPath = path.resolve(__dirname, '../..');
 
 export function apiPath(path: string) {
-  return `/api${path}`;
+  return `/api/v1${path}`;
 }
