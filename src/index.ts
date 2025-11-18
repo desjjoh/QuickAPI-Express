@@ -29,7 +29,7 @@ async function bootstrap(): Promise<void> {
 
   await LifecycleHandler.startup();
 
-  logger.info(`HTTP server running on port ${env.PORT} at http://localhost:${env.PORT}`);
+  logger.info(`HTTP server running on port ${env.PORT} — http://localhost:${env.PORT}/docs`);
 }
 
 bootstrap().catch(async (err: unknown) => {
