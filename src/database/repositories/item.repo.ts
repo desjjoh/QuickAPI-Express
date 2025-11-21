@@ -1,5 +1,5 @@
 import { AppDataSource } from '@/config/database.config';
-import { Item } from '@/entities/item.entity';
+import { Item } from '@/database/entities/item.entity';
 import type { CreateItemInput, UpdateItemInput } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
 import type { PaginationQuery } from '@/models/pagination.model';

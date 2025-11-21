@@ -1,4 +1,4 @@
-import type { Item } from '@/entities/item.entity';
+import type { Item } from '@/database/entities/item.entity';
 import { OutputValidationError } from '@/exceptions/http.exception';
 import {
   type ItemListResponse,

@@ -27,22 +27,10 @@ export const InfoResponseSchema = z
   })
   .openapi('SystemInfoResponse');
 
-export const MemoryUsageSchema = z
-  .object({
-    rss: z.number().openapi({ example: 234217472 }),
-    heapTotal: z.number().openapi({ example: 101711872 }),
-    heapUsed: z.number().openapi({ example: 92164928 }),
-    external: z.number().openapi({ example: 14942248 }),
-    arrayBuffers: z.number().openapi({ example: 9332801 }),
-  })
-  .openapi('MemoryUsage');
-
 export const SystemDiagnosticsSchema = z
   .object({
     uptime: z.number(),
     timestamp: z.number(),
-    memory: MemoryUsageSchema,
-    load: z.array(z.number()),
     eventLoopLag: z.number(),
     db: z.enum(['connected', 'disconnected']),
   })
@@ -51,5 +39,4 @@ export const SystemDiagnosticsSchema = z
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 export type ReadyResponse = z.infer<typeof ReadyResponseSchema>;
 export type InfoResponse = z.infer<typeof InfoResponseSchema>;
-export type MemoryUsage = z.infer<typeof MemoryUsageSchema>;
 export type SystemDiagnostics = z.infer<typeof SystemDiagnosticsSchema>;

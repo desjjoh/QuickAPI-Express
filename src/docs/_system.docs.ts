@@ -86,7 +86,8 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     path: '/info',
     tags: [tag],
     summary: 'Return application and runtime metadata.',
-    description: 'Returns application metadata and runtime information.',
+    description:
+      'Returns application metadata including name, version, environment, hostname, and PID.',
     responses: {
       200: {
         description: 'Application information',

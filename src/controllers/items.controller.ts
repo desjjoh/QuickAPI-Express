@@ -9,7 +9,7 @@ import {
 } from '@/models/item.model';
 import { IdParams, type IdRouteParams } from '@/models/parameters.model';
 import { validateRequest } from '@/middleware/validate-request.middleware';
-import { itemRepository } from '@/repositories/item.repo';
+import { itemRepository } from '@/database/repositories/item.repo';
 import { toItemDTO, toItemListDTO } from '@/mappers/item.mapper';
 import { PaginationQuerySchema, type PaginationQuery } from '@/models/pagination.model';
 import type { ValidatedRequest } from '@/types/request';

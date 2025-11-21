@@ -58,22 +58,14 @@ router.get('/info', async (_req: Request, res: Response<InfoResponse>) => {
 
 // GET /system
 router.get('/system', async (_req: Request, res: Response) => {
-  const memory = process.memoryUsage();
-  const load = os.loadavg();
-
   const dbReady = isServerInitialized();
-
   const eventLoopLag = await getEventLoopLag();
 
   res.json(
     toSystemDiagnosticsDTO({
       uptime: process.uptime(),
       timestamp: Date.now(),
-
-      memory,
-      load,
       eventLoopLag,
-
       db: dbReady ? 'connected' : 'disconnected',
     }),
   );

@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 
 import { env, isDev } from '@/config/env.config';
-import { Item } from '@/entities/item.entity';
+import { Item } from '@/database/entities/item.entity';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
