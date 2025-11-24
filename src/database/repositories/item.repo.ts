@@ -3,7 +3,6 @@ import { Item } from '@/database/entities/item.entity';
 import type { CreateItemInput, UpdateItemInput } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
 import type { PaginationQuery } from '@/models/pagination.model';
-import { NotFoundError } from '@/exceptions/http.exception';
 
 export class ItemRepository {
   private repo = AppDataSource.getRepository(Item);
@@ -15,7 +14,7 @@ export class ItemRepository {
     return item;
   }
 
-  async list(query: PaginationQuery): Promise<ListDTOParams<Item>> {
+  async get_all(query: PaginationQuery): Promise<ListDTOParams<Item>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 25;
 
@@ -27,24 +26,20 @@ export class ItemRepository {
     return { items, total, page, limit };
   }
 
-  async get(id: string): Promise<Item> {
+  async get_by_id(id: string): Promise<Item | null> {
     const item = await this.repo.findOne({ where: { id } });
-    if (!item) throw new NotFoundError();
 
     return item;
   }
 
-  async update(id: string, data: UpdateItemInput): Promise<Item> {
-    const item = await this.get(id);
-    const merged = this.repo.merge(item, data);
+  async update(obj: Item, data: UpdateItemInput): Promise<Item> {
+    const merged = this.repo.merge(obj, data);
 
     return this.repo.save(merged);
   }
 
-  async remove(id: string): Promise<Item> {
-    const item = await this.get(id);
-
-    return this.repo.remove(item);
+  async remove(obj: Item): Promise<Item> {
+    return this.repo.remove(obj);
   }
 }
 

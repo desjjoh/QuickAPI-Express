@@ -48,7 +48,7 @@ export class LifecycleHandler {
 
     ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
       process.once(sig, () => {
-        logger.warn(`${sig} received — beginning shutdown`);
+        logger.warn(`${sig} received — initiating shutdown`);
         this.shutdown();
       });
     });
@@ -62,18 +62,21 @@ export class LifecycleHandler {
   private static registerInternalHandlers(): void {
     process.on('uncaughtException', (err: unknown) => {
       const error = err instanceof Error ? err : new Error(String(err));
+      logger.error({ stack: error.stack }, `Uncaught exception — ${error.message}`);
 
-      logger.fatal({ error: error }, 'Uncaught exception — forcing exit');
+      logger.fatal('Fatal error caused by uncaught exception — forcing exit');
       process.exit(1);
     });
 
     process.on('unhandledRejection', (reason: unknown) => {
-      logger.fatal({ reason: String(reason) }, 'Unhandled promise rejection — forcing exit');
+      logger.error({ reason }, `Unhandled rejection — ${String(reason)}`);
+
+      logger.fatal('Fatal error handling promise rejection — forcing exit');
       process.exit(1);
     });
 
     process.on('exit', (code: number) => {
-      logger.info(`Application exited cleanly (code ${code})`);
+      logger.info(`Application exited (code ${code})`);
     });
   }
 
@@ -112,8 +115,9 @@ export class LifecycleHandler {
         logger.debug(`Service stopped ← ${service.name}`);
       } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));
+        logger.error({ stack: error.stack }, `Error — ${error.message}`);
 
-        logger.error({ error: error }, `Failed to stop service → ${service.name}`);
+        logger.warn(`Failed to stop service → ${service.name}`);
       }
     }
 

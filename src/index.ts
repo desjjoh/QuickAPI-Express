@@ -34,7 +34,8 @@ async function bootstrap(): Promise<void> {
 
 bootstrap().catch(async (err: unknown) => {
   const error = err instanceof Error ? err : new Error(String(err));
+  logger.error({ stack: error.stack }, `Error — ${error.message}`);
 
-  logger.fatal({ error: error }, 'Fatal error during application bootstrap — forcing exit');
+  logger.fatal('Fatal error during application bootstrap — forcing exit');
   process.exit(1);
 });

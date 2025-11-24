@@ -8,9 +8,33 @@ import {
 } from '@/models/item.model';
 import { PaginationQuerySchema } from '@/models/pagination.model';
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { ErrorResponseSchema } from '@/models/error.model';
 
 export function registerItemPaths(registry: OpenAPIRegistry): void {
   const tag = 'Items';
+
+  // GET /items
+  registry.registerPath({
+    method: 'get',
+    path: apiPath('/items'),
+    tags: [tag],
+    summary: 'Get a list of items',
+    description:
+      'Retrieves a paginated list of items. Supports page, limit, sorting, and optional filtering.',
+    request: {
+      query: PaginationQuerySchema,
+    },
+    responses: {
+      200: {
+        description: 'Successful Response',
+        content: {
+          'application/json': {
+            schema: ItemListResponseSchema,
+          },
+        },
+      },
+    },
+  });
 
   // POST /items
   registry.registerPath({
@@ -30,33 +54,10 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     },
     responses: {
       201: {
-        description: 'Item created successfully',
+        description: 'Successful Response',
         content: {
           'application/json': {
             schema: ItemResponseSchema,
-          },
-        },
-      },
-    },
-  });
-
-  // GET /items
-  registry.registerPath({
-    method: 'get',
-    path: apiPath('/items'),
-    tags: [tag],
-    summary: 'Get a list of items',
-    description:
-      'Retrieves a paginated list of items. Supports page, limit, sorting, and optional filtering.',
-    request: {
-      query: PaginationQuerySchema,
-    },
-    responses: {
-      200: {
-        description: 'List of items',
-        content: {
-          'application/json': {
-            schema: ItemListResponseSchema,
           },
         },
       },
@@ -76,14 +77,21 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     },
     responses: {
       200: {
-        description: 'Item found',
+        description: 'Successful Response',
         content: {
           'application/json': {
             schema: ItemResponseSchema,
           },
         },
       },
-      404: { description: 'Item not found' },
+      404: {
+        description: 'Item not found',
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
     },
   });
 
@@ -108,14 +116,60 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     },
     responses: {
       200: {
-        description: 'Item updated successfully',
+        description: 'Successful Response',
         content: {
           'application/json': {
             schema: ItemResponseSchema,
           },
         },
       },
-      404: { description: 'Item not found' },
+      404: {
+        description: 'No item exists with the provided identifier.',
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
+    },
+  });
+
+  // PUT /items/{id}
+  registry.registerPath({
+    method: 'put',
+    path: apiPath('/items/{id}'),
+    tags: [tag],
+    summary: 'Replace an item by ID',
+    description:
+      'Replaces an existing item with the provided data. All fields must be supplied. Returns the updated resource.',
+    request: {
+      params: IdParams,
+      body: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: CreateItemSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Successful Response',
+        content: {
+          'application/json': {
+            schema: ItemResponseSchema,
+          },
+        },
+      },
+      404: {
+        description: 'No item exists with the provided identifier.',
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
     },
   });
 
@@ -132,7 +186,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     },
     responses: {
       200: {
-        description: 'Item deleted',
+        description: 'Successful Response',
         content: {
           'application/json': {
             schema: ItemResponseSchema,
@@ -140,7 +194,12 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
         },
       },
       404: {
-        description: 'Item not found',
+        description: 'No item exists with the provided identifier.',
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema,
+          },
+        },
       },
     },
   });

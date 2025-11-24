@@ -1,5 +1,5 @@
 import moment from 'moment';
-import pino, { type Logger, type SerializedError } from 'pino';
+import pino, { type Logger } from 'pino';
 import { gray, cyan, yellow, red, green, magenta, dim } from 'colorette';
 
 import { env } from '@/config/env.config';
@@ -26,47 +26,18 @@ function colorLevel(level: string): string {
   return color(`[${level.padEnd(5, ' ')}]`);
 }
 
-function isSerializedError(err: unknown): err is SerializedError {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'message' in err &&
-    'type' in err &&
-    typeof err.message === 'string' &&
-    typeof err.type === 'string'
-  );
-}
-
 function formatLog(level: string, msg: string, context: Record<string, unknown>): string {
   const timestamp = dim(green(formatTimestamp()));
   const levelLabel = colorLevel(level);
   const rid = context.requestId ? magenta(`[${context.requestId}]`) + ' ' : '';
 
-  let line = `${timestamp} ${levelLabel} ${rid}${msg}`;
+  const line = `${timestamp} ${levelLabel} ${rid}${msg}`;
 
   const meta = { ...context };
 
   delete meta.msg;
   delete meta.level;
   delete meta.levelLabel;
-
-  if (meta.error && isSerializedError(meta.error)) {
-    const err = meta.error;
-
-    const stackLines = err.stack
-      ? err.stack
-          .split('\n')
-          .slice(1)
-          .map(l => `    ${l.trim()}`)
-          .join('\n')
-      : '';
-
-    const errorBlock = dim(`\n${stackLines}`);
-
-    line += errorBlock;
-
-    delete meta.error;
-  }
 
   return line;
 }
