@@ -5,33 +5,66 @@ import { BaseSchema } from './base.model';
 extendZodWithOpenApi(z);
 
 export const ItemSchema = BaseSchema.extend({
-  name: z.string().min(1).max(120).openapi({ example: 'Iron Sword' }),
-  price: z.coerce.number().positive().openapi({ example: 49.99 }),
-  description: z.string().max(500).optional().openapi({ example: 'A finely crafted steel blade.' }),
+  name: z.string().min(1).max(120).openapi({
+    description: 'Name of the item. Must be between 1 and 120 characters.',
+    example: 'Iron Sword',
+  }),
+  price: z.coerce.number().positive().openapi({
+    description: 'Monetary cost of the item, expressed as a positive number.',
+    example: 49.99,
+  }),
+  description: z.string().max(500).optional().openapi({
+    description: 'Optional descriptive text providing additional item details.',
+    example: 'A finely crafted steel blade.',
+  }),
+}).openapi('Item', {
+  description: 'Represents a single item resource with metadata, pricing, and descriptive details.',
 });
 
-export const ItemResponseSchema = ItemSchema.openapi('ItemResponse');
+export const ItemResponseSchema = ItemSchema.openapi('ItemResponse', {
+  description: 'Response format returned when fetching a single item resource.',
+});
 
 export const ItemListResponseSchema = z
   .object({
-    data: z.array(ItemResponseSchema),
-    total: z.number().int().nonnegative().openapi({ example: 42 }),
-    page: z.number().int().positive().openapi({ example: 1 }),
-    limit: z.number().int().positive().openapi({ example: 25 }),
+    data: z.array(ItemResponseSchema).openapi({
+      description: 'Array of item resources matching the query parameters.',
+    }),
+    total: z.number().int().nonnegative().openapi({
+      description: 'Total number of items available matching the query filters.',
+      example: 42,
+    }),
+    page: z
+      .number()
+      .int()
+      .positive()
+      .openapi({ description: 'Current page of results being returned.', example: 1 }),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .openapi({ description: 'Maximum number of items returned per page.', example: 25 }),
   })
-  .openapi('ItemListResponse');
+  .openapi('ItemListResponse', {
+    description: 'Paginated list response containing item data and pagination metadata.',
+  });
 
 export const CreateItemSchema = ItemSchema.pick({
   name: true,
   price: true,
   description: true,
-}).openapi('CreateUserInput');
+}).openapi('CreateItemInput', {
+  description: 'Payload required to create a new item resource.',
+});
 
 export const UpdateItemSchema = CreateItemSchema.partial()
   .refine(data => Object.keys(data).length > 0, {
     message: 'At least one field must be provided for update.',
   })
-  .openapi('UpdateUserInput');
+  .openapi('UpdateItemInput', {
+    description:
+      'Payload for partially updating an existing item. At least one field must be provided.',
+  });
 
 export type CreateItemInput = z.infer<typeof CreateItemSchema>;
 export type UpdateItemInput = z.infer<typeof UpdateItemSchema>;

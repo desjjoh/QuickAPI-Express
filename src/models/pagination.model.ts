@@ -12,7 +12,7 @@ export const PaginationQuerySchema = z
       .default('1')
       .transform(val => Number(val))
       .pipe(z.number().int().positive())
-      .openapi({ example: 1 }),
+      .openapi({ description: 'Page number to retrieve. Must be a positive integer.', example: 1 }),
 
     limit: z
       .string()
@@ -20,17 +20,29 @@ export const PaginationQuerySchema = z
       .default('25')
       .transform(val => Number(val))
       .pipe(z.number().int().positive().max(100))
-      .openapi({ example: 25 }),
+      .openapi({
+        description:
+          'Maximum number of items to return per page. Must be a positive integer up to 100.',
+        example: 25,
+      }),
 
-    search: z.string().optional().openapi({ example: 'sword' }),
+    search: z.string().optional().openapi({
+      description: 'Optional search query used to filter items by a given term.',
+      example: 'sword',
+    }),
+
     sort: z.enum(['name', 'price', 'createdAt']).optional().openapi({
+      description: 'Field used to sort the result set.',
       example: 'price',
     }),
 
     order: z.enum(['asc', 'desc']).optional().openapi({
+      description: 'Sort direction applied to the chosen sort field.',
       example: 'asc',
     }),
   })
-  .openapi('ItemQuery');
+  .openapi('ItemQuery', {
+    description: 'Query parameters used for pagination, filtering, and sorting item collections.',
+  });
 
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema> & LocalParsedQs;
