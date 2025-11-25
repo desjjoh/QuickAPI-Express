@@ -53,12 +53,11 @@ export function createApp(): express.Express {
       limit: isDev ? 1000 : 200,
       standardHeaders: 'draft-7',
       legacyHeaders: false,
+      statusCode: 429,
       message: {
         status: 429,
         message: 'Too many requests — please slow down.',
-      },
-      handler: (req, res, _next, options) => {
-        res.status(options.statusCode).json(options.message);
+        timestamp: new Date().toISOString(),
       },
     }),
   );
