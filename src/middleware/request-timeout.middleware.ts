@@ -8,9 +8,9 @@ interface Options {
 }
 
 export function requestTimeout({
-  headerTimeout = 5000,
-  chunkTimeout = 2000,
-  totalTimeout = 10000,
+  headerTimeout = 5_000,
+  chunkTimeout = 2_000,
+  totalTimeout = 10_000,
 }: Options = {}) {
   return (req: Request, _: Response, next: NextFunction) => {
     const start: number = Date.now();
