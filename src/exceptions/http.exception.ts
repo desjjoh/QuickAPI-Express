@@ -1,3 +1,4 @@
+import { formatBytes } from '@/helpers/string.helpers';
 import type { z } from 'zod';
 
 export class HttpError extends Error {
@@ -20,6 +21,48 @@ export class NotFoundError extends HttpError {
 export class BadRequestError extends HttpError {
   constructor(message = 'Bad Request') {
     super(400, message);
+  }
+}
+
+export class RequestTimeoutError extends HttpError {
+  constructor(message = 'Request timeout.') {
+    super(408, message);
+  }
+}
+
+export class MethodNotAllowedError extends HttpError {
+  constructor(method: string, message?: string) {
+    super(405, message ?? `HTTP method '${method}' is not allowed on this server.`);
+  }
+}
+
+export class RequestBodyTooLargeError extends HttpError {
+  constructor(limitBytes: number) {
+    super(413, `Request body exceeds maximum allowed size (limit = ${formatBytes(limitBytes)}).`);
+  }
+}
+
+export class RequestHeaderFieldsTooLargeError extends HttpError {
+  constructor(message: string) {
+    super(431, message);
+  }
+}
+
+export class UnsupportedMediaTypeError extends HttpError {
+  constructor(message = 'Unsupported Media Type') {
+    super(415, message);
+  }
+}
+
+export class UnsupportedTransferEncodingError extends HttpError {
+  constructor(message = 'Unsupported Transfer-Encoding.') {
+    super(400, message);
+  }
+}
+
+export class ValidationError extends HttpError {
+  constructor(message: string) {
+    super(422, message);
   }
 }
 

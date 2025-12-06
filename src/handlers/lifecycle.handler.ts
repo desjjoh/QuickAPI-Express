@@ -13,10 +13,10 @@ export class LifecycleHandler {
   private static startupServices: LifecycleService[] = [];
   private static shutdownServices: LifecycleService[] = [];
 
-  private static startupStarted = false;
-  private static startupCompleted = false;
+  private static startupStarted: boolean = false;
+  private static startupCompleted: boolean = false;
 
-  private static shutdownStarted = false;
+  private static shutdownStarted: boolean = false;
 
   public static isAlive(): boolean {
     return !this.shutdownStarted;
@@ -29,7 +29,7 @@ export class LifecycleHandler {
   public static async areAllServicesHealthy(): Promise<boolean> {
     for (const service of this.startupServices) {
       if (service.check) {
-        const healthy = await service.check();
+        const healthy: boolean = await service.check();
         if (!healthy) return false;
       }
     }
@@ -38,7 +38,7 @@ export class LifecycleHandler {
   }
 
   public static register = (services: LifecycleService[]): void => {
-    const start = performance.now();
+    const start: number = performance.now();
     logger.debug(`Registering lifecycle services (${services.length} total)`);
 
     for (const service of services) {
@@ -55,13 +55,13 @@ export class LifecycleHandler {
 
     this.registerInternalHandlers();
 
-    const duration = (performance.now() - start).toFixed(2);
+    const duration: string = (performance.now() - start).toFixed(2);
     logger.debug(`Lifecycle registration completed in ${duration}ms`);
   };
 
   private static registerInternalHandlers(): void {
     process.on('uncaughtException', (err: unknown) => {
-      const error = err instanceof Error ? err : new Error(String(err));
+      const error: Error = err instanceof Error ? err : new Error(String(err));
       logger.error({ stack: error.stack }, `Uncaught exception — ${error.message}`);
 
       logger.fatal('Fatal error caused by uncaught exception — forcing exit');
@@ -84,7 +84,7 @@ export class LifecycleHandler {
     if (this.startupStarted) return;
     this.startupStarted = true;
 
-    const start = performance.now();
+    const start: number = performance.now();
     logger.debug(`Starting services…`);
 
     for (const service of this.startupServices) {
@@ -96,7 +96,7 @@ export class LifecycleHandler {
 
     this.startupCompleted = true;
 
-    const duration = (performance.now() - start).toFixed(2);
+    const duration: string = (performance.now() - start).toFixed(2);
     logger.debug(`All services started in ${duration}ms`);
   };
 
@@ -104,7 +104,7 @@ export class LifecycleHandler {
     if (this.shutdownStarted) return;
     this.shutdownStarted = true;
 
-    const start = performance.now();
+    const start: number = performance.now();
 
     logger.debug('Stopping services…');
 
@@ -114,14 +114,14 @@ export class LifecycleHandler {
         await service.stop();
         logger.debug(`Service stopped ← ${service.name}`);
       } catch (err: unknown) {
-        const error = err instanceof Error ? err : new Error(String(err));
+        const error: Error = err instanceof Error ? err : new Error(String(err));
         logger.error({ stack: error.stack }, `Error — ${error.message}`);
 
         logger.warn(`Failed to stop service → ${service.name}`);
       }
     }
 
-    const duration = (performance.now() - start).toFixed(2);
+    const duration: string = (performance.now() - start).toFixed(2);
     logger.debug(`Shutdown completed in ${duration}ms`);
 
     process.exit(0);

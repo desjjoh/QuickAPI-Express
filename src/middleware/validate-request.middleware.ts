@@ -1,4 +1,5 @@
-import { BadRequestError } from '@/exceptions/http.exception';
+import { ValidationError } from '@/exceptions/http.exception';
+import { formatZodIssues } from '@/helpers/string.helpers';
 import type { Request, Response, NextFunction } from 'express';
 import type { ZodType } from 'zod';
 
@@ -19,36 +20,21 @@ export function validateRequest<S extends RequestValidationSchemas>(schemas: S) 
     if (schemas.params) {
       const parsed = schemas.params.safeParse(req.params);
 
-      if (!parsed.success) {
-        throw new BadRequestError(
-          'Param validation failed: ' + parsed.error.issues.map(i => i.message).join(', '),
-        );
-      }
-
+      if (!parsed.success) throw new ValidationError(formatZodIssues(parsed.error.issues, 'path'));
       req.validated.params = parsed.data;
     }
 
     if (schemas.query) {
       const parsed = schemas.query.safeParse(req.query);
 
-      if (!parsed.success) {
-        throw new BadRequestError(
-          'Query validation failed: ' + parsed.error.issues.map(i => i.message).join(', '),
-        );
-      }
-
+      if (!parsed.success) throw new ValidationError(formatZodIssues(parsed.error.issues, 'query'));
       req.validated.query = parsed.data;
     }
 
     if (schemas.body) {
       const parsed = schemas.body.safeParse(req.body);
 
-      if (!parsed.success) {
-        throw new BadRequestError(
-          'Body validation failed: ' + parsed.error.issues.map(i => i.message).join(', '),
-        );
-      }
-
+      if (!parsed.success) throw new ValidationError(formatZodIssues(parsed.error.issues, 'body'));
       req.validated.body = parsed.data;
     }
 

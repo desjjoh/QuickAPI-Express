@@ -1,21 +1,30 @@
 import type { ErrorRequestHandler } from 'express';
-import { ZodError } from 'zod';
+import z, { ZodError } from 'zod';
 
 import { logger } from '@/config/logger.config';
 import { HttpError } from '@/exceptions/http.exception';
 
+function formatZodIssues(issues: z.core.$ZodIssue[]): string {
+  return issues
+    .map(issue => {
+      const path: string = issue.path.join('.') || 'value';
+      return `${path} → ${issue.message}`;
+    })
+    .join('; ');
+}
+
 export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   void next;
 
-  let status = 500;
-  let message = 'Internal Server Error';
+  let status: number = 500;
+  let message: string = 'Internal Server Error';
 
   if (err instanceof HttpError) {
     status = err.status;
     message = err.message;
   } else if (err instanceof ZodError) {
     status = 400;
-    message = err.issues.map(e => e.message).join(', ');
+    message = `Validation failed — ${formatZodIssues(err.issues)}`;
   } else if (err instanceof Error) {
     logger.error({ stack: err.stack }, `Unhandled route error — ${err.message}`);
   }
@@ -23,6 +32,6 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   res.status(status).json({
     status,
     message,
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
   });
 };

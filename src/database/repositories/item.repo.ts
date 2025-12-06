@@ -8,15 +8,15 @@ export class ItemRepository {
   private repo = AppDataSource.getRepository(Item);
 
   public async create(data: CreateItemInput): Promise<Item> {
-    const item = this.repo.create(data);
+    const item: Item = this.repo.create(data);
     await this.repo.save(item);
 
     return item;
   }
 
   async get_all(query: PaginationQuery): Promise<ListDTOParams<Item>> {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 25;
+    const page: number = query.page ?? 1;
+    const limit: number = query.limit ?? 25;
 
     const [items, total] = await this.repo.findAndCount({
       skip: (page - 1) * limit,
@@ -27,13 +27,13 @@ export class ItemRepository {
   }
 
   async get_by_id(id: string): Promise<Item | null> {
-    const item = await this.repo.findOne({ where: { id } });
+    const item: Item | null = await this.repo.findOne({ where: { id } });
 
     return item;
   }
 
   async update(obj: Item, data: UpdateItemInput): Promise<Item> {
-    const merged = this.repo.merge(obj, data);
+    const merged: Item = this.repo.merge(obj, data);
 
     return this.repo.save(merged);
   }

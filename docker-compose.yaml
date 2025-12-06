@@ -16,8 +16,6 @@ services:
       DB_PASSWORD: app
       DB_DATABASE: quickapi
       TZ: America/Toronto
-    volumes:
-      - ./public:/app/public
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/ready']
       interval: 30s

@@ -1,11 +1,11 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename: string = fileURLToPath(import.meta.url);
+const __dirname: string = path.dirname(__filename);
 
-export const rootPath = path.resolve(__dirname, '../..');
+export const rootPath: string = path.resolve(__dirname, '../..');
 
-export function apiPath(path: string) {
+export function apiPath(path: string): string {
   return `/api/v1${path}`;
 }

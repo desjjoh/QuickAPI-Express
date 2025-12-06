@@ -9,9 +9,9 @@ export const ErrorResponseSchema = z
       description: 'Human-readable message describing the error condition.',
       example: 'Application not ready.',
     }),
-    timestamp: z.string().openapi({
-      description: 'ISO8601 timestamp indicating when the error occurred.',
-      example: '2025-08-14T12:00:00Z',
+    timestamp: z.number().openapi({
+      description: 'Unix timestamp (milliseconds since epoch) indicating when the error occurred.',
+      example: 1755172800000,
     }),
   })
   .openapi('ErrorResponseSchema', {

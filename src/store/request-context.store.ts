@@ -8,7 +8,7 @@ export interface RequestContextData {
   ip: string | undefined;
 }
 
-const storage = new AsyncLocalStorage<RequestContextData>();
+const storage: AsyncLocalStorage<RequestContextData> = new AsyncLocalStorage<RequestContextData>();
 
 export class RequestContext {
   static initialize(data: RequestContextData) {

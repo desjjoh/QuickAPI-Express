@@ -14,6 +14,8 @@ import { toItemDTO, toItemListDTO } from '@/mappers/item.mapper';
 import { PaginationQuerySchema, type PaginationQuery } from '@/models/pagination.model';
 import type { ValidatedRequest } from '@/types/request';
 import { NotFoundError } from '@/exceptions/http.exception';
+import type { Item } from '@/database/entities/item.entity';
+import type { ListDTOParams } from '@/types/pagination';
 
 const router = Router();
 
@@ -22,7 +24,7 @@ router.post(
   '/',
   validateRequest({ body: CreateItemSchema }),
   async (req: ValidatedRequest<null, null, CreateItemInput>, res: Response<ItemResponse>) => {
-    const item = await repo.create(req.validated!.body);
+    const item: Item = await repo.create(req.validated!.body);
 
     res.status(201).json(toItemDTO(item));
   },
@@ -33,7 +35,7 @@ router.get(
   '/',
   validateRequest({ query: PaginationQuerySchema }),
   async (req: ValidatedRequest<null, PaginationQuery, null>, res: Response<ItemListResponse>) => {
-    const pagination = await repo.get_all(req.validated!.query);
+    const pagination: ListDTOParams<Item> = await repo.get_all(req.validated!.query);
 
     res.json(toItemListDTO(pagination));
   },
@@ -44,7 +46,7 @@ router.get(
   '/:id',
   validateRequest({ params: IdParams }),
   async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
-    const item = await repo.get_by_id(req.validated!.params.id);
+    const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
     res.json(toItemDTO(item));
@@ -59,7 +61,7 @@ router.patch(
     req: ValidatedRequest<IdRouteParams, null, UpdateItemInput>,
     res: Response<ItemResponse>,
   ) => {
-    const item = await repo.get_by_id(req.validated!.params.id);
+    const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
     const updated = await repo.update(item, req.validated!.body);
@@ -76,10 +78,10 @@ router.put(
     req: ValidatedRequest<IdRouteParams, null, CreateItemInput>,
     res: Response<ItemResponse>,
   ) => {
-    const item = await repo.get_by_id(req.validated!.params.id);
+    const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
-    const updated = await repo.update(item, req.validated!.body);
+    const updated: Item = await repo.update(item, req.validated!.body);
 
     res.json(toItemDTO(updated));
   },
@@ -90,7 +92,7 @@ router.delete(
   '/:id',
   validateRequest({ params: IdParams }),
   async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
-    const item = await repo.get_by_id(req.validated!.params.id);
+    const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
     const removed = await repo.remove(item);
