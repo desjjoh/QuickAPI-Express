@@ -31,14 +31,9 @@ export const PaginationQuerySchema = z
       example: 'sword',
     }),
 
-    sort: z.enum(['name', 'price', 'createdAt']).optional().openapi({
-      description: 'Field used to sort the result set.',
-      example: 'price',
-    }),
-
-    order: z.enum(['asc', 'desc']).optional().openapi({
+    order: z.enum(['ASC', 'DESC']).optional().openapi({
       description: 'Sort direction applied to the chosen sort field.',
-      example: 'asc',
+      example: 'ASC',
     }),
   })
   .openapi('ItemQuery', {

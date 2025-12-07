@@ -7,7 +7,7 @@ import type { Server } from 'node:http';
 
 import { env } from '@/config/env.config';
 import { isDev } from '@/config/env.config';
-import { swaggerDocs } from '@/config/docs.config';
+import { docsJson, redocDocs, swaggerDocs } from '@/config/docs.config';
 
 import { errorHandler } from '@/middleware/error-handler.middleware';
 import { httpLogger } from '@/middleware/http-logger.middleware';
@@ -110,6 +110,8 @@ export function createApp(): express.Express {
 
   // Documentation Routes (Swagger)
   app.use('/docs', ...swaggerDocs);
+  app.get('/docs-json', docsJson);
+  app.get('/redoc', redocDocs);
 
   // Centralized Error Handling
   app.use(errorHandler);

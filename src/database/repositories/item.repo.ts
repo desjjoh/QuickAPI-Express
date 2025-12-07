@@ -1,8 +1,7 @@
 import { AppDataSource } from '@/config/database.config';
 import { Item } from '@/database/entities/item.entity';
-import type { CreateItemInput, UpdateItemInput } from '@/models/item.model';
+import type { CreateItemInput, ItemPaginationQuery, UpdateItemInput } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
-import type { PaginationQuery } from '@/models/pagination.model';
 
 export class ItemRepository {
   private repo = AppDataSource.getRepository(Item);
@@ -14,14 +13,24 @@ export class ItemRepository {
     return item;
   }
 
-  async get_all(query: PaginationQuery): Promise<ListDTOParams<Item>> {
-    const page: number = query.page ?? 1;
-    const limit: number = query.limit ?? 25;
+  async get_all(payload: ItemPaginationQuery): Promise<ListDTOParams<Item>> {
+    const page: number = payload.page ?? 1;
+    const limit: number = payload.limit ?? 25;
 
-    const [items, total] = await this.repo.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const search: string = payload.search ?? '';
+
+    const order: 'ASC' | 'DESC' = payload.order ?? 'ASC';
+    const sort: 'createdAt' | 'name' | 'price' = payload.sort ?? 'price';
+
+    const [items, total] = await this.repo
+      .createQueryBuilder('item')
+      .where('item.name like :pattern OR item.description like :pattern', {
+        pattern: `%${search.trim()}%`,
+      })
+      .orderBy({ [sort]: order })
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
     return { items, total, page, limit };
   }

@@ -1,9 +1,11 @@
 import { Router, type Response } from 'express';
 import {
   CreateItemSchema,
+  ItemPaginationQuerySchema,
   UpdateItemSchema,
   type CreateItemInput,
   type ItemListResponse,
+  type ItemPaginationQuery,
   type ItemResponse,
   type UpdateItemInput,
 } from '@/models/item.model';
@@ -11,7 +13,6 @@ import { IdParams, type IdRouteParams } from '@/models/parameters.model';
 import { validateRequest } from '@/middleware/validate-request.middleware';
 import { itemRepository as repo } from '@/database/repositories/item.repo';
 import { toItemDTO, toItemListDTO } from '@/mappers/item.mapper';
-import { PaginationQuerySchema, type PaginationQuery } from '@/models/pagination.model';
 import type { ValidatedRequest } from '@/types/request';
 import { NotFoundError } from '@/exceptions/http.exception';
 import type { Item } from '@/database/entities/item.entity';
@@ -33,8 +34,11 @@ router.post(
 // GET /items
 router.get(
   '/',
-  validateRequest({ query: PaginationQuerySchema }),
-  async (req: ValidatedRequest<null, PaginationQuery, null>, res: Response<ItemListResponse>) => {
+  validateRequest({ query: ItemPaginationQuerySchema }),
+  async (
+    req: ValidatedRequest<null, ItemPaginationQuery, null>,
+    res: Response<ItemListResponse>,
+  ) => {
     const pagination: ListDTOParams<Item> = await repo.get_all(req.validated!.query);
 
     res.json(toItemListDTO(pagination));

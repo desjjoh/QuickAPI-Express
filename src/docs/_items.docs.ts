@@ -3,10 +3,10 @@ import { IdParams } from '@/models/parameters.model';
 import {
   CreateItemSchema,
   ItemListResponseSchema,
+  ItemPaginationQuerySchema,
   ItemResponseSchema,
   UpdateItemSchema,
 } from '@/models/item.model';
-import { PaginationQuerySchema } from '@/models/pagination.model';
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { ErrorResponseSchema } from '@/models/error.model';
 
@@ -22,7 +22,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     description:
       'Retrieves a paginated list of items. Supports page, limit, sorting, and optional filtering.',
     request: {
-      query: PaginationQuerySchema,
+      query: ItemPaginationQuerySchema,
     },
     responses: {
       200: {
