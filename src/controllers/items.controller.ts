@@ -39,7 +39,7 @@ router.get(
     req: ValidatedRequest<null, ItemPaginationQuery, null>,
     res: Response<ItemListResponse>,
   ) => {
-    const pagination: ListDTOParams<Item> = await repo.get_all(req.validated!.query);
+    const pagination: ListDTOParams<Item> = await repo.get_many(req.validated!.query);
 
     res.json(toItemListDTO(pagination));
   },

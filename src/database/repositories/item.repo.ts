@@ -2,6 +2,7 @@ import { AppDataSource } from '@/config/database.config';
 import { Item } from '@/database/entities/item.entity';
 import type { CreateItemInput, ItemPaginationQuery, UpdateItemInput } from '@/models/item.model';
 import type { ListDTOParams } from '@/types/pagination';
+import type { SelectQueryBuilder } from 'typeorm';
 
 export class ItemRepository {
   private repo = AppDataSource.getRepository(Item);
@@ -13,22 +14,37 @@ export class ItemRepository {
     return item;
   }
 
-  async get_all(payload: ItemPaginationQuery): Promise<ListDTOParams<Item>> {
-    const page: number = payload.page ?? 1;
-    const limit: number = payload.limit ?? 25;
+  public async get_all(): Promise<Item[]> {
+    return this.repo.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async get_many(payload: ItemPaginationQuery): Promise<ListDTOParams<Item>> {
+    const page: number = payload.page;
+    const limit: number = payload.limit;
 
     const search: string = payload.search ?? '';
 
     const order: 'ASC' | 'DESC' = payload.order ?? 'ASC';
     const sort: 'createdAt' | 'name' | 'price' = payload.sort ?? 'price';
 
-    const [items, total] = await this.repo
+    const query: SelectQueryBuilder<Item> = this.repo
       .createQueryBuilder('item')
-      .where('item.name like :pattern OR item.description like :pattern', {
-        pattern: `%${search.trim()}%`,
-      })
+      .andWhere('item.name LIKE :pattern')
+      .orWhere('item.description LIKE :pattern', { pattern: `%${search.trim()}%` });
+
+    if (payload.min_price !== undefined) {
+      query.andWhere('item.price >= :min', { min: payload.min_price });
+    }
+
+    if (payload.max_price !== undefined) {
+      query.andWhere('item.price <= :max', { max: payload.max_price });
+    }
+
+    const [items, total] = await query
       .orderBy({ [sort]: order })
-      .skip((page - 1) * limit)
+      .skip((payload.page - 1) * limit)
       .take(limit)
       .getManyAndCount();
 
