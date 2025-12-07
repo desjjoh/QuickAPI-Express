@@ -29,15 +29,16 @@ Implements consistent architecture patterns from the **QuickAPI family** — inc
 src/
  ├── config/                          # Environment, logging, OpenAPI, database config
  ├── controllers/                     # Route-level orchestration (thin controllers)
+ ├── database/
+ │   ├── entities/                    # ORM models
+ │   └── repositories/                # Database abstraction layer
  ├── docs/                            # OpenAPI path + schema registration
- ├── entities/                        # TypeORM entities (database schema)
  ├── exceptions/                      # Typed HTTP errors
  ├── handlers/                        # Process-level handlers
  ├── helpers/                         # Small utilities shared across modules
  ├── mappers/                         # Entity → DTO transformers
  ├── middleware/                      # Express middleware (validation, errors, security)
  ├── models/                          # Zod schemas + TypeScript models
- ├── repositories/                    # TypeORM repositories (DB access layer)
  ├── routes/                          # Express Router modules
  ├── services/                        # Business logic layer
  ├── store/                           # Context and scoped shared state
