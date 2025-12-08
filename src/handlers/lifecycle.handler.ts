@@ -30,6 +30,7 @@ export class LifecycleHandler {
     for (const service of this.startupServices) {
       if (service.check) {
         const healthy: boolean = await service.check();
+
         if (!healthy) return false;
       }
     }

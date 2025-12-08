@@ -24,15 +24,14 @@ import { sanitizeHeaders } from '@/middleware/header-sanitization.middleware';
 import { enforceHeaderLimits } from '@/middleware/header-size-limit.middleware';
 
 let instance: Server | null = null;
+
 export function createApp(): express.Express {
   const app = express();
 
-  // Request Context, Metrics, and Logging
   app.use(metricsMiddleware);
   app.use(requestContextMiddleware);
   app.use(httpLogger);
 
-  // Rate Limiting (global protection against flooding)
   app.use(
     rateLimit({
       windowMs: 60 * 1000,
@@ -53,7 +52,6 @@ export function createApp(): express.Express {
   app.use(sanitizeHeaders());
   app.use(enforceHeaderLimits());
 
-  // Request Timeouts and Body Enforcement
   app.use(
     requestTimeout({
       headerTimeout: 5_000,
@@ -69,7 +67,6 @@ export function createApp(): express.Express {
     }),
   );
 
-  // Protocol & Semantics Enforcement
   app.use(
     enforceContentType({
       defaultAllowed: new Set(['application/json', 'multipart/form-data']),
@@ -83,12 +80,10 @@ export function createApp(): express.Express {
     }),
   );
 
-  // Request Parsing (JSON, URL-encoded) + Compression
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(compression());
 
-  // CORS and Security Headers
   app.use(
     cors({
       origin: ['*'],
@@ -104,16 +99,13 @@ export function createApp(): express.Express {
     }),
   );
 
-  // Routes
   app.use('/', system_controller);
   app.use('/api', api_routes);
 
-  // Documentation Routes (Swagger)
   app.use('/docs', ...swaggerDocs);
   app.get('/docs-json', docsJson);
   app.get('/redoc', redocDocs);
 
-  // Centralized Error Handling
   app.use(errorHandler);
 
   return app;
