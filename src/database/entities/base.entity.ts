@@ -1,4 +1,4 @@
-import { generatePrimaryId } from '@/config/nanoid.config';
+import { generatePrimaryId } from '@/helpers/nanoid.helper';
 import { CreateDateColumn, UpdateDateColumn, PrimaryColumn } from 'typeorm';
 
 export abstract class BaseEntity {

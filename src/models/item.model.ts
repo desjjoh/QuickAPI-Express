@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+
+import type { Item } from '@/database/entities/item.entity';
+import { OutputValidationError } from '@/exceptions/http.exception';
+import type { ListDTOParams } from '@/types/pagination';
+
 import { BaseSchema } from './base.model';
 import { PaginationQuerySchema } from './pagination.model';
 
@@ -117,3 +122,22 @@ export type UpdateItemInput = z.infer<typeof UpdateItemSchema>;
 
 export type ItemResponse = z.infer<typeof ItemResponseSchema>;
 export type ItemListResponse = z.infer<typeof ItemListResponseSchema>;
+
+export function toItemDTO(entity: Item): ItemResponse {
+  const { success, error, data } = ItemResponseSchema.safeParse(entity);
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}
+
+export function toItemListDTO(payload: ListDTOParams<Item>): ItemListResponse {
+  const { success, error, data } = ItemListResponseSchema.safeParse({
+    ...payload,
+    data: payload.items.map(toItemDTO),
+  });
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}

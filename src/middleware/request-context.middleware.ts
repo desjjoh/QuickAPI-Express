@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { RequestContext } from '@/store/request-context.store';
-import { generateRequestId } from '@/config/nanoid.config';
+import { generateRequestId } from '@/helpers/nanoid.helper';
 
 interface Context {
   requestId: string;

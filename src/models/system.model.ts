@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
+import { OutputValidationError } from '@/exceptions/http.exception';
+
 extendZodWithOpenApi(z);
 
 export const HealthResponseSchema = z
@@ -89,3 +91,35 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 export type ReadyResponse = z.infer<typeof ReadyResponseSchema>;
 export type InfoResponse = z.infer<typeof InfoResponseSchema>;
 export type SystemDiagnostics = z.infer<typeof SystemDiagnosticsSchema>;
+
+export function toHealthDTO(payload: HealthResponse): HealthResponse {
+  const { success, error, data } = HealthResponseSchema.safeParse(payload);
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}
+
+export function toReadyDTO(payload: ReadyResponse): ReadyResponse {
+  const { success, error, data } = ReadyResponseSchema.safeParse(payload);
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}
+
+export function toInfoDTO(payload: InfoResponse): InfoResponse {
+  const { success, error, data } = InfoResponseSchema.safeParse(payload);
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}
+
+export function toSystemDiagnosticsDTO(payload: SystemDiagnostics): SystemDiagnostics {
+  const { success, error, data } = SystemDiagnosticsSchema.safeParse(payload);
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}
