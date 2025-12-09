@@ -1,19 +1,19 @@
 import express from 'express';
-import helmet from 'helmet';
 import cors from 'cors';
-import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+
 import type { Server } from 'node:http';
 
 import { env } from '@/config/env.config';
 import { isDev } from '@/config/env.config';
 import { docsJson, redocDocs, swaggerDocs } from '@/config/docs.config';
 
+import api_routes from '@/routes/api.routes';
+
+import system_controller from '@/controllers/system.controller';
+
 import { errorHandler } from '@/middleware/error-handler.middleware';
 import { httpLogger } from '@/middleware/http-logger.middleware';
-
-import api_routes from '@/routes/api.routes';
-import system_controller from '@/controllers/system.controller';
 import { metricsMiddleware } from '@/middleware/metrics.middleware';
 import { requestContextMiddleware } from '@/middleware/request-context.middleware';
 import { enforceContentType } from '@/middleware/content-type.middleware';
@@ -22,11 +22,19 @@ import { requestTimeout } from '@/middleware/request-timeout.middleware';
 import { bodyLimitMiddleware } from '@/middleware/request-body-limit.middleware';
 import { sanitizeHeaders } from '@/middleware/header-sanitization.middleware';
 import { enforceHeaderLimits } from '@/middleware/header-size-limit.middleware';
+import { securityHeaders } from '@/middleware/security-headers.middleware';
+
+import { RateLimitError } from '@/exceptions/http.exception';
 
 let instance: Server | null = null;
 
 export function createApp(): express.Express {
   const app = express();
+
+  app.use(express.json());
+
+  app.set('trust proxy', 1);
+  app.disable('x-powered-by');
 
   app.use(metricsMiddleware);
   app.use(requestContextMiddleware);
@@ -38,16 +46,12 @@ export function createApp(): express.Express {
       limit: isDev ? 1000 : 200,
       standardHeaders: 'draft-7',
       legacyHeaders: false,
-      statusCode: 429,
-      message: {
-        status: 429,
-        message: 'Too many requests — please slow down.',
-        timestamp: Date.now(),
+
+      handler: () => {
+        throw new RateLimitError('Too many requests — please slow down.');
       },
     }),
   );
-
-  app.set('trust proxy', 1);
 
   app.use(sanitizeHeaders());
   app.use(enforceHeaderLimits());
@@ -57,13 +61,6 @@ export function createApp(): express.Express {
       headerTimeout: 5_000,
       chunkTimeout: 2_000,
       totalTimeout: 10_000,
-    }),
-  );
-
-  app.use(
-    bodyLimitMiddleware({
-      defaultLimit: 1_048_576,
-      routeOverrides: [],
     }),
   );
 
@@ -80,10 +77,6 @@ export function createApp(): express.Express {
     }),
   );
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(compression());
-
   app.use(
     cors({
       origin: ['*'],
@@ -93,11 +86,13 @@ export function createApp(): express.Express {
   );
 
   app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginEmbedderPolicy: false,
+    bodyLimitMiddleware({
+      defaultLimit: 1_048_576,
+      routeOverrides: [],
     }),
   );
+
+  app.use(securityHeaders);
 
   app.use('/', system_controller);
   app.use('/api', api_routes);

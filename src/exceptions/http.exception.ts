@@ -66,6 +66,12 @@ export class ValidationError extends HttpError {
   }
 }
 
+export class RateLimitError extends HttpError {
+  constructor(message: string) {
+    super(429, message);
+  }
+}
+
 export class OutputValidationError extends HttpError {
   public issues: z.core.$ZodIssue[];
 

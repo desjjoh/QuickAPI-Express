@@ -17,3 +17,5 @@ export const ErrorResponseSchema = z
   .openapi('ErrorResponseSchema', {
     description: 'Standard error envelope returned by all API endpoints when an operation fails.',
   });
+
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
