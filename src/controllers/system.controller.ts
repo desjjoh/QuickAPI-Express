@@ -5,7 +5,7 @@ import { env } from '@/config/env.config';
 import { isServerInitialized } from '@/config/database.config';
 import { metricsRegistry } from '@/config/metrics.config';
 import { getEventLoopLag } from '@/helpers/timer.helpers';
-import { LifecycleHandler } from '@/handlers/lifecycle.handler';
+import { LC } from '@/handlers/lifecycle.handler';
 import type { HealthResponse, InfoResponse, ReadyResponse } from '@/models/system.model';
 import {
   toHealthDTO,
@@ -24,7 +24,7 @@ router.get('/', (_req: Request, res: Response<{ message: string }>) => {
 
 // GET /health
 router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
-  const alive = LifecycleHandler.isAlive();
+  const alive = LC.isAlive();
 
   const uptime = process.uptime();
   const timestamp = new Date().toISOString();
@@ -34,8 +34,8 @@ router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
 
 // GET /ready
 router.get('/ready', async (_req: Request, res: Response<ReadyResponse>) => {
-  const appReady = LifecycleHandler.isReady();
-  const servicesHealthy = await LifecycleHandler.areAllServicesHealthy();
+  const appReady = LC.isReady();
+  const servicesHealthy = await LC.areAllServicesHealthy();
 
   const ready = appReady && servicesHealthy;
   if (!ready) throw new ServiceUnavailableError('Application not ready');
