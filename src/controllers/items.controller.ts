@@ -18,7 +18,7 @@ import { NotFoundError } from '@/exceptions/http.exception';
 import type { Item } from '@/database/entities/item.entity';
 import type { ListDTOParams } from '@/types/pagination';
 
-const router = Router();
+const router: Router = Router();
 
 // POST /items
 router.post(
@@ -68,7 +68,7 @@ router.patch(
     const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
-    const updated = await repo.update(item, req.validated!.body);
+    const updated: Item = await repo.update(item, req.validated!.body);
 
     res.json(toItemDTO(updated));
   },
@@ -99,7 +99,7 @@ router.delete(
     const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
-    const removed = await repo.remove(item);
+    const removed: Item = await repo.remove(item);
 
     res.json(toItemDTO(removed));
   },

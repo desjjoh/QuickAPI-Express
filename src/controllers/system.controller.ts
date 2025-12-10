@@ -15,7 +15,7 @@ import {
 } from '@/mappers/system.mapper';
 import { ServiceUnavailableError } from '@/exceptions/http.exception';
 
-const router = Router();
+const router: Router = Router();
 
 // GET /
 router.get('/', (_req: Request, res: Response<{ message: string }>) => {
@@ -24,20 +24,20 @@ router.get('/', (_req: Request, res: Response<{ message: string }>) => {
 
 // GET /health
 router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
-  const alive = LC.isAlive();
+  const alive: boolean = LC.isAlive();
 
-  const uptime = process.uptime();
-  const timestamp = new Date().toISOString();
+  const uptime: number = process.uptime();
+  const timestamp: string = new Date().toISOString();
 
   res.json(toHealthDTO({ alive, uptime, timestamp }));
 });
 
 // GET /ready
 router.get('/ready', async (_req: Request, res: Response<ReadyResponse>) => {
-  const appReady = LC.isReady();
-  const servicesHealthy = await LC.areAllServicesHealthy();
+  const appReady: boolean = LC.isReady();
+  const servicesHealthy: boolean = await LC.areAllServicesHealthy();
 
-  const ready = appReady && servicesHealthy;
+  const ready: boolean = appReady && servicesHealthy;
   if (!ready) throw new ServiceUnavailableError('Application not ready');
 
   res.json(toReadyDTO({ ready }));
@@ -58,8 +58,8 @@ router.get('/info', async (_req: Request, res: Response<InfoResponse>) => {
 
 // GET /system
 router.get('/system', async (_req: Request, res: Response) => {
-  const dbReady = isServerInitialized();
-  const eventLoopLag = await getEventLoopLag();
+  const dbReady: boolean = isServerInitialized();
+  const eventLoopLag: number = await getEventLoopLag();
 
   res.json(
     toSystemDiagnosticsDTO({

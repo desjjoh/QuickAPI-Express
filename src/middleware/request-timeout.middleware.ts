@@ -27,7 +27,7 @@ export function requestTimeout({
     }, totalTimeout);
 
     req.on('data', () => {
-      const now = Date.now();
+      const now: number = Date.now();
 
       if (!receivedFirstChunk) {
         receivedFirstChunk = true;

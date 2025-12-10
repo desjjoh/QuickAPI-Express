@@ -51,7 +51,7 @@ export function bodyLimitMiddleware(options: BodyLimitOptions) {
     req.on('end', () => {
       if (limitExceeded || res.headersSent) return;
 
-      const remaining = Math.max(limit - total, 0);
+      const remaining: number = Math.max(limit - total, 0);
 
       res.setHeader('X-Body-Limit-Bytes', String(limit));
       res.setHeader('X-Body-Remaining-Bytes', String(remaining));

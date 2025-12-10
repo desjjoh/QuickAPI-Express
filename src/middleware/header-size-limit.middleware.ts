@@ -3,6 +3,7 @@ import {
   RequestHeaderFieldsTooLargeError,
   UnsupportedTransferEncodingError,
 } from '@/exceptions/http.exception';
+import type { IncomingHttpHeaders } from 'node:http';
 
 export interface HeaderLimits {
   maxHeaderCount: number;
@@ -20,8 +21,8 @@ const defaultLimits: HeaderLimits = {
 
 export function enforceHeaderLimits(limits: HeaderLimits = defaultLimits) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    const headers = req.headers;
-    const headerEntries = Object.entries(headers);
+    const headers: IncomingHttpHeaders = req.headers;
+    const headerEntries: [string, unknown][] = Object.entries(headers);
 
     if (headerEntries.length > limits.maxHeaderCount) {
       return next(
