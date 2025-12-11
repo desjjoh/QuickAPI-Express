@@ -19,6 +19,7 @@ export function bodyLimitMiddleware(options: BodyLimitOptions) {
     for (const [prefix, limit] of routeOverrides) {
       if (path.startsWith(prefix)) return limit;
     }
+
     return defaultLimit;
   }
 
