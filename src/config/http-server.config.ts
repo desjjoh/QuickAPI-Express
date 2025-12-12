@@ -1,14 +1,11 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 
 import type { Server } from 'node:http';
 
 import { env } from '@/config/env.config';
-import { isDev } from '@/config/env.config';
 import { docsJson, redocDocs, swaggerDocs } from '@/config/docs.config';
 
 import api_routes from '@/routes/api.routes';
-
 import system_controller from '@/controllers/system.controller';
 
 import { errorHandler } from '@/middleware/error-handler.middleware';
@@ -22,10 +19,9 @@ import { bodyLimitMiddleware } from '@/middleware/request-body-limit.middleware'
 import { sanitizeHeaders } from '@/middleware/header-sanitization.middleware';
 import { enforceHeaderLimits } from '@/middleware/header-size-limit.middleware';
 import { securityHeaders } from '@/middleware/security-headers.middleware';
-
-import { RateLimitError } from '@/exceptions/http.exception';
 import { not_found } from '@/routes/not-found.routes';
 import { createCorsMiddleware } from '@/middleware/cors.middleware';
+import { createRateLimitMiddleware } from '@/middleware/rate-limit.middleware';
 
 let instance: Server | null = null;
 
@@ -40,15 +36,10 @@ export function createApp(): express.Express {
   app.disable('x-powered-by');
 
   app.use(
-    rateLimit({
-      windowMs: 60 * 1000,
-      limit: isDev ? 1000 : 200,
-      standardHeaders: 'draft-7',
-      legacyHeaders: false,
-
-      handler: () => {
-        throw new RateLimitError('Too many requests — please slow down.');
-      },
+    createRateLimitMiddleware({
+      windowMs: 60_000,
+      max: 200,
+      keyGenerator: req => req.ip ?? 'unknown',
     }),
   );
 
