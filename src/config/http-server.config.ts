@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 
 import type { Server } from 'node:http';
@@ -26,6 +25,7 @@ import { securityHeaders } from '@/middleware/security-headers.middleware';
 
 import { RateLimitError } from '@/exceptions/http.exception';
 import { not_found } from '@/routes/not-found.routes';
+import { createCorsMiddleware } from '@/middleware/cors.middleware';
 
 let instance: Server | null = null;
 
@@ -35,8 +35,6 @@ export function createApp(): express.Express {
   app.use(metricsMiddleware);
   app.use(requestContextMiddleware);
   app.use(httpLogger);
-
-  app.use(express.json());
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -79,12 +77,17 @@ export function createApp(): express.Express {
   );
 
   app.use(
-    cors({
-      origin: ['*'],
+    createCorsMiddleware({
+      origin: ['http://localhost:3000'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['content-type', 'authorization', 'x-requested-with'],
+      exposedHeaders: ['authorization', 'set-cookie'],
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+      maxAge: 86_400,
     }),
   );
+
+  app.use(securityHeaders);
 
   app.use(
     bodyLimitMiddleware({
@@ -93,7 +96,7 @@ export function createApp(): express.Express {
     }),
   );
 
-  app.use(securityHeaders);
+  app.use(express.json());
 
   app.use('/', system_controller);
   app.use('/api', api_routes);
