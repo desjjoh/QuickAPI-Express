@@ -1,3 +1,4 @@
+import { OutputValidationError } from '@/exceptions/http.exception';
 import { z } from 'zod';
 
 export const ErrorResponseSchema = z
@@ -19,3 +20,15 @@ export const ErrorResponseSchema = z
   });
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+export function toErrorDTO(status: number, message: string): ErrorResponse {
+  const { success, error, data } = ErrorResponseSchema.safeParse({
+    status,
+    message,
+    timestamp: Date.now(),
+  });
+
+  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+
+  return data;
+}

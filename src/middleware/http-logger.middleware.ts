@@ -11,8 +11,8 @@ export function httpLogger(req: Request, res: Response, next: NextFunction): voi
     const duration: string = (performance.now() - start).toFixed(2);
     const { statusCode } = res;
 
-    const level: 'error' | 'warn' | 'debug' =
-      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'debug';
+    const level: 'error' | 'warn' | 'info' =
+      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
     const pathPadded: string = shortenPath(originalUrl, 30).padEnd(32);
     const status: string = String(statusCode).padEnd(3, ' ');

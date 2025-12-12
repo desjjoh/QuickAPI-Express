@@ -25,20 +25,21 @@ import { enforceHeaderLimits } from '@/middleware/header-size-limit.middleware';
 import { securityHeaders } from '@/middleware/security-headers.middleware';
 
 import { RateLimitError } from '@/exceptions/http.exception';
+import { not_found } from '@/routes/not-found.routes';
 
 let instance: Server | null = null;
 
 export function createApp(): express.Express {
   const app = express();
 
+  app.use(metricsMiddleware);
+  app.use(requestContextMiddleware);
+  app.use(httpLogger);
+
   app.use(express.json());
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
-
-  app.use(metricsMiddleware);
-  app.use(requestContextMiddleware);
-  app.use(httpLogger);
 
   app.use(
     rateLimit({
@@ -101,6 +102,7 @@ export function createApp(): express.Express {
   app.get('/docs-json', docsJson);
   app.get('/redoc', redocDocs);
 
+  app.use(not_found);
   app.use(errorHandler);
 
   return app;

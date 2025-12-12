@@ -1,8 +1,11 @@
 import type { ErrorRequestHandler } from 'express';
 import z, { ZodError } from 'zod';
 
+import type { Request, Response, NextFunction } from 'express';
+
 import { logger } from '@/config/logger.config';
 import { HttpError } from '@/exceptions/http.exception';
+import { toErrorDTO } from '@/models/error.model';
 
 function formatZodIssues(issues: z.core.$ZodIssue[]): string {
   return issues
@@ -13,7 +16,12 @@ function formatZodIssues(issues: z.core.$ZodIssue[]): string {
     .join('; ');
 }
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+export const errorHandler: ErrorRequestHandler = (
+  err: unknown,
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   void next;
 
   let status: number = 500;
@@ -22,16 +30,14 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   if (err instanceof HttpError) {
     status = err.status;
     message = err.message;
+  } else if (err instanceof SyntaxError) {
+    status = 400;
+    message = err.message;
   } else if (err instanceof ZodError) {
     status = 400;
     message = `Validation failed — ${formatZodIssues(err.issues)}`;
-  } else if (err instanceof Error) {
-    logger.error({ stack: err.stack }, `Unhandled route error — ${err.message}`);
   }
 
-  res.status(status).json({
-    status,
-    message,
-    timestamp: Date.now(),
-  });
+  logger.error(message);
+  res.status(status).json(toErrorDTO(status, message));
 };
