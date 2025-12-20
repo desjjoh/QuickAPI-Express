@@ -1,6 +1,7 @@
 import moment from 'moment';
 import pino, { type Logger } from 'pino';
 import { gray, cyan, yellow, red, green, magenta, dim } from 'colorette';
+import os from 'node:os';
 
 import { env } from '@/config/env.config';
 import { RequestContext } from '@/store/request-context.store';
@@ -30,8 +31,9 @@ function formatLog(level: string, msg: string, context: Record<string, unknown>)
   const timestamp = dim(green(formatTimestamp()));
   const levelLabel = colorLevel(level);
   const rid = context.requestId ? magenta(`[${context.requestId}]`) + ' ' : '';
+  const pid = context.pid ? cyan(`[${context.pid}]`) + ' ' : '';
 
-  const line = `${timestamp} ${levelLabel} ${rid}${msg}`;
+  const line = `${timestamp} ${pid}${levelLabel} ${rid}${msg}`;
 
   const meta = { ...context };
 
@@ -61,6 +63,10 @@ export const logger: Logger = pino(
       level(label) {
         return { levelLabel: label };
       },
+    },
+    base: {
+      pid: process.pid,
+      hostname: os.hostname(),
     },
     timestamp: false,
     mixin() {
