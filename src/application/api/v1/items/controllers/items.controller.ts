@@ -89,7 +89,10 @@ router.put(
     const item: Item | null = await repo.get_by_id(req.validated!.params.id);
     if (!item) throw new NotFoundError('No item exists with the provided identifier.');
 
-    const updated: Item = await repo.update(item, req.validated!.body);
+    const updated: Item = await repo.update(item, {
+      ...req.validated!.body,
+      description: req.validated!.body.description ?? null,
+    });
 
     res.json(toItemDTO(updated));
   },
