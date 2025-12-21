@@ -5,23 +5,24 @@ import type { Server } from 'node:http';
 import { env } from '@/config/env.config';
 import { docsJson, redocDocs, swaggerDocs } from '@/config/docs.config';
 
-import api_routes from '@/routes/api.routes';
-import system_controller from '@/controllers/system.controller';
+import api_routes from '@/application/api/api.routes';
+import system_controller from '@/application/system/controllers/system.controller';
 
-import { errorHandler } from '@/middleware/error-handler.middleware';
-import { httpLogger } from '@/middleware/http-logger.middleware';
-import { metricsMiddleware } from '@/middleware/metrics.middleware';
-import { requestContextMiddleware } from '@/middleware/request-context.middleware';
-import { enforceContentType } from '@/middleware/content-type.middleware';
-import { methodWhitelist } from '@/middleware/method-whitelist.middleware';
-import { requestTimeout } from '@/middleware/request-timeout.middleware';
-import { bodyLimitMiddleware } from '@/middleware/request-body-limit.middleware';
-import { sanitizeHeaders } from '@/middleware/header-sanitization.middleware';
-import { enforceHeaderLimits } from '@/middleware/header-size-limit.middleware';
-import { securityHeaders } from '@/middleware/security-headers.middleware';
-import { not_found } from '@/routes/not-found.routes';
-import { createCorsMiddleware } from '@/middleware/cors.middleware';
-import { createRateLimitMiddleware } from '@/middleware/rate-limit.middleware';
+import { errorHandler } from '@/common/middleware/error-handler.middleware';
+import { httpLogger } from '@/common/middleware/http-logger.middleware';
+import { metricsMiddleware } from '@/common/middleware/metrics.middleware';
+import { requestContextMiddleware } from '@/common/middleware/request-context.middleware';
+import { enforceContentType } from '@/common/middleware/content-type.middleware';
+import { methodWhitelist } from '@/common/middleware/method-whitelist.middleware';
+import { requestTimeout } from '@/common/middleware/request-timeout.middleware';
+import { bodyLimitMiddleware } from '@/common/middleware/request-body-limit.middleware';
+import { sanitizeHeaders } from '@/common/middleware/header-sanitization.middleware';
+import { enforceHeaderLimits } from '@/common/middleware/header-size-limit.middleware';
+import { securityHeaders } from '@/common/middleware/security-headers.middleware';
+import { createCorsMiddleware } from '@/common/middleware/cors.middleware';
+import { createRateLimitMiddleware } from '@/common/middleware/rate-limit.middleware';
+
+import { not_found } from '@/common/routes/not-found.route';
 
 let instance: Server | null = null;
 

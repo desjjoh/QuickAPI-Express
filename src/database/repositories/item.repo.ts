@@ -1,19 +1,35 @@
 import { AppDataSource } from '@/config/database.config';
 import { Item } from '@/database/entities/item.entity';
-import type { CreateItemInput, ItemPaginationQuery, UpdateItemInput } from '@/models/item.model';
-import type { ListDTOParams } from '@/types/pagination';
+
+import type { ListDTOParams } from '@/library/models/pagination.model';
 import type { SelectQueryBuilder } from 'typeorm';
+import type { Base } from '@/library/models/base.model';
+
+type ItemPaginationQuery = {
+  page: number;
+  limit: number;
+
+  search?: string;
+
+  sort?: 'createdAt' | 'name' | 'price';
+  order?: 'ASC' | 'DESC';
+
+  min_price?: number;
+  max_price?: number;
+};
 
 export class ItemRepository {
   private repo = AppDataSource.getRepository(Item);
 
-  public async create(data: CreateItemInput): Promise<Item> {
+  // CREATE
+  public async create(data: Base<Item>): Promise<Item> {
     const item: Item = this.repo.create(data);
     await this.repo.save(item);
 
     return item;
   }
 
+  // READ
   public async get_all(): Promise<Item[]> {
     return this.repo.find({
       order: { createdAt: 'DESC' },
@@ -57,12 +73,15 @@ export class ItemRepository {
     return item;
   }
 
-  async update(obj: Item, data: UpdateItemInput): Promise<Item> {
+  // UPDATE
+  async update(obj: Item, data: Partial<Base<Item>>): Promise<Item> {
     const merged: Item = this.repo.merge(obj, data);
+    await this.repo.save(merged);
 
-    return this.repo.save(merged);
+    return this.repo.findOneOrFail({ where: { id: obj.id } });
   }
 
+  // DELETE
   async remove(obj: Item): Promise<Item> {
     return this.repo.remove(obj);
   }

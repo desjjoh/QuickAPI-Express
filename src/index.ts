@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { logger } from '@/config/logger.config';
 import { connectDatabase, destroyServer, isServerInitialized } from '@/config/database.config';
 
-import { LC } from '@/handlers/lifecycle.handler';
+import { LC } from '@/common/handlers/lifecycle.handler';
 import { registerServer, closeServer, isServerRunning } from '@/config/http-server.config';
 
 import { env, isDev } from '@/config/env.config';

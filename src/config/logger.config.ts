@@ -4,7 +4,7 @@ import { gray, cyan, yellow, red, green, magenta, dim } from 'colorette';
 import os from 'node:os';
 
 import { env } from '@/config/env.config';
-import { RequestContext } from '@/store/request-context.store';
+import { RequestContext } from '@/common/store/request-context.store';
 
 const defaultLevel = env.LOG_LEVEL || 'info';
 const isDev = env.NODE_ENV !== 'production';

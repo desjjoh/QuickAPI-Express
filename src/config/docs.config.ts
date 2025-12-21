@@ -3,7 +3,24 @@ import type { RequestHandler } from 'express';
 import Redoc from 'redoc-express';
 
 import { env } from '@/config/env.config';
-import { generator } from '@/docs';
+
+import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+
+import { registerSystemPaths } from '@/application/system/docs/system.docs';
+import { registerItemPaths } from '@/application/api/v1/items/docs/items.docs';
+
+const registry = new OpenAPIRegistry();
+
+// System + diagnostics endpoints
+registerSystemPaths(registry);
+
+// Main API endpoints --
+// V1 routes
+registerItemPaths(registry);
+
+// V2 routes
+
+export const generator = new OpenApiGeneratorV3(registry.definitions);
 
 export const openApiSpec = generator.generateDocument({
   openapi: '3.0.3',

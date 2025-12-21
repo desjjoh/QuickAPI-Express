@@ -3,7 +3,7 @@ import { createRequire } from 'module';
 import path from 'path';
 import { yellow, red, green, dim, bold } from 'colorette';
 
-import { rootPath } from '@/helpers/path.helpers';
+import { rootPath } from '@/common/helpers/path.helpers';
 
 const require = createRequire(import.meta.url);
 const pkgPath = path.join(rootPath, 'package.json');
