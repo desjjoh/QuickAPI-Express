@@ -5,8 +5,8 @@ import type { Server } from 'node:http';
 import { env } from '@/config/env.config';
 import { docsJson, redocDocs, swaggerDocs } from '@/config/docs.config';
 
-import api_routes from '@/application/api/api.routes';
-import system_controller from '@/application/system/controllers/system.controller';
+import api_routes from '@/server/api/api.routes';
+import system_controller from '@/server/system/controllers/system.controller';
 
 import { errorHandler } from '@/common/middleware/error-handler.middleware';
 import { httpLogger } from '@/common/middleware/http-logger.middleware';

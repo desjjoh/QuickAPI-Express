@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createApp } from '@/config/express.config';
-import { env } from '@/config/env-validation.config';
+import { createApp } from '@/config/http-server.config';
+import { env } from '@/config/env.config';
 
 describe('Server lifecycle', () => {
   it('starts and stops without error', async () => {
