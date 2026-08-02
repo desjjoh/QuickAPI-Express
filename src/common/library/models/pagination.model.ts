@@ -21,7 +21,10 @@ export const PaginationQuerySchema = z
       .default('1')
       .transform(val => Number(val))
       .pipe(z.number().int().positive())
-      .openapi({ description: 'Page number to retrieve. Must be a positive integer.', example: 1 }),
+      .openapi({
+        description: 'Page number to retrieve. Must be a positive integer.',
+        example: '1',
+      }),
 
     limit: z
       .string()
@@ -32,7 +35,7 @@ export const PaginationQuerySchema = z
       .openapi({
         description:
           'Maximum number of items to return per page. Must be a positive integer up to 100.',
-        example: 25,
+        example: '25',
       }),
 
     search: z.string().optional().openapi({

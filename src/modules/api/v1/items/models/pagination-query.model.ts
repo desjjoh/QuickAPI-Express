@@ -15,7 +15,7 @@ export const ItemPaginationQuerySchema = PaginationQuerySchema.extend({
     .preprocess(value => {
       if (value === undefined || value === null || value === '') return undefined;
       const n = Number(value);
-      return Number.isFinite(n) ? n : undefined;
+      return Number.isFinite(n) ? n : value;
     }, z.number().int().positive().optional())
     .openapi({
       description: 'Minimum price filter',
@@ -26,7 +26,7 @@ export const ItemPaginationQuerySchema = PaginationQuerySchema.extend({
     .preprocess(value => {
       if (value === undefined || value === null || value === '') return undefined;
       const n = Number(value);
-      return Number.isFinite(n) ? n : undefined;
+      return Number.isFinite(n) ? n : value;
     }, z.number().int().positive().optional())
     .openapi({
       description: 'Maximum price filter',

@@ -11,7 +11,12 @@ const require = createRequire(import.meta.url);
 const pkgPath = path.join(rootPath, 'package.json');
 const pkg = require(pkgPath);
 
-const tcpPort = z.coerce.number().int().min(1).max(65_535);
+const numericPort = z.preprocess(
+  value => (typeof value === 'string' && value.trim() === '' ? Number.NaN : value),
+  z.coerce.number().int().min(0).max(65_535),
+);
+const tcpPort = numericPort.refine(port => port > 0, 'Port must be between 1 and 65535');
+const requiredDatabaseValue = z.string().trim().min(1);
 const EnvSchema = z
   .object({
     APP_NAME: z.string().default(pkg.name),
@@ -23,14 +28,14 @@ const EnvSchema = z
       )
       .default(pkg.version),
     NODE_ENV: z.enum(['development', 'test', 'production']),
-    PORT: z.coerce.number(),
+    PORT: numericPort,
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
 
-    DB_HOST: z.string(),
+    DB_HOST: requiredDatabaseValue,
     DB_PORT: tcpPort,
-    DB_USER: z.string(),
-    DB_PASSWORD: z.string(),
-    DB_DATABASE: z.string(),
+    DB_USER: requiredDatabaseValue,
+    DB_PASSWORD: requiredDatabaseValue,
+    DB_DATABASE: requiredDatabaseValue,
   })
   .refine(({ NODE_ENV, PORT }) => NODE_ENV === 'test' || PORT !== 0, {
     message: 'PORT must be between 1 and 65535 outside the test environment',
