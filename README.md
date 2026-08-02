@@ -109,6 +109,12 @@ runs pending migrations. Apply migrations as an explicit preparation step before
 npm run migration:run
 npm run dev
 
+# Integration/E2E setup uses an isolated, disposable MySQL schema and runs migrations.
+# The wrapper always removes its containers and ephemeral storage, even after a failure.
+npm run test:integration
+npm run test:e2e
+
+
 # Test setup (with NODE_ENV=test and the test database environment loaded)
 npm run migration:run
 npm test
@@ -176,6 +182,11 @@ This ensures stable behavior inside containers and orchestrators.
 | `npm run lint`                                      | Run ESLint on entire project                                |
 | `npm run lint:fix`                                  | Automatically fix linting issues                            |
 | `npm run format`                                    | Check formatting using Prettier                             |
+| `npm run test:db:safety`                            | Validate destructive test database safety guards            |
+| `npm run test:infra:up`                             | Start and health-check isolated test MySQL                  |
+| `npm run test:infra:prepare`                        | Apply migrations to the disposable test schema              |
+| `npm run test:infra:logs`                           | Show isolated test MySQL logs                               |
+| `npm run test:infra:down`                           | Remove test containers and their ephemeral volumes          |
 | `npm run format:fix`                                | Format all files using Prettier                             |
 | `npm run migration:generate -- src/migrations/Name` | Generate a reviewed migration from entity changes           |
 | `npm run migration:run`                             | Apply all pending migrations                                |
