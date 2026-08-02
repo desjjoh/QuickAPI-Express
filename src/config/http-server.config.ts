@@ -41,6 +41,8 @@ export function createApp(): express.Express {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
+  app.use(securityHeaders);
+
   app.use(
     createRateLimitMiddleware({
       windowMs: 60_000,
@@ -83,8 +85,6 @@ export function createApp(): express.Express {
       maxAge: 86_400,
     }),
   );
-
-  app.use(securityHeaders);
 
   app.use(
     bodyLimitMiddleware({

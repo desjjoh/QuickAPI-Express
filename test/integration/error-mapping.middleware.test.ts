@@ -25,6 +25,14 @@ describe('error mapping', () => {
     expect(warn).toHaveBeenCalledWith({ status: 409, code: 'DUPLICATE' }, 'conflict');
     warn.mockRestore();
   });
+  it('preserves an explicitly public server-side HttpError message', async () => {
+    const log = vi.spyOn(logger, 'error').mockImplementation(() => logger);
+    const response = await request(app(new HttpError(503, 'temporarily unavailable'))).get('/');
+    expect(response.status).toBe(503);
+    expect(response.body.message).toBe('temporarily unavailable');
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
   it('formats Zod failures as client errors', async () => {
     const failure = z.object({ count: z.number() }).safeParse({ count: 'no' });
     if (failure.success) throw new Error('expected failure');

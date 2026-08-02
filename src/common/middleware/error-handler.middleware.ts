@@ -34,10 +34,12 @@ export const errorHandler: ErrorRequestHandler = (
 
   let status: number = 500;
   let message: string = INTERNAL_SERVER_ERROR;
+  let isPublicError: boolean = false;
 
   if (err instanceof HttpError) {
     status = err.status;
     message = err.message;
+    isPublicError = true;
   } else if (isMalformedJsonError(err)) {
     status = 400;
     message = MALFORMED_JSON_ERROR;
@@ -62,7 +64,7 @@ export const errorHandler: ErrorRequestHandler = (
       error?.message ?? 'Unexpected non-error value thrown',
     );
 
-    message = INTERNAL_SERVER_ERROR;
+    if (!isPublicError) message = INTERNAL_SERVER_ERROR;
   }
 
   res.status(status).json(toErrorDTO(status, message));
