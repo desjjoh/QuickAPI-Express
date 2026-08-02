@@ -190,3 +190,38 @@ jobs:
             migration.log
             mysql.log
           if-no-files-found: warn
+
+  deployment-gate:
+    name: Deployment gate
+    if: always()
+    needs:
+      - format-lint
+      - type-build
+      - unit-coverage
+      - integration
+      - e2e
+      - migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all validation jobs to succeed
+        env:
+          FORMAT_LINT_RESULT: ${{ needs.format-lint.result }}
+          TYPE_BUILD_RESULT: ${{ needs.type-build.result }}
+          UNIT_COVERAGE_RESULT: ${{ needs.unit-coverage.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          MIGRATION_RESULT: ${{ needs.migration.result }}
+        run: |
+          for result in \
+            "$FORMAT_LINT_RESULT" \
+            "$TYPE_BUILD_RESULT" \
+            "$UNIT_COVERAGE_RESULT" \
+            "$INTEGRATION_RESULT" \
+            "$E2E_RESULT" \
+            "$MIGRATION_RESULT"; do
+            if [ "$result" != "success" ]; then
+              echo "A required validation job did not succeed."
+              exit 1
+            fi
+          done
