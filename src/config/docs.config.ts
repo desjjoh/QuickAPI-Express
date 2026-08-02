@@ -18,8 +18,6 @@ registerSystemPaths(registry);
 // V1 routes
 registerItemPaths(registry);
 
-// V2 routes
-
 export const generator = new OpenApiGeneratorV3(registry.definitions);
 
 export const openApiSpec = generator.generateDocument({

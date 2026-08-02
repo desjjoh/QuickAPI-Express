@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 import { z, ZodError } from 'zod';
 import { createRequire } from 'module';
 import path from 'path';

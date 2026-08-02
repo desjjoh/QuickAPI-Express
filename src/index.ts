@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 import { logger } from '@/config/logger.config';
 import { connectDatabase, destroyServer, isServerInitialized } from '@/config/database.config';
 

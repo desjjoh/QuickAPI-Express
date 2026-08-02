@@ -99,6 +99,38 @@ The service runs with:
 
 Your API automatically connects through TypeORM.
 
+### Database migrations
+
+Schema changes are migration-only: application startup never synchronizes entities or automatically
+runs pending migrations. Apply migrations as an explicit preparation step before starting the API:
+
+```bash
+# Local development (after starting MySQL)
+npm run migration:run
+npm run dev
+
+# Test setup (with NODE_ENV=test and the test database environment loaded)
+npm run migration:run
+npm test
+
+# Deployment setup (run once for each release, before starting new application instances)
+npm ci
+npm run migration:run
+npm run build
+npm start
+```
+
+Generate a migration after changing an entity, then review the generated SQL before applying it:
+
+```bash
+npm run migration:generate -- src/migrations/DescribeSchemaChange
+npm run migration:validate
+```
+
+Use `npm run migration:revert` to roll back the most recently applied migration. Migration commands
+use the same validated database environment variables as the application and must be run with the
+environment for the intended database.
+
 ---
 
 ## API Documentation
@@ -131,23 +163,27 @@ This ensures stable behavior inside containers and orchestrators.
 
 ## Development Scripts
 
-| Script                 | Description                                                 |
-| ---------------------- | ----------------------------------------------------------- |
-| `npm run dev`          | Start development server with hot reload (TSX + watch mode) |
-| `npm run build`        | Compile TypeScript and rewrite path aliases                 |
-| `npm run typecheck`    | Type-check the project without emitting build output        |
-| `npm run clean`        | Remove `dist` and rebuild the project                       |
-| `npm run rebuild`      | Clean, build, and start application                         |
-| `npm run start`        | Start compiled server in production mode                    |
-| `npm run test`         | Run Vitest in interactive mode                              |
-| `npm run coverage`     | Run full test suite with coverage reporting                 |
-| `npm run lint`         | Run ESLint on entire project                                |
-| `npm run lint:fix`     | Automatically fix linting issues                            |
-| `npm run format`       | Check formatting using Prettier                             |
-| `npm run format:fix`   | Format all files using Prettier                             |
-| `npm run docker:build` | Build Docker image                                          |
-| `npm run docker:run`   | Run built Docker container locally                          |
-| `npm run docker:up`    | Start local stack via Docker Compose (API + MySQL)          |
+| Script                                              | Description                                                 |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| `npm run dev`                                       | Start development server with hot reload (TSX + watch mode) |
+| `npm run build`                                     | Compile TypeScript and rewrite path aliases                 |
+| `npm run typecheck`                                 | Type-check the project without emitting build output        |
+| `npm run clean`                                     | Remove `dist` and rebuild the project                       |
+| `npm run rebuild`                                   | Clean, build, and start application                         |
+| `npm run start`                                     | Start compiled server in production mode                    |
+| `npm run test`                                      | Run Vitest in interactive mode                              |
+| `npm run coverage`                                  | Run full test suite with coverage reporting                 |
+| `npm run lint`                                      | Run ESLint on entire project                                |
+| `npm run lint:fix`                                  | Automatically fix linting issues                            |
+| `npm run format`                                    | Check formatting using Prettier                             |
+| `npm run format:fix`                                | Format all files using Prettier                             |
+| `npm run migration:generate -- src/migrations/Name` | Generate a reviewed migration from entity changes           |
+| `npm run migration:run`                             | Apply all pending migrations                                |
+| `npm run migration:revert`                          | Revert the most recently applied migration                  |
+| `npm run migration:validate`                        | Show migration status and validate migration loading        |
+| `npm run docker:build`                              | Build Docker image                                          |
+| `npm run docker:run`                                | Run built Docker container locally                          |
+| `npm run docker:up`                                 | Start local stack via Docker Compose (API + MySQL)          |
 
 ---
 

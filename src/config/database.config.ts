@@ -1,7 +1,11 @@
 import { DataSource } from 'typeorm';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-import { env, isDev } from '@/config/env.config';
+import { env } from '@/config/env.config';
 import entities from '@/modules/domain/entities';
+
+const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -11,7 +15,9 @@ export const AppDataSource = new DataSource({
   password: env.DB_PASSWORD,
   database: env.DB_DATABASE,
   entities: entities,
-  synchronize: isDev,
+  migrations: [path.join(configDirectory, '../migrations/*{.ts,.js}')],
+  synchronize: false,
+  migrationsRun: false,
   logging: false,
 });
 

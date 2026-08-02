@@ -19,6 +19,11 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
+    "typeorm": "node --import tsx ./node_modules/typeorm/cli.js",
+    "migration:generate": "npm run typeorm -- migration:generate src/migrations/SchemaUpdate -d src/config/database.config.ts",
+    "migration:run": "npm run typeorm -- migration:run -d src/config/database.config.ts",
+    "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.config.ts",
+    "migration:validate": "npm run typeorm -- migration:generate src/migrations/SchemaValidation -d src/config/database.config.ts --check",
     "docker:build": "docker build -t quickapi-express .",
     "docker:run": "docker run -dp 3000:3000 quickapi-express",
     "docker:up": "docker compose up --build"
