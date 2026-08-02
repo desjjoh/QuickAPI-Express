@@ -57,7 +57,7 @@ jobs:
       - run: npm run test:unit:coverage
       - name: Upload unit results and coverage
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: unit-results-and-coverage
           path: |
@@ -98,7 +98,7 @@ jobs:
         run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1
       - name: Upload integration results and logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: integration-results-and-logs
           path: |
@@ -139,7 +139,7 @@ jobs:
         run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1
       - name: Upload E2E results and logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-results-and-logs
           path: |
@@ -181,7 +181,7 @@ jobs:
         run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1
       - name: Upload migration logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: migration-logs
           path: |
