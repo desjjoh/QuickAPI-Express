@@ -1,9 +1,10 @@
-import { AppDataSource } from '@/config/database.config';
-import { Item } from '@/database/entities/item.entity';
-
-import type { ListDTOParams } from '@/library/models/pagination.model';
 import type { SelectQueryBuilder } from 'typeorm';
-import type { Base } from '@/library/models/base.model';
+
+import { AppDataSource } from '@/config/database.config';
+import type { ListDTOParams } from '@/common/library/models/pagination.model';
+import type { Base } from '@/common/library/models/base.model';
+
+import { ItemEntity } from '../entities/_item.entity';
 
 type ItemPaginationQuery = {
   page: number;
@@ -19,24 +20,24 @@ type ItemPaginationQuery = {
 };
 
 export class ItemRepository {
-  private repo = AppDataSource.getRepository(Item);
+  private repo = AppDataSource.getRepository(ItemEntity);
 
   // CREATE
-  public async create(data: Base<Item>): Promise<Item> {
-    const item: Item = this.repo.create(data);
+  public async create(data: Base<ItemEntity>): Promise<ItemEntity> {
+    const item: ItemEntity = this.repo.create(data);
     await this.repo.save(item);
 
     return item;
   }
 
   // READ
-  public async get_all(): Promise<Item[]> {
+  public async get_all(): Promise<ItemEntity[]> {
     return this.repo.find({
       order: { createdAt: 'DESC' },
     });
   }
 
-  async get_many(payload: ItemPaginationQuery): Promise<ListDTOParams<Item>> {
+  async get_many(payload: ItemPaginationQuery): Promise<ListDTOParams<ItemEntity>> {
     const page: number = payload.page;
     const limit: number = payload.limit;
 
@@ -45,7 +46,7 @@ export class ItemRepository {
     const order: 'ASC' | 'DESC' = payload.order ?? 'ASC';
     const sort: 'createdAt' | 'name' | 'price' = payload.sort ?? 'price';
 
-    const query: SelectQueryBuilder<Item> = this.repo
+    const query: SelectQueryBuilder<ItemEntity> = this.repo
       .createQueryBuilder('item')
       .andWhere('item.name LIKE :pattern')
       .orWhere('item.description LIKE :pattern', { pattern: `%${search.trim()}%` });
@@ -67,22 +68,22 @@ export class ItemRepository {
     return { items, total, page, limit };
   }
 
-  async get_by_id(id: string): Promise<Item | null> {
-    const item: Item | null = await this.repo.findOne({ where: { id } });
+  async get_by_id(id: string): Promise<ItemEntity | null> {
+    const item: ItemEntity | null = await this.repo.findOne({ where: { id } });
 
     return item;
   }
 
   // UPDATE
-  async update(obj: Item, data: Partial<Base<Item>>): Promise<Item> {
-    const merged: Item = this.repo.merge(obj, data);
+  async update(obj: ItemEntity, data: Partial<Base<ItemEntity>>): Promise<ItemEntity> {
+    const merged: ItemEntity = this.repo.merge(obj, data);
     await this.repo.save(merged);
 
     return this.repo.findOneOrFail({ where: { id: obj.id } });
   }
 
   // DELETE
-  async remove(obj: Item): Promise<Item> {
+  async remove(obj: ItemEntity): Promise<ItemEntity> {
     return this.repo.remove(obj);
   }
 }

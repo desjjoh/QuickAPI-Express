@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node --watch --import tsx src/index.ts",
     "build": "tsc -p tsconfig.build.json && tsc-alias",
+    "typecheck": "tsc --noEmit",
     "clean": "rimraf dist && npm run build",
     "start": "node dist/index.js",
     "rebuild": "npm run build && npm start",

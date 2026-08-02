@@ -1,8 +1,8 @@
 import { Entity, Column } from 'typeorm';
-import { BaseEntity } from './base.entity';
+import { BaseEntity } from './_base.entity';
 
 @Entity('items')
-export class Item extends BaseEntity {
+export class ItemEntity extends BaseEntity {
   @Column({ type: 'text' })
   public readonly name!: string;
 

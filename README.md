@@ -9,7 +9,6 @@ Implements consistent architecture patterns from the **QuickAPI family** — inc
 
 - **TypeScript-first architecture** with strict linting & type safety
 - **TypeORM (MySQL)** as the primary database layer
-- **SQLite support** still available via TypeORM configuration
 - **Vitest** for unit, integration, and E2E testing
 - **Zod validation** for schema-driven request & response validation
 - **OpenAPI (Swagger)** auto-generation using `zod-to-openapi`
@@ -27,23 +26,29 @@ Implements consistent architecture patterns from the **QuickAPI family** — inc
 
 ```bash
 src/
- ├── config/                          # Environment, logging, OpenAPI, database config
- ├── controllers/                     # Route-level orchestration (thin controllers)
- ├── database/
- │   ├── entities/                    # ORM models
- │   └── repositories/                # Database abstraction layer
- ├── docs/                            # OpenAPI path + schema registration
- ├── exceptions/                      # Typed HTTP errors
- ├── handlers/                        # Process-level handlers
- ├── helpers/                         # Small utilities shared across modules
- ├── mappers/                         # Entity → DTO transformers
- ├── middleware/                      # Express middleware (validation, errors, security)
- ├── models/                          # Zod schemas + TypeScript models
- ├── routes/                          # Express Router modules
- ├── services/                        # Business logic layer
- ├── store/                           # Context and scoped shared state
- ├── types/                           # Global/shared TypeScript types
- └── index.ts                         # Application entrypoint
+ ├── common/                          # Cross-cutting application concerns
+ │   ├── exceptions/                  # Typed HTTP errors
+ │   ├── handlers/                    # Lifecycle and process-level handlers
+ │   ├── helpers/                     # Small reusable utilities
+ │   ├── middleware/                  # Validation, observability, and security middleware
+ │   ├── routes/                      # Shared fallback routes
+ │   └── store/                       # Request-scoped state
+ ├── config/                          # Environment, logging, OpenAPI, HTTP, and database config
+ ├── library/                         # Shared API contracts
+ │   ├── models/                      # Reusable Zod schemas and TypeScript models
+ │   └── types/                       # Global/shared TypeScript declarations
+ ├── server/                          # Feature modules
+ │   ├── api/                         # Versioned API modules and routes
+ │   │   ├── v1/items/                # Item controllers, docs, and models
+ │   │   └── v2/                      # V2 API routes
+ │   ├── domain/                      # Database and data manipulation layer
+ │   │   ├── entities/                # TypeORM entities
+ │   │   └── repositories/            # Database repositories
+ │   └── system/                      # Root, health, readiness, and info endpoints
+ │       ├── controllers/
+ │       ├── docs/
+ │       └── models/
+ └── index.ts                         # Application bootstrap entry point
 ```
 
 ---
@@ -59,9 +64,8 @@ Vitest is fully configured with support for:
 
 ```bash
 test/
- ├── unit/            # Pure logic tests (services, helpers)
- ├── integration/     # DB + repository tests
- └── e2e/             # Full HTTP API tests through the real server
+ ├── setup.ts                         # Test environment initialization
+ └── server.test.ts                   # HTTP server lifecycle test
 ```
 
 ---
@@ -112,7 +116,8 @@ Swagger UI is available at:
 http://localhost:8080/docs
 ```
 
-Definitions are generated from Zod with path registration in `/src/docs`.
+Definitions are generated from Zod schemas with path registration in the feature modules under
+`src/server/api` and `src/server/system`.
 
 ---
 
@@ -135,9 +140,9 @@ This ensures stable behavior inside containers and orchestrators.
 | Script                 | Description                                                 |
 | ---------------------- | ----------------------------------------------------------- |
 | `npm run dev`          | Start development server with hot reload (TSX + watch mode) |
-| `npm run dev:debug`    | Start development server in Node.js inspector/debug mode    |
 | `npm run build`        | Compile TypeScript and rewrite path aliases                 |
-| `npm run clean`        | Remove `dist` directory                                     |
+| `npm run typecheck`    | Type-check the project without emitting build output        |
+| `npm run clean`        | Remove `dist` and rebuild the project                       |
 | `npm run rebuild`      | Clean, build, and start application                         |
 | `npm run start`        | Start compiled server in production mode                    |
 | `npm run test`         | Run Vitest in interactive mode                              |
