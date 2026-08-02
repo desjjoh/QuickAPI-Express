@@ -1,5 +1,8 @@
 import { OutputValidationError } from '@/common/exceptions/http.exception';
 import { z } from 'zod';
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+
+extendZodWithOpenApi(z);
 
 export const ErrorResponseSchema = z
   .object({

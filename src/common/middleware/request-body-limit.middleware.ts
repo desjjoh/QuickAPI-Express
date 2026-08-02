@@ -1,15 +1,20 @@
+import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { RequestBodyTooLargeError } from '@/common/exceptions/http.exception';
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    rawBody?: Buffer;
-  }
-}
+import { RequestBodyTooLargeError } from '@/common/exceptions/http.exception';
 
 interface BodyLimitOptions {
   defaultLimit: number;
   routeOverrides?: Array<[string, number]>;
+}
+
+function isEntityTooLargeError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'type' in error &&
+    error.type === 'entity.too.large'
+  );
 }
 
 export function bodyLimitMiddleware(options: BodyLimitOptions) {
@@ -25,39 +30,25 @@ export function bodyLimitMiddleware(options: BodyLimitOptions) {
 
   return function (req: Request, res: Response, next: NextFunction) {
     const limit: number = selectLimit(req.path);
-    let total: number = 0;
-    const chunks: Buffer[] = [];
-    let limitExceeded: boolean = false;
 
-    req.on('data', (chunk: Buffer) => {
-      if (limitExceeded || res.headersSent) return;
+    res.setHeader('X-Body-Limit-Bytes', String(limit));
+    res.setHeader('X-Body-Remaining-Bytes', String(limit));
 
-      total += chunk.length;
+    const jsonParser = express.json({
+      limit,
+      verify: (_req, _res, body) => {
+        res.setHeader('X-Body-Remaining-Bytes', String(Math.max(limit - body.length, 0)));
+      },
+    });
 
-      if (total > limit) {
-        limitExceeded = true;
-
-        req.pause();
-
-        res.setHeader('X-Body-Limit-Bytes', String(limit));
+    jsonParser(req, res, error => {
+      if (isEntityTooLargeError(error)) {
         res.setHeader('X-Body-Remaining-Bytes', '0');
-
         next(new RequestBodyTooLargeError(limit));
         return;
       }
 
-      chunks.push(chunk);
+      next(error);
     });
-
-    req.on('end', () => {
-      if (limitExceeded || res.headersSent) return;
-
-      const remaining: number = Math.max(limit - total, 0);
-
-      res.setHeader('X-Body-Limit-Bytes', String(limit));
-      res.setHeader('X-Body-Remaining-Bytes', String(remaining));
-    });
-
-    next();
   };
 }

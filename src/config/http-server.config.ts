@@ -93,8 +93,6 @@ export function createApp(): express.Express {
     }),
   );
 
-  app.use(express.json());
-
   app.use('/', api_routes);
 
   app.use('/docs', ...swaggerDocs);
