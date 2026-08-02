@@ -161,7 +161,7 @@ describe('real item API', () => {
     });
 
     const listed = await request(server).get(
-      '/api/items?page=1&limit=5&search=Replacement&sort=price&order=asc&min_price=100&max_price=150',
+      '/api/v1/items?page=1&limit=5&search=Replacement&sort=price&order=asc&min_price=100&max_price=150',
     );
     expect(listed.status).toBe(200);
     expect(listed.body).toMatchObject({ total: 1, page: 1, limit: 5, data: [replaced.body] });

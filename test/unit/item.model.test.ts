@@ -18,4 +18,17 @@ describe('toItemDTO', () => {
     expect(dto.price).toBe(99_999_999.99);
     expect(typeof dto.price).toBe('number');
   });
+
+  it('preserves a null description returned by the database', () => {
+    const entity = {
+      id: 'A1b2C3d4E5f6G7h8',
+      name: 'Item without a description',
+      price: '12.50',
+      description: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    } as ItemEntity;
+
+    expect(toItemDTO(entity)).toMatchObject({ description: null, price: 12.5 });
+  });
 });

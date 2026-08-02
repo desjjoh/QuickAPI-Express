@@ -20,7 +20,7 @@ export const ItemSchema = BaseSchema.extend({
     description: 'Monetary cost of the item, expressed as a positive number.',
     example: 49.99,
   }),
-  description: z.string().max(500).optional().openapi({
+  description: z.string().max(500).nullable().optional().openapi({
     description: 'Optional descriptive text providing additional item details.',
     example: 'A finely crafted steel blade.',
   }),

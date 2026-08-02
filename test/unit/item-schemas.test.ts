@@ -26,6 +26,7 @@ describe('item input schemas', () => {
 
   it.each([
     [undefined, true],
+    [null, true],
     ['', true],
     ['a'.repeat(500), true],
     ['a'.repeat(501), false],
