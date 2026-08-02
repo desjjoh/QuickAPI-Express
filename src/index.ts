@@ -1,8 +1,6 @@
 import { logger } from '@/config/logger.config';
-import { connectDatabase, destroyServer, isServerInitialized } from '@/config/database.config';
-
 import { LC } from '@/common/handlers/lifecycle.handler';
-import { registerServer, closeServer, isServerRunning } from '@/config/http-server.config';
+import { createApplicationServices } from '@/application';
 
 import { env, isDev } from '@/config/env.config';
 
@@ -10,20 +8,7 @@ async function bootstrap(): Promise<void> {
   const mode = isDev ? 'development' : 'production';
   logger.info(`Booting ${env.APP_NAME} v${env.APP_VERSION} (${mode}) — Node.js ${process.version}`);
 
-  LC.register([
-    {
-      name: 'database (typeorm)',
-      start: connectDatabase,
-      stop: destroyServer,
-      check: isServerInitialized,
-    },
-    {
-      name: 'http server (express)',
-      start: registerServer,
-      stop: closeServer,
-      check: isServerRunning,
-    },
-  ]);
+  LC.register(createApplicationServices());
 
   await LC.startup();
 

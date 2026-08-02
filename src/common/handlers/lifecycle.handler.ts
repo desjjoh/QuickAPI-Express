@@ -2,7 +2,7 @@ import { performance } from 'node:perf_hooks';
 
 import { logger } from '@/config/logger.config';
 
-type LifecycleService = {
+export type LifecycleService = {
   name: string;
   check?: () => Promise<boolean> | boolean;
   start?: () => Promise<void> | void;
