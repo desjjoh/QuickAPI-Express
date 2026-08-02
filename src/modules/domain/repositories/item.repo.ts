@@ -1,4 +1,4 @@
-import type { SelectQueryBuilder } from 'typeorm';
+import { Brackets, type SelectQueryBuilder } from 'typeorm';
 
 import { AppDataSource } from '@/config/database.config';
 import type { ListDTOParams } from '@/common/library/models/pagination.model';
@@ -45,11 +45,18 @@ export class ItemRepository {
 
     const order: 'ASC' | 'DESC' = payload.order ?? 'ASC';
     const sort: 'createdAt' | 'name' | 'price' = payload.sort ?? 'price';
+    const sortColumn: Record<typeof sort, string> = {
+      createdAt: 'item.createdAt',
+      name: 'item.name',
+      price: 'item.price',
+    };
 
-    const query: SelectQueryBuilder<ItemEntity> = this.repo
-      .createQueryBuilder('item')
-      .andWhere('item.name LIKE :pattern')
-      .orWhere('item.description LIKE :pattern', { pattern: `%${search.trim()}%` });
+    const query: SelectQueryBuilder<ItemEntity> = this.repo.createQueryBuilder('item').andWhere(
+      new Brackets(searchQuery => {
+        searchQuery.where('item.name LIKE :pattern').orWhere('item.description LIKE :pattern');
+      }),
+      { pattern: `%${search.trim()}%` },
+    );
 
     if (payload.min_price !== undefined) {
       query.andWhere('item.price >= :min', { min: payload.min_price });
@@ -60,7 +67,7 @@ export class ItemRepository {
     }
 
     const [items, total] = await query
-      .orderBy({ [sort]: order })
+      .orderBy({ [sortColumn[sort]]: order })
       .skip((payload.page - 1) * limit)
       .take(limit)
       .getManyAndCount();

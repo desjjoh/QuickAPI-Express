@@ -16,7 +16,7 @@ export const ItemSchema = BaseSchema.extend({
     description: 'Name of the item. Must be between 1 and 120 characters.',
     example: 'Iron Sword',
   }),
-  price: z.coerce.number().positive().openapi({
+  price: z.coerce.number().positive().max(99_999_999.99).openapi({
     description: 'Monetary cost of the item, expressed as a positive number.',
     example: 49.99,
   }),

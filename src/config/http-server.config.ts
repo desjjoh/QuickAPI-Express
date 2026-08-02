@@ -116,10 +116,18 @@ export const registerServer = async (): Promise<void> => {
   instance = server;
 };
 
-export const closeServer = (): void => {
+export const closeServer = async (): Promise<void> => {
   if (!instance) return;
 
-  instance.close();
+  const server = instance;
+
+  await new Promise<void>((resolve, reject) => {
+    server.close(err => {
+      if (instance === server) instance = null;
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 };
 
 export const isServerRunning = (): boolean => {

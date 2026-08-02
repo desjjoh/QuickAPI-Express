@@ -32,10 +32,10 @@ async function bootstrap(): Promise<void> {
   logger.info(`HTTP server running on port ${env.PORT} — http://localhost:${env.PORT}`);
 }
 
-bootstrap().catch((err: unknown) => {
+void bootstrap().catch(async (err: unknown) => {
   const error = err instanceof Error ? err : new Error(String(err));
   logger.error({ stack: error.stack }, `Error — ${error.message}`);
 
-  logger.fatal('Fatal error during application bootstrap — forcing exit');
-  process.exit(1);
+  logger.fatal('Fatal error during application bootstrap — initiating shutdown');
+  await LC.shutdown(1);
 });

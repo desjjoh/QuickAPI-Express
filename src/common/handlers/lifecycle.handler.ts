@@ -11,7 +11,7 @@ type LifecycleService = {
 
 class LifecycleHandler {
   private static startupServices: LifecycleService[] = [];
-  private static shutdownServices: LifecycleService[] = [];
+  private static initializedServices: LifecycleService[] = [];
 
   private static startupStarted: boolean = false;
   private static startupCompleted: boolean = false;
@@ -29,7 +29,15 @@ class LifecycleHandler {
   public static async areAllServicesHealthy(): Promise<boolean> {
     for (const service of this.startupServices) {
       if (service.check) {
-        const healthy: boolean = await service.check();
+        let healthy: boolean;
+
+        try {
+          healthy = await service.check();
+        } catch (err: unknown) {
+          const error: Error = err instanceof Error ? err : new Error(String(err));
+          logger.error({ stack: error.stack }, `Health check failed → ${service.name}`);
+          return false;
+        }
 
         if (!healthy) return false;
       }
@@ -44,13 +52,12 @@ class LifecycleHandler {
 
     for (const service of services) {
       this.startupServices.push(service);
-      this.shutdownServices.unshift(service);
     }
 
     ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
       process.once(sig, () => {
         logger.warn(`${sig} received — initiating shutdown`);
-        this.shutdown();
+        void this.shutdown();
       });
     });
 
@@ -65,15 +72,15 @@ class LifecycleHandler {
       const error: Error = err instanceof Error ? err : new Error(String(err));
       logger.error({ stack: error.stack }, `Uncaught exception — ${error.message}`);
 
-      logger.fatal('Fatal error caused by uncaught exception — forcing exit');
-      process.exit(1);
+      logger.fatal('Fatal error caused by uncaught exception — initiating shutdown');
+      void this.shutdown(1);
     });
 
     process.on('unhandledRejection', (reason: unknown) => {
       logger.error({ reason }, `Unhandled rejection — ${String(reason)}`);
 
-      logger.fatal('Fatal error handling promise rejection — forcing exit');
-      process.exit(1);
+      logger.fatal('Fatal error handling promise rejection — initiating shutdown');
+      void this.shutdown(1);
     });
 
     process.on('exit', (code: number) => {
@@ -88,11 +95,18 @@ class LifecycleHandler {
     const start: number = performance.now();
     logger.debug(`Starting services…`);
 
-    for (const service of this.startupServices) {
-      if (!service.start) continue;
+    try {
+      for (const service of this.startupServices) {
+        if (!service.start) continue;
 
-      await service.start();
-      logger.debug(`Service started → ${service.name}`);
+        await service.start();
+        this.initializedServices.push(service);
+        logger.debug(`Service started → ${service.name}`);
+      }
+    } catch (err: unknown) {
+      this.startupStarted = false;
+      await this.stopInitializedServices();
+      throw err;
     }
 
     this.startupCompleted = true;
@@ -101,31 +115,47 @@ class LifecycleHandler {
     logger.debug(`All services started in ${duration}ms`);
   };
 
-  public static shutdown = async (): Promise<void> => {
+  private static async stopInitializedServices(): Promise<boolean> {
+    let cleanupFailed: boolean = false;
+
+    while (this.initializedServices.length > 0) {
+      const service = this.initializedServices.pop();
+      if (!service?.stop) continue;
+
+      try {
+        await service.stop();
+        logger.debug(`Service stopped ← ${service.name}`);
+      } catch (err: unknown) {
+        cleanupFailed = true;
+        const error: Error = err instanceof Error ? err : new Error(String(err));
+        logger.error({ stack: error.stack }, `Error — ${error.message}`);
+        logger.warn(`Failed to stop service → ${service.name}`);
+      }
+    }
+
+    return cleanupFailed;
+  }
+
+  public static shutdown = async (exitCode: number = 0): Promise<void> => {
+    const currentExitCode: number =
+      typeof process.exitCode === 'number' ? process.exitCode : Number(process.exitCode ?? 0);
+    process.exitCode = Math.max(currentExitCode, exitCode);
     if (this.shutdownStarted) return;
     this.shutdownStarted = true;
+    this.startupCompleted = false;
 
     const start: number = performance.now();
 
     logger.debug('Stopping services…');
 
-    for (const service of this.shutdownServices) {
-      try {
-        if (!service.stop) continue;
-        await service.stop();
-        logger.debug(`Service stopped ← ${service.name}`);
-      } catch (err: unknown) {
-        const error: Error = err instanceof Error ? err : new Error(String(err));
-        logger.error({ stack: error.stack }, `Error — ${error.message}`);
-
-        logger.warn(`Failed to stop service → ${service.name}`);
-      }
+    const cleanupFailed: boolean = await this.stopInitializedServices();
+    if (cleanupFailed) {
+      process.exitCode = 1;
+      logger.error('Shutdown completed with cleanup failures');
     }
 
     const duration: string = (performance.now() - start).toFixed(2);
     logger.debug(`Shutdown completed in ${duration}ms`);
-
-    process.exit(0);
   };
 }
 
