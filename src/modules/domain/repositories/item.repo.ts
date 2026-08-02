@@ -91,7 +91,10 @@ export class ItemRepository {
 
   // DELETE
   async remove(obj: ItemEntity): Promise<ItemEntity> {
-    return this.repo.remove(obj);
+    const removed: ItemEntity = this.repo.create({ ...obj });
+    await this.repo.remove(obj);
+
+    return removed;
   }
 }
 

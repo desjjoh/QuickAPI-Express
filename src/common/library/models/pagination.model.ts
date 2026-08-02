@@ -43,10 +43,15 @@ export const PaginationQuerySchema = z
       example: 'sword',
     }),
 
-    order: z.enum(['ASC', 'DESC']).optional().openapi({
-      description: 'Sort direction applied to the chosen sort field.',
-      example: 'ASC',
-    }),
+    order: z
+      .preprocess(
+        value => (typeof value === 'string' ? value.toUpperCase() : value),
+        z.enum(['ASC', 'DESC']).optional(),
+      )
+      .openapi({
+        description: 'Sort direction applied to the chosen sort field.',
+        example: 'ASC',
+      }),
   })
   .openapi('ItemQuery', {
     description: 'Query parameters used for pagination, filtering, and sorting item collections.',

@@ -44,7 +44,13 @@ describe('ItemRepository with migrated MySQL', () => {
     expect(replaced).toMatchObject({ name: 'New', description: null, price: '20.00' });
 
     const removed = await repo.remove(replaced);
-    expect(removed.id).toBeUndefined();
+    expect(removed).toMatchObject({
+      id: created.id,
+      name: 'New',
+      description: null,
+      price: '20.00',
+    });
+
     expect(await repo.get_by_id(created.id)).toBeNull();
   });
 
