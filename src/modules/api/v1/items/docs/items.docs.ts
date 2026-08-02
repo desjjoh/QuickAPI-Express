@@ -1,8 +1,8 @@
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
 import { apiPath } from '@/common/helpers/path.helpers';
-import { ErrorResponseSchema } from '@/library/models/exception.model';
-import { IdParams } from '@/library/models/parameters.model';
+import { ErrorResponseSchema } from '@/common/library/models/exception.model';
+import { IdParams } from '@/common/library/models/parameters.model';
 
 import { CreateItemSchema } from '../models/item-create.model';
 import { UpdateItemSchema } from '../models/item-update.model';

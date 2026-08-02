@@ -8,13 +8,12 @@ extendZodWithOpenApi(z);
 export const RootResponseSchema = z
   .object({
     message: z.string().openapi({
-      description:
-        'Indicates whether the application has successfully completed startup and is ready to accept traffic.',
-      example: true,
+      description: 'A welcome message returned by the application root endpoint.',
+      example: 'Hello World! Welcome to Express.js',
     }),
   })
-  .openapi('ReadyResponse', {
-    description: 'Readiness check response used for load balancers and orchestration systems.',
+  .openapi('RootResponse', {
+    description: 'Welcome response returned by the application root endpoint.',
   });
 
 export type RootResponse = z.infer<typeof RootResponseSchema>;

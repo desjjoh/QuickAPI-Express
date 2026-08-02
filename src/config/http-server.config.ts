@@ -1,5 +1,5 @@
 import express from 'express';
-
+import path from 'node:path';
 import type { Server } from 'node:http';
 
 import { env } from '@/config/env.config';
@@ -27,6 +27,12 @@ let instance: Server | null = null;
 
 export function createApp(): express.Express {
   const app = express();
+
+  app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.resolve('public/favicon.ico'));
+  });
+
+  app.use(express.static('public'));
 
   app.use(metricsMiddleware);
   app.use(requestContextMiddleware);

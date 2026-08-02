@@ -1,9 +1,9 @@
 import express, { Router } from 'express';
 
-import system from './controllers/system.controller';
+import items from './controllers/items.controller';
 
 const router: Router = express.Router();
 
-router.use('/', system);
+router.use('/items', items);
 
 export default router;

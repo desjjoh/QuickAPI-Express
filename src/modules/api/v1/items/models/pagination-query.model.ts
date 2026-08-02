@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
-import { PaginationQuerySchema } from '@/library/models/pagination.model';
+import { PaginationQuerySchema } from '@/common/library/models/pagination.model';
 
 extendZodWithOpenApi(z);
 

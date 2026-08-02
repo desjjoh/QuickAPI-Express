@@ -4,6 +4,6 @@ import items from './items/controllers/items.controller';
 
 const v1: Router = express.Router();
 
-v1.use('/items', items);
+v1.use('/', items);
 
 export default v1;

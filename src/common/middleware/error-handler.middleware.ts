@@ -5,7 +5,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 import { logger } from '@/config/logger.config';
 import { HttpError } from '@/common/exceptions/http.exception';
-import { toErrorDTO } from '@/library/models/exception.model';
+import { toErrorDTO } from '@/common/library/models/exception.model';
 
 function formatZodIssues(issues: z.core.$ZodIssue[]): string {
   return issues

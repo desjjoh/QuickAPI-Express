@@ -32,7 +32,7 @@ async function bootstrap(): Promise<void> {
   logger.info(`HTTP server running on port ${env.PORT} — http://localhost:${env.PORT}`);
 }
 
-bootstrap().catch(async (err: unknown) => {
+bootstrap().catch((err: unknown) => {
   const error = err instanceof Error ? err : new Error(String(err));
   logger.error({ stack: error.stack }, `Error — ${error.message}`);
 

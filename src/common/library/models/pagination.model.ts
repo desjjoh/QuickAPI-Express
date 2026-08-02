@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
-import type { LocalParsedQs } from '@/library/types/request';
+import type { LocalParsedQs } from '@/common/library/types/request';
 
 extendZodWithOpenApi(z);
 

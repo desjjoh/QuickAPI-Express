@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
-import type { Item } from '@/database/entities/item.entity';
-import { BaseSchema } from '@/library/models/base.model';
+import type { ItemEntity } from '@/modules/domain/entities/_item.entity';
+import { BaseSchema } from '@/common/library/models/base.model';
 import { OutputValidationError } from '@/common/exceptions/http.exception';
-import { PaginatedResponseSchema, type ListDTOParams } from '@/library/models/pagination.model';
+import {
+  PaginatedResponseSchema,
+  type ListDTOParams,
+} from '@/common/library/models/pagination.model';
 
 extendZodWithOpenApi(z);
 
@@ -31,7 +34,7 @@ export const ItemResponseSchema = ItemSchema.openapi('ItemResponse', {
 
 export type ItemResponse = z.infer<typeof ItemResponseSchema>;
 
-export function toItemDTO(entity: Item): ItemResponse {
+export function toItemDTO(entity: ItemEntity): ItemResponse {
   const { success, error, data } = ItemResponseSchema.safeParse(entity);
 
   if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
@@ -48,7 +51,7 @@ export const ItemListResponseSchema = PaginatedResponseSchema(ItemResponseSchema
 
 export type ItemListResponse = z.infer<typeof ItemListResponseSchema>;
 
-export function toItemListDTO(payload: ListDTOParams<Item>): ItemListResponse {
+export function toItemListDTO(payload: ListDTOParams<ItemEntity>): ItemListResponse {
   const { success, error, data } = ItemListResponseSchema.safeParse({
     ...payload,
     data: payload.items.map(toItemDTO),
