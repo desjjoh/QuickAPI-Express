@@ -1,0 +1,192 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 24
+  NODE_ENV: test
+  PORT: 0
+  LOG_LEVEL: silent
+  DB_HOST: 127.0.0.1
+  DB_PORT: 3306
+  DB_USER: quickapi_test_user
+  DB_PASSWORD: quickapi_test_password
+  TEST_DB_ALLOWED_HOSTS: 127.0.0.1
+
+jobs:
+  format-lint:
+    name: Formatting and linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check:format-lint
+
+  type-build:
+    name: Type-check and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check:type-build
+
+  unit-coverage:
+    name: Unit tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit:coverage
+      - name: Upload unit results and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-results-and-coverage
+          path: |
+            reports/junit.xml
+            coverage/
+          if-no-files-found: warn
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_DATABASE: quickapi_integration_disposable_test
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: quickapi_integration_disposable_test
+          MYSQL_USER: quickapi_test_user
+          MYSQL_PASSWORD: quickapi_test_password
+          MYSQL_ROOT_PASSWORD: quickapi_test_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uquickapi_test_user -pquickapi_test_password --silent"
+          --health-interval=2s --health-timeout=3s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:infra:prepare
+      - run: npm run test:integration:run
+      - name: Capture MySQL logs after failure
+        if: failure()
+        run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1
+      - name: Upload integration results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-results-and-logs
+          path: |
+            reports/junit.xml
+            mysql.log
+          if-no-files-found: warn
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_DATABASE: quickapi_e2e_disposable_test
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: quickapi_e2e_disposable_test
+          MYSQL_USER: quickapi_test_user
+          MYSQL_PASSWORD: quickapi_test_password
+          MYSQL_ROOT_PASSWORD: quickapi_test_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uquickapi_test_user -pquickapi_test_password --silent"
+          --health-interval=2s --health-timeout=3s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:infra:prepare
+      - run: npm run test:e2e:run
+      - name: Capture MySQL logs after failure
+        if: failure()
+        run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1
+      - name: Upload E2E results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-and-logs
+          path: |
+            reports/junit.xml
+            mysql.log
+          if-no-files-found: warn
+
+  migration:
+    name: Migration validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DB_DATABASE: quickapi_migration_disposable_test
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: quickapi_migration_disposable_test
+          MYSQL_USER: quickapi_test_user
+          MYSQL_PASSWORD: quickapi_test_password
+          MYSQL_ROOT_PASSWORD: quickapi_test_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uquickapi_test_user -pquickapi_test_password --silent"
+          --health-interval=2s --health-timeout=3s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:infra:prepare
+      - name: Validate migration state
+        run: npm run migration:validate 2>&1 | tee migration.log
+      - name: Capture MySQL logs after failure
+        if: failure()
+        run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1
+      - name: Upload migration logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-logs
+          path: |
+            migration.log
+            mysql.log
+          if-no-files-found: warn

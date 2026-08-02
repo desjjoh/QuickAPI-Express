@@ -20,6 +20,12 @@ Implements consistent architecture patterns from the **QuickAPI family** — inc
 - **Modular folder structure** optimized for long-term maintainability
 - **Built-in pagination, sorting, and filtering utilities** through shared query schemas
 
+## Prerequisites
+
+- Node.js 24 LTS (the version recorded in `.nvmrc` and used by CI and Docker)
+- npm, using the committed lockfile with `npm ci`
+- Docker with Compose for database-backed tests
+
 ---
 
 ## Folder Structure
@@ -178,6 +184,10 @@ This ensures stable behavior inside containers and orchestrators.
 | `npm run rebuild`                                   | Clean, build, and start application                         |
 | `npm run start`                                     | Start compiled server in production mode                    |
 | `npm run test`                                      | Run Vitest in interactive mode                              |
+| `npm run test:unit:coverage`                        | Run unit tests with coverage evidence                       |
+| `npm run test:integration`                          | Run integration tests against disposable MySQL              |
+| `npm run test:e2e`                                  | Run E2E tests against disposable MySQL                      |
+| `npm run test:migration`                            | Validate migrations against disposable MySQL                |
 | `npm run coverage`                                  | Run full test suite with coverage reporting                 |
 | `npm run lint`                                      | Run ESLint on entire project                                |
 | `npm run lint:fix`                                  | Automatically fix linting issues                            |

@@ -14,3 +14,9 @@ trap 'exit 143' TERM
 npm run test:infra:up
 npm run test:infra:prepare
 npm exec -- vitest run --project "$project"
+
+if [[ "$project" == 'migration' ]]; then
+  npm run migration:validate
+else
+  npm run "test:${project}:run"
+fi
