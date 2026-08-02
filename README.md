@@ -30,24 +30,18 @@ src/
  │   ├── exceptions/                  # Typed HTTP errors
  │   ├── handlers/                    # Lifecycle and process-level handlers
  │   ├── helpers/                     # Small reusable utilities
+ │   ├── library/                     # Shared API contracts
  │   ├── middleware/                  # Validation, observability, and security middleware
  │   ├── routes/                      # Shared fallback routes
  │   └── store/                       # Request-scoped state
  ├── config/                          # Environment, logging, OpenAPI, HTTP, and database config
- ├── library/                         # Shared API contracts
- │   ├── models/                      # Reusable Zod schemas and TypeScript models
- │   └── types/                       # Global/shared TypeScript declarations
- ├── server/                          # Feature modules
+ ├── modules/                          # Feature modules
  │   ├── api/                         # Versioned API modules and routes
  │   │   ├── v1/items/                # Item controllers, docs, and models
  │   │   └── v2/                      # V2 API routes
  │   ├── domain/                      # Database and data manipulation layer
  │   │   ├── entities/                # TypeORM entities
  │   │   └── repositories/            # Database repositories
- │   └── system/                      # Root, health, readiness, and info endpoints
- │       ├── controllers/
- │       ├── docs/
- │       └── models/
  └── index.ts                         # Application bootstrap entry point
 ```
 
