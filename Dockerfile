@@ -1,6 +1,5 @@
 # Node.js 24.11.1 LTS on Alpine Linux 3.22.
-# Keep the tag in this comment readable; the digest is the immutable image identity.
-ARG NODE_IMAGE=node:24.11.1-alpine3.22@sha256:fbf64b797273fd4c7fc350d8bd57e69601f87d296b5d9a518f81326992c94a23
+ARG NODE_IMAGE=node:24.11.1-alpine3.22
 
 # ---------- build stage ----------
 FROM ${NODE_IMAGE} AS build
@@ -33,4 +32,4 @@ COPY --from=production-dependencies --chown=node:node /app/package.json /app/pac
 USER node
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
