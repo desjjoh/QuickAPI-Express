@@ -22,7 +22,7 @@ Implements consistent architecture patterns from the **QuickAPI family** — inc
 
 ## Prerequisites
 
-- Node.js 24 LTS (the version recorded in `.nvmrc` and used by CI and Docker)
+- Node.js 24.11.1 LTS (the supported version recorded in `.nvmrc` and used by Docker)
 - npm, using the committed lockfile with `npm ci`
 - Docker with Compose for database-backed tests
 
@@ -90,6 +90,11 @@ Each variable is validated using Zod with strict SemVer enforcement for `APP_VER
 ---
 
 ## Docker & Database Setup
+
+The production image uses an immutable Node.js 24.11.1 LTS Alpine base and a three-stage build. Only
+compiled JavaScript, lockfile-derived production dependencies, and package metadata reach the final
+non-root image. The Compose MySQL 8.4.6 LTS image is also digest-pinned. Update each readable version
+comment and its digest together when upgrading.
 
 A **Docker Compose MySQL service** is included for local development:
 

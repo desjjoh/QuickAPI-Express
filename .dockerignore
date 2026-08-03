@@ -1,8 +1,36 @@
-node_modules
-npm-debug.log
-Dockerfile*
+# Version control and editor state
 .git
 .gitignore
+.gitattributes
+.github
+.vscode
+
+# Local configuration and secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets
+secrets/**
+
+# Dependencies, compiled output, tests, and development tooling
+node_modules
 dist
+test
 coverage
+reports
+*.log
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+eslint.config.js
+prettier.config.cjs
+vitest.config.ts
+tsconfig*.tsbuildinfo
+
+# Build and package-manager caches
+.cache
+.npm
+.yarn
+*.tgz
