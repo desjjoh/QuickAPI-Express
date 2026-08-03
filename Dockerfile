@@ -1,6 +1,4 @@
-# Node.js 24.11.1 LTS on Alpine Linux 3.22. Keep the tag readable while the
-# registry-confirmed digest makes the base used by every stage immutable.
-ARG NODE_IMAGE=node:24.11.1-alpine3.22@sha256:2867d550cf9d8bb50059a0fff528741f11a84d985c732e60e19e8e75c7239c43
+ARG NODE_IMAGE=node:24.11.1-alpine3.22
 
 # ---------- build stage ----------
 FROM ${NODE_IMAGE} AS build
