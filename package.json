@@ -45,7 +45,8 @@
     "migration:validate": "npm run typeorm -- migration:generate src/migrations/SchemaValidation -d src/config/database.config.ts --check",
     "docker:build": "docker build -t quickapi-express .",
     "docker:run": "docker run -dp 3000:3000 quickapi-express",
-    "docker:up": "docker compose up --build"
+    "docker:up": "docker compose up --build",
+    "smoke:production": "bash .github/scripts/ci-smoke.sh"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.1.0",

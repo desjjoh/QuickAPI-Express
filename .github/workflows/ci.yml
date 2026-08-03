@@ -189,6 +189,15 @@ jobs:
             mysql.log
           if-no-files-found: warn
 
+  production-smoke:
+    name: Production image smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Exercise the production container topology
+        run: npm run smoke:production
+
   deployment-gate:
     name: Deployment gate
     if: always()
@@ -199,6 +208,7 @@ jobs:
       - integration
       - e2e
       - migration
+      - production-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -210,6 +220,7 @@ jobs:
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
           MIGRATION_RESULT: ${{ needs.migration.result }}
+          PRODUCTION_SMOKE_RESULT: ${{ needs.production-smoke.result }}
         run: |
           for result in \
             "$FORMAT_LINT_RESULT" \
@@ -217,7 +228,8 @@ jobs:
             "$UNIT_COVERAGE_RESULT" \
             "$INTEGRATION_RESULT" \
             "$E2E_RESULT" \
-            "$MIGRATION_RESULT"; do
+            "$MIGRATION_RESULT" \
+            "$PRODUCTION_SMOKE_RESULT"; do
             if [ "$result" != "success" ]; then
               echo "A required validation job did not succeed."
               exit 1
