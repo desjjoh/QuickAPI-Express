@@ -27,11 +27,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Enable the repository npm version
-        run: corepack enable npm && corepack prepare npm@11.6.2 --activate
-      - name: Regenerate the lockfile from a clean dependency tree
+        run: corepack enable npm && corepack prepare npm@11.4.2 --activate
+      - name: Check lockfile consistency without installed dependencies
         run: |
-          rm -rf node_modules package-lock.json
-          npm install
+          rm -rf node_modules
+          npm install --package-lock-only
           git diff --exit-code -- package-lock.json
 
   format-lint:

@@ -5,6 +5,7 @@ ARG NODE_IMAGE=node:24.11.1-alpine3.22@sha256:2867d550cf9d8bb50059a0fff528741f11
 # ---------- build stage ----------
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
+RUN corepack enable npm && corepack prepare npm@11.4.2 --activate
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -16,6 +17,7 @@ RUN npm run build
 # ---------- production dependency stage ----------
 FROM ${NODE_IMAGE} AS production-dependencies
 WORKDIR /app
+RUN corepack enable npm && corepack prepare npm@11.4.2 --activate
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
@@ -24,6 +26,7 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 FROM ${NODE_IMAGE} AS runtime
 
 WORKDIR /app
+RUN corepack enable npm && corepack prepare npm@11.4.2 --activate
 RUN apk add --no-cache curl
 
 COPY --from=build --chown=node:node /app/dist ./dist
