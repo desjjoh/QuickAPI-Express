@@ -26,6 +26,9 @@ npm ci
 ```text
 src/
 ├── index.ts                         process entry point
+├── api/
+│   ├── app/                         root and operational endpoints
+│   └── v1/items/                    item routes, controller, request models, and OpenAPI definitions
 ├── application.ts                   lifecycle service graph
 ├── config/                          environment, HTTP, database, logging, metrics, docs, routes
 ├── migrations/                      TypeORM migrations
@@ -37,10 +40,10 @@ src/
 │   ├── middleware/                  request policy, telemetry, validation, and error middleware
 │   ├── routes/                      final not-found handler
 │   └── store/                       request context storage
-└── modules/
-    ├── api/app/                     root and operational endpoints
-    ├── api/v1/items/                item routes, controller, request models, and OpenAPI definitions
-    └── domain/                      TypeORM entities and repository
+└── database/
+    ├── entities/
+    ├── migrations/
+    └── repositories/
 
 test/
 ├── unit/
