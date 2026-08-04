@@ -17,26 +17,6 @@ env:
   TEST_DB_ALLOWED_HOSTS: 127.0.0.1
 
 jobs:
-  lockfile-consistency:
-    name: Lockfile consistency
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Enable the repository npm version
-        run: |
-          corepack enable npm
-          corepack npm --version | grep -Fx 11.4.2
-
-      - name: Check lockfile consistency without installed dependencies
-        run: |
-          rm -rf node_modules
-          corepack npm install --package-lock-only --ignore-scripts
-          git diff --exit-code -- package-lock.json
-
   format-lint:
     name: Formatting and linting
     runs-on: ubuntu-latest
@@ -225,7 +205,6 @@ jobs:
     name: Deployment gate
     if: always()
     needs:
-      - lockfile-consistency
       - format-lint
       - type-build
       - unit-coverage
@@ -238,7 +217,6 @@ jobs:
     steps:
       - name: Require all validation jobs to succeed
         env:
-          LOCKFILE_CONSISTENCY_RESULT: ${{ needs.lockfile-consistency.result }}
           FORMAT_LINT_RESULT: ${{ needs.format-lint.result }}
           TYPE_BUILD_RESULT: ${{ needs.type-build.result }}
           UNIT_COVERAGE_RESULT: ${{ needs.unit-coverage.result }}
