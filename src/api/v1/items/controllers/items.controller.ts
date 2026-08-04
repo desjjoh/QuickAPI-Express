@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 
-import { itemRepository as repo } from '@/modules/domain/repositories/item.repo';
-import type { ItemEntity } from '@/modules/domain/entities/_item.entity';
+import { itemRepository as repo } from '@/database/repositories/item.repo';
+import type { ItemEntity } from '@/database/entities/_item.entity';
 
 import type { ValidatedRequest } from '@/common/library/types/request';
 import { NotFoundError } from '@/common/exceptions/http.exception';

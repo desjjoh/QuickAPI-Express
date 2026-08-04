@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ItemEntity } from '@/modules/domain/entities/_item.entity';
-import { toItemDTO } from '@/modules/api/v1/items/models/item.model';
+import type { ItemEntity } from '@/database/entities/_item.entity';
+import { toItemDTO } from '@/api/v1/items/models/item.model';
 
 describe('toItemDTO', () => {
   it('converts the maximum MySQL DECIMAL(10, 2) string to the documented number', () => {

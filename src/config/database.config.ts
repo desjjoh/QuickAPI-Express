@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { env } from '@/config/env.config';
-import entities from '@/modules/domain/entities';
+import entities from '@/database/entities';
 
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,7 +15,7 @@ export const AppDataSource = new DataSource({
   password: env.DB_PASSWORD,
   database: env.DB_DATABASE,
   entities: entities,
-  migrations: [path.join(configDirectory, '../migrations/*{.ts,.js}')],
+  migrations: [path.join(configDirectory, '../database/migrations/*{.ts,.js}')],
   synchronize: false,
   migrationsRun: false,
   logging: false,

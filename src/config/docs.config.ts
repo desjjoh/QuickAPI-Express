@@ -6,8 +6,8 @@ import { env } from '@/config/env.config';
 
 import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
-import { registerSystemPaths } from '@/modules/api/app/docs/system.docs';
-import { registerItemPaths } from '@/modules/api/v1/items/docs/items.docs';
+import { registerSystemPaths } from '@/api/app/docs/system.docs';
+import { registerItemPaths } from '@/api/v1/items/docs/items.docs';
 
 const registry = new OpenAPIRegistry();
 

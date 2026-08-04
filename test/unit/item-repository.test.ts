@@ -30,8 +30,8 @@ vi.mock('@/config/database.config', () => ({
   AppDataSource: { getRepository: vi.fn(() => mocks.repo) },
 }));
 
-import { ItemEntity } from '@/modules/domain/entities/_item.entity';
-import { ItemRepository } from '@/modules/domain/repositories/item.repo';
+import { ItemEntity } from '@/database/entities/_item.entity';
+import { ItemRepository } from '@/database/repositories/item.repo';
 
 const repository = new ItemRepository();
 

@@ -1,9 +1,9 @@
-import type { ItemEntity } from '@/modules/domain/entities/_item.entity';
+import type { ItemEntity } from '@/database/entities/_item.entity';
 import { describe, expect, it } from 'vitest';
 import { OutputValidationError } from '@/common/exceptions/http.exception';
-import { toItemDTO, toItemListDTO } from '@/modules/api/v1/items/models/item.model';
-import { toRootDTO } from '@/modules/api/app/models/root.model';
-import { toReadyDTO } from '@/modules/api/app/models/ready.model';
+import { toItemDTO, toItemListDTO } from '@/api/v1/items/models/item.model';
+import { toRootDTO } from '@/api/app/models/root.model';
+import { toReadyDTO } from '@/api/app/models/ready.model';
 
 const item = {
   id: 'A1b2C3d4E5f6G7h8',

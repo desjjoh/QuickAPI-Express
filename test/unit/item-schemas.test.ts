@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CreateItemSchema } from '@/modules/api/v1/items/models/item-create.model';
-import { UpdateItemSchema } from '@/modules/api/v1/items/models/item-update.model';
-import { ItemPaginationQuerySchema } from '@/modules/api/v1/items/models/pagination-query.model';
+import { CreateItemSchema } from '@/api/v1/items/models/item-create.model';
+import { UpdateItemSchema } from '@/api/v1/items/models/item-update.model';
+import { ItemPaginationQuerySchema } from '@/api/v1/items/models/pagination-query.model';
 
 describe('item input schemas', () => {
   it('accepts creation and partial update payloads', () => {

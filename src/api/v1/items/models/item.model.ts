@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
-import type { ItemEntity } from '@/modules/domain/entities/_item.entity';
+import type { ItemEntity } from '@/database/entities/_item.entity';
 import { BaseSchema } from '@/common/library/models/base.model';
 import { OutputValidationError } from '@/common/exceptions/http.exception';
 import {

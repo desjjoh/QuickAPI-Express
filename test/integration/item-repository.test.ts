@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { ItemRepository } from '@/modules/domain/repositories/item.repo';
+import { ItemRepository } from '@/database/repositories/item.repo';
 import {
   connectTestDatabase,
   disconnectTestDatabase,

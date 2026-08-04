@@ -90,11 +90,11 @@ export default defineConfig({
           statements: 40,
           branches: 25,
         },
-        'src/modules/api/v1/items/models/*.ts': {
+        'src/api/v1/items/models/*.ts': {
           lines: 40,
           statements: 40,
         },
-        'src/modules/domain/{entities,repositories}/**/*.ts': {
+        'src/database/{entities,repositories}/**/*.ts': {
           lines: 20,
           statements: 20,
         },

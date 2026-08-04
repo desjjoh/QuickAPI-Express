@@ -232,10 +232,10 @@ from `package.json`:
 | `quality`              | `npm run format && npm run lint && npm run typecheck && npm run test -- --run && npm run test:coverage && npm run build`                        |
 | `format:fix`           | `prettier --write .`                                                                                                                            |
 | `typeorm`              | `node --import tsx ./node_modules/typeorm/cli.js`                                                                                               |
-| `migration:generate`   | `npm run typeorm -- migration:generate src/migrations/SchemaUpdate -d src/config/database.config.ts`                                            |
+| `migration:generate`   | `npm run typeorm -- migration:generate src/database/migrations/SchemaUpdate -d src/config/database.config.ts`                                   |
 | `migration:run`        | `npm run typeorm -- migration:run -d src/config/database.config.ts`                                                                             |
 | `migration:revert`     | `npm run typeorm -- migration:revert -d src/config/database.config.ts`                                                                          |
-| `migration:validate`   | `npm run typeorm -- migration:generate src/migrations/SchemaValidation -d src/config/database.config.ts --check`                                |
+| `migration:validate`   | `npm run typeorm -- migration:generate src/database/migrations/SchemaValidation -d src/config/database.config.ts --check`                       |
 | `docker:build`         | `docker build -t quickapi-express .`                                                                                                            |
 | `docker:run`           | `docker run -dp 3000:3000 quickapi-express`                                                                                                     |
 | `docker:up`            | `docker compose up --build`                                                                                                                     |
@@ -287,14 +287,6 @@ containers, volumes, orphans, and temporary files. It requires `docker`, Docker 
 5. end-to-end tests with the same isolated preparation;
 6. migration drift validation against its own disposable schema; and
 7. digest validation plus the production image smoke test.
-
-The final `deployment-gate` job uses `if: always()` and depends on every validation job. It is the
-explicit status intended for branch protection or a downstream deployment to require. At present,
-however, its shell loop also checks `LOCKFILE_CONSISTENCY_RESULT` without defining that environment
-variable or declaring a lockfile-consistency job. Consequently, the gate cannot pass as written even
-when its seven declared dependencies succeed. This is fail-closed behavior, not a successful release
-signal; fix the workflow before enabling deployment from the gate. This repository does not itself
-deploy an application.
 
 ## Releases and image publication
 
