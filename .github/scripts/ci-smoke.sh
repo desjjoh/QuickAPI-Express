@@ -50,7 +50,14 @@ trap cleanup EXIT INT TERM
 
 retry() {
   local attempts=$1 delay=$2 description=$3
-@@ -45,50 +61,53 @@ retry() {
+  shift 3
+  for ((attempt = 1; attempt <= attempts; attempt++)); do
+    if "$@"; then return 0; fi
+    sleep "$delay"
+  done
+  echo "Timed out waiting for ${description} after ${attempts} attempts" >&2
+  return 1
+}
 
 json_assert() {
   local file=$1 expression=$2
@@ -104,7 +111,28 @@ json_assert "$TMP_DIR/body" 'body.ready === true'
 
 # Security headers and the absence of Express implementation disclosure.
 grep -Eiq '^x-frame-options: DENY' "$TMP_DIR/headers"
-@@ -117,26 +136,26 @@ json_assert "$TMP_DIR/body" "body.total === 1 && body.data.some(item => item.id
+grep -Eiq '^x-content-type-options: nosniff' "$TMP_DIR/headers"
+grep -Eiq "^content-security-policy: .*default-src 'self'" "$TMP_DIR/headers"
+! grep -Eiq '^x-powered-by:' "$TMP_DIR/headers"
+
+# Principal create, read, update, list, and delete flow.
+status="$(request POST /api/v1/items "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' \
+  --data '{"name":"Production smoke item","price":19.95,"description":"container flow"}')"
+[[ "$status" == 201 ]]
+json_assert "$TMP_DIR/body" "typeof body.id === 'string' && body.id.length === 16 && body.name === 'Production smoke item'"
+ITEM_ID="$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1])).id" "$TMP_DIR/body")"
+
+status="$(request GET "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers")"
+[[ "$status" == 200 ]]
+json_assert "$TMP_DIR/body" "body.id === '${ITEM_ID}' && body.price === 19.95"
+status="$(request PATCH "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --data '{"price":24.5}')"
+[[ "$status" == 200 ]]
+json_assert "$TMP_DIR/body" 'body.price === 24.5'
+status="$(request GET '/api/v1/items?page=1&limit=10' "$TMP_DIR/body" "$TMP_DIR/headers")"
+[[ "$status" == 200 ]]
+json_assert "$TMP_DIR/body" "body.total === 1 && body.data.some(item => item.id === '${ITEM_ID}')"
 status="$(request DELETE "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers")"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.id === '${ITEM_ID}'"

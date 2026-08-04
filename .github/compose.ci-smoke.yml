@@ -1,0 +1,50 @@
+# services:
+#   mysql:
+#     image: mysql:8.4.6@sha256:9d3958e9c437542b8f73d7e55a125c03d476dec6450b9e92eddfa9d90b9f7416
+#     environment:
+#       MYSQL_DATABASE: quickapi_smoke
+#       MYSQL_USER: quickapi_smoke
+#       MYSQL_PASSWORD: quickapi_smoke_password
+#       MYSQL_ROOT_PASSWORD: quickapi_smoke_root_password
+#     healthcheck:
+#       test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent']
+#       interval: 2s
+#       timeout: 3s
+#       retries: 30
+#     volumes:
+#       - mysql-data:/var/lib/mysql
+
+#   migrate:
+#     image: ${SMOKE_IMAGE:?Set SMOKE_IMAGE to the production image under test}
+#     environment: &application-environment
+#       NODE_ENV: production
+#       PORT: 3000
+#       LOG_LEVEL: info
+#       DB_HOST: mysql
+#       DB_PORT: 3306
+#       DB_USER: quickapi_smoke
+#       DB_PASSWORD: quickapi_smoke_password
+#       DB_DATABASE: quickapi_smoke
+#     command:
+#       [
+#         'node',
+#         './node_modules/typeorm/cli.js',
+#         'migration:run',
+#         '-d',
+#         'dist/config/database.config.js',
+#       ]
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+
+#   api:
+#     image: ${SMOKE_IMAGE:?Set SMOKE_IMAGE to the production image under test}
+#     environment: *application-environment
+#     ports:
+#       - '127.0.0.1:${SMOKE_PORT:-33000}:3000'
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+
+# volumes:
+#   mysql-data:
