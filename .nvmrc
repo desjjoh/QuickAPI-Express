@@ -1,3 +1,1 @@
-# Vite 8 declares optional peers (including a newer esbuild) that QuickAPI does
-# not use directly. Do not auto-install optional peer dependencies for Vitest.
-legacy-peer-deps=true
+24
