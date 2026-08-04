@@ -1,221 +1,313 @@
 # QuickAPI-Express
 
-A modular, production-grade Express.js API template designed for rapid service creation and deployment.  
-Implements consistent architecture patterns from the **QuickAPI family** — including FastAPI, NestJS, and others — emphasizing scalability, observability, strict validation, and graceful shutdown behavior.
+QuickAPI-Express is a TypeScript and Express 5 API backed by MySQL through TypeORM. The repository
+contains an item CRUD API, operational endpoints, OpenAPI documentation, structured logging,
+request-policy middleware, explicit schema migrations, disposable database tests, and a production
+container smoke test. This document describes only the behavior currently implemented in the
+repository.
 
----
+## Runtime requirements
 
-## Features
+- **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.11.1`).
+- **Package manager:** `npm@11.4.2`, as declared by `packageManager` in `package.json`.
+- Use `npm ci` with the committed `package-lock.json`; do not substitute another package manager.
+- Docker with the Compose plugin is required for MySQL-backed tests and container validation.
 
-- **TypeScript-first architecture** with strict linting & type safety
-- **TypeORM (MySQL)** as the primary database layer
-- **Vitest** for unit, integration, and E2E testing
-- **Zod validation** for schema-driven request & response validation
-- **OpenAPI (Swagger)** auto-generation using `zod-to-openapi`
-- **Pino logging** with consistent colorized formatting
-- **Centralized error handling** with typed HTTP exceptions
-- **Graceful shutdown** via the SystemLifecycle utility
-- **Security middleware**: Helmet, CORS, compression, rate limiting
-- **Docker Compose MySQL database** included for local development
-- **Modular folder structure** optimized for long-term maintainability
-- **Built-in pagination, sorting, and filtering utilities** through shared query schemas
-
-## Prerequisites
-
-- Node.js 24.11.1 LTS (the supported version recorded in `.nvmrc` and used by Docker)
-- npm, using the committed lockfile with `npm ci`
-- Docker with Compose for database-backed tests
-
----
-
-## Folder Structure
+Install dependencies with:
 
 ```bash
+npm ci
+```
+
+## Architecture and execution paths
+
+### Source layout
+
+```text
 src/
- ├── common/                          # Cross-cutting application concerns
- │   ├── exceptions/                  # Typed HTTP errors
- │   ├── handlers/                    # Lifecycle and process-level handlers
- │   ├── helpers/                     # Small reusable utilities
- │   ├── library/                     # Shared API contracts
- │   ├── middleware/                  # Validation, observability, and security middleware
- │   ├── routes/                      # Shared fallback routes
- │   └── store/                       # Request-scoped state
- ├── config/                          # Environment, logging, OpenAPI, HTTP, and database config
- ├── modules/                          # Feature modules
- │   ├── api/                         # Versioned API modules and routes
- │   │   ├── v1/items/                # Item controllers, docs, and models
- │   │   └── v2/                      # V2 API routes
- │   ├── domain/                      # Database and data manipulation layer
- │   │   ├── entities/                # TypeORM entities
- │   │   └── repositories/            # Database repositories
- └── index.ts                         # Application bootstrap entry point
-```
+├── index.ts                         process entry point
+├── application.ts                   lifecycle service graph
+├── config/                          environment, HTTP, database, logging, metrics, docs, routes
+├── migrations/                      TypeORM migrations
+├── common/
+│   ├── exceptions/                  typed HTTP errors
+│   ├── handlers/                    startup and shutdown lifecycle
+│   ├── helpers/                     shared helpers
+│   ├── library/                     shared response/query models
+│   ├── middleware/                  request policy, telemetry, validation, and error middleware
+│   ├── routes/                      final not-found handler
+│   └── store/                       request context storage
+└── modules/
+    ├── api/app/                     root and operational endpoints
+    ├── api/v1/items/                item routes, controller, request models, and OpenAPI definitions
+    └── domain/                      TypeORM entities and repository
 
----
-
-## Testing Structure
-
-Vitest is fully configured with support for:
-
-- ESM
-- TypeScript
-- Alias resolution
-- Isolated environment setup
-
-```bash
 test/
- ├── setup.ts                         # Test environment initialization
- └── server.test.ts                   # HTTP server lifecycle test
+├── unit/
+├── integration/
+├── e2e/
+└── helpers/database/                disposable-MySQL orchestration and safety guard
 ```
 
----
+There is one HTTP process and one TypeORM `DataSource`; this is not a generated multi-service or
+multi-version application. Routes currently comprise the application/operational routes and the
+`/api/v1/items` resource.
 
-## Environment Variables (`.env`)
+### Startup path
 
-```bash
+1. Importing configuration loads `.env` through `dotenv/config`, validates the complete environment,
+   and stops immediately on invalid or missing values.
+2. `src/index.ts` registers the service graph with the lifecycle handler.
+3. Startup initializes MySQL/TypeORM first and then creates the Express listener. A database failure
+   therefore prevents the HTTP port from opening.
+4. If a later service fails, already initialized services are stopped in reverse order. A bootstrap
+   failure is logged and shutdown sets a failing process exit code.
+
+Startup deliberately does **not** synchronize the schema or run migrations
+(`synchronize: false`, `migrationsRun: false`). Migrations are a separate operator/deployment step.
+
+### Request path
+
+Express serves the favicon/static files first. Application traffic then passes through metrics,
+request-context and HTTP logging, security headers and rate limiting, header sanitization/limits,
+request timeouts, content-type and method policies, CORS, and the body-size/parser middleware. It is
+then dispatched to application routes, `/api/v1`, or the documentation routes (`/docs`,
+`/docs-json`, and `/redoc`). Unknown routes become a typed 404.
+
+Controllers validate inputs with Zod models and call the domain repository, which uses TypeORM.
+Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON error responses.
+Unexpected failures are logged with request context and returned as a generic 500 so internal error
+details are not disclosed. The error envelope contains `status`, `message`, and `timestamp`.
+
+### Shutdown path
+
+The lifecycle handler installs one-shot `SIGINT` and `SIGTERM` handlers and fatal handlers for
+uncaught exceptions and unhandled rejections. Shutdown immediately makes readiness false, closes
+initialized services in reverse startup order (HTTP listener first, then TypeORM), waits for the
+listener to drain, and preserves a nonzero exit code for fatal or cleanup failures. Repeated shutdown
+requests are ignored. This is the path exercised by the production SIGTERM smoke check.
+
+## Configuration
+
+Create `.env` for local development. Every variable below is consumed at startup:
+
+```dotenv
 NODE_ENV=development
-
-PORT=8080
+PORT=3000
 LOG_LEVEL=debug
 
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=root
-DB_DATABASE=dev
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=app
+DB_PASSWORD=app
+DB_DATABASE=quickapi
+
+# Optional; defaults come from package.json
+APP_NAME=quickapi-express
+APP_VERSION=1.0.0
 ```
 
-Each variable is validated using Zod with strict SemVer enforcement for `APP_VERSION`.
+| Variable      | Validation and meaning                                                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`    | Required: exactly `development`, `test`, or `production`.                                                                                                 |
+| `PORT`        | Required integer from `0` through `65535`; `0` (an ephemeral test listener) is allowed only when `NODE_ENV=test`, otherwise the port must be `1`–`65535`. |
+| `LOG_LEVEL`   | Required: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`.                                                                                |
+| `DB_HOST`     | Required non-empty MySQL host.                                                                                                                            |
+| `DB_PORT`     | Required integer from `1` through `65535`.                                                                                                                |
+| `DB_USER`     | Required non-empty MySQL user.                                                                                                                            |
+| `DB_PASSWORD` | Required non-empty MySQL password.                                                                                                                        |
+| `DB_DATABASE` | Required non-empty MySQL database/schema name.                                                                                                            |
+| `APP_NAME`    | Optional; defaults to the package name.                                                                                                                   |
+| `APP_VERSION` | Optional; defaults to the package version and, when supplied, must be full SemVer.                                                                        |
 
----
+Values are trimmed/coerced where the schema specifies it. Validation prints all Zod issues to
+stderr and throws before database or HTTP startup; there are no silent database defaults.
 
-## Docker & Database Setup
+## Local MySQL, migrations, and development
 
-The production image uses an immutable Node.js 24.11.1 LTS Alpine base and a three-stage build. Only
-compiled JavaScript, lockfile-derived production dependencies, and package metadata reach the final
-non-root image. The Compose MySQL 8.4.6 LTS image is also digest-pinned. Update each readable version
-comment and its digest together when upgrading.
-
-A **Docker Compose MySQL service** is included for local development:
-
-```bash
-docker compose up --build
-```
-
-The service runs with:
-
-- MySQL 8.x
-- Persisted volume
-- Auto-created development database
-
-Your API automatically connects through TypeORM.
-
-### Database migrations
-
-Schema changes are migration-only: application startup never synchronizes entities or automatically
-runs pending migrations. Apply migrations as an explicit preparation step before starting the API:
+The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user
+`app`, password `app`, and a persistent `mysql_data` volume. Start the database, apply migrations
+explicitly using the `.env` above, and then start the source server:
 
 ```bash
-# Local development (after starting MySQL)
+docker compose up -d mysql
 npm run migration:run
 npm run dev
-
-# Integration/E2E setup uses an isolated, disposable MySQL schema and runs migrations.
-# The wrapper always removes its containers and ephemeral storage, even after a failure.
-npm run test:integration
-npm run test:e2e
-
-
-# Test setup (with NODE_ENV=test and the test database environment loaded)
-npm run migration:run
-npm test
-
-# Deployment setup (run once for each release, before starting new application instances)
-npm ci
-npm run migration:run
-npm run build
-npm start
 ```
 
-Generate a migration after changing an entity, then review the generated SQL before applying it:
+Alternatively, after migrations have been applied, `npm run docker:up` builds and starts both the API
+and MySQL. Compose waits for MySQL health before starting the API, but it does **not** apply
+migrations. `docker compose down` stops the stack while retaining data; use
+`docker compose down --volumes --remove-orphans` only when intentionally deleting the development
+database.
+
+After changing an entity, use the fixed generation destination, review the generated migration, and
+validate that no uncommitted schema difference remains:
 
 ```bash
-npm run migration:generate -- src/migrations/DescribeSchemaChange
+npm run migration:generate
+npm run migration:run
 npm run migration:validate
 ```
 
-Use `npm run migration:revert` to roll back the most recently applied migration. Migration commands
-use the same validated database environment variables as the application and must be run with the
-environment for the intended database.
+`npm run migration:revert` reverts the most recently applied migration. All TypeORM commands use the
+same validated environment as the application, so select the intended database before running them.
 
----
+## Tests and database safety
 
-## API Documentation
-
-OpenAPI documentation is always in sync with Zod schemas.  
-Swagger UI is available at:
+Unit tests need no container. Integration, end-to-end, and migration tests use the wrapper commands,
+which validate the target, start `docker-compose.test.yml`, wait for disposable MySQL, apply
+migrations, run the selected Vitest project/validation, and always execute teardown from an `EXIT`
+trap—even when startup or tests fail:
 
 ```bash
-http://localhost:8080/docs
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:migration
 ```
 
-Definitions are generated from Zod schemas with path registration in the feature modules under
-`src/server/api` and `src/server/system`.
+The disposable service binds only to `127.0.0.1:3308` and stores MySQL data in `tmpfs`. Destructive
+infrastructure commands first require all of the following:
 
----
+- `NODE_ENV` is exactly `test`;
+- `DB_DATABASE` matches `^[a-z0-9_]+_disposable_test$` and is not a protected generic name; and
+- `DB_HOST` is a recognized local/CI host, or is explicitly included in the comma-separated
+  `TEST_DB_ALLOWED_HOSTS` allowlist.
 
-## Lifecycle Management
+Set a safe test environment before using local infrastructure commands; for example,
+`DB_DATABASE=quickapi_disposable_test` with `DB_HOST=localhost`. `npm run test:infra:down` removes
+containers, anonymous resources, orphans, and volumes. Do not point these commands at development,
+staging, or production data.
 
-The SystemLifecycle utility handles:
+## Liveness, readiness, and operations
 
-- SIGINT / SIGTERM handling
-- Ordered service shutdown
-- Logging shutdown metrics
-- HTTP server closure
-- TypeORM connection teardown
+- `GET /health` is **process liveness**. It reports `alive`, uptime, and a timestamp; it does not query
+  MySQL and should answer while the process is alive and not shutting down.
+- `GET /ready` is **traffic readiness**. It returns 200 only after lifecycle startup completes and
+  every registered service check passes (the TypeORM data source is initialized and the HTTP server
+  is registered). Otherwise the normal error path returns 503. Readiness becomes false as soon as
+  graceful shutdown starts.
 
-This ensures stable behavior inside containers and orchestrators.
+Compose uses `/ready` for the API healthcheck. On `SIGTERM`, the process withdraws readiness, closes
+the HTTP listener, destroys the database connection, and exits cleanly after in-flight listener work
+drains.
 
----
+Additional implemented endpoints are `/info`, `/system`, `/metrics`, `/docs`, `/docs-json`, and
+`/redoc`.
 
-## Development Scripts
+## Package scripts
 
-| Script                                              | Description                                                 |
-| --------------------------------------------------- | ----------------------------------------------------------- |
-| `npm run dev`                                       | Start development server with hot reload (TSX + watch mode) |
-| `npm run build`                                     | Compile TypeScript and rewrite path aliases                 |
-| `npm run typecheck`                                 | Type-check the project without emitting build output        |
-| `npm run clean`                                     | Remove `dist` and rebuild the project                       |
-| `npm run rebuild`                                   | Clean, build, and start application                         |
-| `npm run start`                                     | Start compiled server in production mode                    |
-| `npm run test`                                      | Run Vitest in interactive mode                              |
-| `npm run test:unit:coverage`                        | Run unit tests with coverage evidence                       |
-| `npm run test:integration`                          | Run integration tests against disposable MySQL              |
-| `npm run test:e2e`                                  | Run E2E tests against disposable MySQL                      |
-| `npm run test:migration`                            | Validate migrations against disposable MySQL                |
-| `npm run coverage`                                  | Run full test suite with coverage reporting                 |
-| `npm run lint`                                      | Run ESLint on entire project                                |
-| `npm run lint:fix`                                  | Automatically fix linting issues                            |
-| `npm run format`                                    | Check formatting using Prettier                             |
-| `npm run test:db:safety`                            | Validate destructive test database safety guards            |
-| `npm run test:infra:up`                             | Start and health-check isolated test MySQL                  |
-| `npm run test:infra:prepare`                        | Apply migrations to the disposable test schema              |
-| `npm run test:infra:logs`                           | Show isolated test MySQL logs                               |
-| `npm run test:infra:down`                           | Remove test containers and their ephemeral volumes          |
-| `npm run format:fix`                                | Format all files using Prettier                             |
-| `npm run migration:generate -- src/migrations/Name` | Generate a reviewed migration from entity changes           |
-| `npm run migration:run`                             | Apply all pending migrations                                |
-| `npm run migration:revert`                          | Revert the most recently applied migration                  |
-| `npm run migration:validate`                        | Show migration status and validate migration loading        |
-| `npm run docker:build`                              | Build Docker image                                          |
-| `npm run docker:run`                                | Run built Docker container locally                          |
-| `npm run docker:up`                                 | Start local stack via Docker Compose (API + MySQL)          |
+The following is the complete implemented script surface, with command bodies reproduced exactly
+from `package.json`:
 
----
+| Script                 | Exact definition                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dev`                  | `node --watch --import tsx src/index.ts`                                                                                                        |
+| `build`                | `tsc -p tsconfig.build.json && tsc-alias`                                                                                                       |
+| `typecheck`            | `tsc --noEmit`                                                                                                                                  |
+| `clean`                | `rimraf dist && npm run build`                                                                                                                  |
+| `start`                | `node dist/index.js`                                                                                                                            |
+| `rebuild`              | `npm run build && npm start`                                                                                                                    |
+| `test`                 | `vitest`                                                                                                                                        |
+| `check:format-lint`    | `npm run format && npm run lint`                                                                                                                |
+| `check:type-build`     | `npm run typecheck && npm run build`                                                                                                            |
+| `test:unit`            | `vitest run --project unit`                                                                                                                     |
+| `test:unit:coverage`   | `vitest run --project unit --coverage`                                                                                                          |
+| `test:integration`     | `bash test/helpers/database/run-with-infra.sh integration`                                                                                      |
+| `test:integration:run` | `vitest run --project integration`                                                                                                              |
+| `test:e2e`             | `bash test/helpers/database/run-with-infra.sh e2e`                                                                                              |
+| `test:e2e:run`         | `vitest run --project e2e`                                                                                                                      |
+| `test:migration`       | `bash test/helpers/database/run-with-infra.sh migration`                                                                                        |
+| `test:db:safety`       | `node --env-file=.env.test --import tsx test/helpers/database/safety.ts`                                                                        |
+| `test:infra:up`        | `npm run test:db:safety && docker compose -f docker-compose.test.yml up -d --wait`                                                              |
+| `test:infra:prepare`   | `npm run test:db:safety && node --env-file=.env.test --import tsx ./node_modules/typeorm/cli.js migration:run -d src/config/database.config.ts` |
+| `test:infra:logs`      | `docker compose -f docker-compose.test.yml logs`                                                                                                |
+| `test:infra:down`      | `npm run test:db:safety && docker compose -f docker-compose.test.yml down --volumes --remove-orphans`                                           |
+| `test:coverage`        | `vitest run --coverage`                                                                                                                         |
+| `coverage`             | `vitest run --coverage`                                                                                                                         |
+| `lint`                 | `eslint .`                                                                                                                                      |
+| `lint:fix`             | `eslint . --fix`                                                                                                                                |
+| `format`               | `prettier --check .`                                                                                                                            |
+| `quality`              | `npm run format && npm run lint && npm run typecheck && npm run test -- --run && npm run test:coverage && npm run build`                        |
+| `format:fix`           | `prettier --write .`                                                                                                                            |
+| `typeorm`              | `node --import tsx ./node_modules/typeorm/cli.js`                                                                                               |
+| `migration:generate`   | `npm run typeorm -- migration:generate src/migrations/SchemaUpdate -d src/config/database.config.ts`                                            |
+| `migration:run`        | `npm run typeorm -- migration:run -d src/config/database.config.ts`                                                                             |
+| `migration:revert`     | `npm run typeorm -- migration:revert -d src/config/database.config.ts`                                                                          |
+| `migration:validate`   | `npm run typeorm -- migration:generate src/migrations/SchemaValidation -d src/config/database.config.ts --check`                                |
+| `docker:build`         | `docker build -t quickapi-express .`                                                                                                            |
+| `docker:run`           | `docker run -dp 3000:3000 quickapi-express`                                                                                                     |
+| `docker:up`            | `docker compose up --build`                                                                                                                     |
+| `smoke:production`     | `bash .github/scripts/ci-smoke.sh`                                                                                                              |
+
+The CI-oriented `check:*`, coverage, database-backed wrapper, migration validation, and production
+smoke commands are intentionally listed rather than implying nonexistent shortcuts.
+
+## Production image and smoke validation
+
+`Dockerfile` uses three stages: a full locked install compiles TypeScript; a second locked install
+retains production dependencies only; and the final Node 24.11.1 Alpine image receives `dist`, package
+metadata, and production `node_modules`. The runtime includes `curl`, exposes port 3000, runs as the
+non-root `node` user, and starts with `npm start`.
+
+Build the image:
+
+```bash
+npm run docker:build
+```
+
+`npm run docker:run` reproduces the package's minimal `docker run` command, but a real API run must
+also supply all required environment variables, a reachable migrated MySQL database, and typically a
+container network. For example, the Compose topology supplies those settings; apply migrations
+before bringing up its API as described above.
+
+The canonical production validation is:
+
+```bash
+npm run smoke:production
+```
+
+It validates Compose configuration, builds the production image once, starts isolated MySQL, runs
+the compiled migration CLI as a one-shot deployment step, starts the API, and verifies readiness and
+liveness, security headers, absence of `x-powered-by`, item CRUD, validation/content-type/not-found
+errors, and their JSON envelope. It then sends `SIGTERM` and verifies readiness withdrawal, listener
+drain, container exit, and exit code 0. Its trap prints service logs on failure and always removes
+containers, volumes, orphans, and temporary files. It requires `docker`, Docker Compose, `curl`, and
+`node`.
+
+## Continuous integration and deployment gate
+
+`.github/workflows/ci.yml` runs on every push and pull request with Node 24.11.1 and locked installs:
+
+1. formatting and linting (`check:format-lint`);
+2. type-check and production build (`check:type-build`);
+3. unit tests with coverage and uploaded reports;
+4. integration tests against a MySQL service after the safety check and migrations;
+5. end-to-end tests with the same isolated preparation;
+6. migration drift validation against its own disposable schema; and
+7. digest validation plus the production image smoke test.
+
+The final `deployment-gate` job uses `if: always()` and depends on every validation job. It is the
+explicit status intended for branch protection or a downstream deployment to require. At present,
+however, its shell loop also checks `LOCKFILE_CONSISTENCY_RESULT` without defining that environment
+variable or declaring a lockfile-consistency job. Consequently, the gate cannot pass as written even
+when its seven declared dependencies succeed. This is fail-closed behavior, not a successful release
+signal; fix the workflow before enabling deployment from the gate. This repository does not itself
+deploy an application.
+
+## Releases and image publication
+
+**Image publication is not applicable in the current repository.** There is no tag/release workflow,
+registry login, image push, provenance/signing step, or deployment workflow. A release therefore
+requires an external/manual process after the validation jobs succeed and the gate defect above is
+corrected. Add and document a dedicated, authenticated publication workflow before treating
+`quickapi-express` as a published image; the existing `docker:build` and smoke scripts create and
+validate local images only.
 
 ## License
 
-MIT License — free for personal and commercial use.
+[MIT](LICENSE)
 
 ---
 
