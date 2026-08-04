@@ -5,8 +5,7 @@ FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# The lockfile was created without installing optional peer dependencies.
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
@@ -17,7 +16,7 @@ FROM ${NODE_IMAGE} AS production-dependencies
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps --omit=dev --ignore-scripts && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ---------- runtime stage ----------
 FROM ${NODE_IMAGE} AS runtime
