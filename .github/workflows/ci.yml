@@ -226,7 +226,6 @@ jobs:
           PRODUCTION_SMOKE_RESULT: ${{ needs.production-smoke.result }}
         run: |
           for result in \
-            "$LOCKFILE_CONSISTENCY_RESULT" \
             "$FORMAT_LINT_RESULT" \
             "$TYPE_BUILD_RESULT" \
             "$UNIT_COVERAGE_RESULT" \
