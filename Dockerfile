@@ -1,6 +1,6 @@
 # Node.js 24.11.1 LTS on Alpine Linux 3.22.
 # Keep the tag in this comment readable; the digest is the immutable image identity.
-ARG NODE_IMAGE=node:24.11.1-alpine3.22@sha256:fbf64b797273fd4c7fc350d8bd57e69601f87d296b5d9a518f81326992c94a23
+ARG NODE_IMAGE=node:24.11.1-alpine3.22@sha256:2867d550cf9d8bb50059a0fff528741f11a84d985c732e60e19e8e75c7239c43
 
 # ---------- build stage ----------
 FROM ${NODE_IMAGE} AS build
