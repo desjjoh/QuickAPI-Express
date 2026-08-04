@@ -6,7 +6,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: 24
+  NODE_VERSION: 24.11.1
   NODE_ENV: test
   PORT: 0
   LOG_LEVEL: silent
@@ -17,6 +17,23 @@ env:
   TEST_DB_ALLOWED_HOSTS: 127.0.0.1
 
 jobs:
+  lockfile-consistency:
+    name: Lockfile consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Enable the repository npm version
+        run: corepack enable npm && corepack prepare npm@11.6.2 --activate
+      - name: Regenerate the lockfile from a clean dependency tree
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+          git diff --exit-code -- package-lock.json
+
   format-lint:
     name: Formatting and linting
     runs-on: ubuntu-latest
@@ -197,12 +214,15 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - name: Validate digest-pinned container images
+        run: bash .github/scripts/validate-image-digests.sh
       - name: Exercise the production container topology
         run: npm run smoke:production
   deployment-gate:
     name: Deployment gate
     if: always()
     needs:
+      - lockfile-consistency
       - format-lint
       - type-build
       - unit-coverage
@@ -215,20 +235,24 @@ jobs:
     steps:
       - name: Require all validation jobs to succeed
         env:
+          LOCKFILE_CONSISTENCY_RESULT: ${{ needs.lockfile-consistency.result }}
           FORMAT_LINT_RESULT: ${{ needs.format-lint.result }}
           TYPE_BUILD_RESULT: ${{ needs.type-build.result }}
           UNIT_COVERAGE_RESULT: ${{ needs.unit-coverage.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
           MIGRATION_RESULT: ${{ needs.migration.result }}
+          PRODUCTION_SMOKE_RESULT: ${{ needs.production-smoke.result }}
         run: |
           for result in \
+            "$LOCKFILE_CONSISTENCY_RESULT" \
             "$FORMAT_LINT_RESULT" \
             "$TYPE_BUILD_RESULT" \
             "$UNIT_COVERAGE_RESULT" \
             "$INTEGRATION_RESULT" \
             "$E2E_RESULT" \
-            "$MIGRATION_RESULT"; do
+            "$MIGRATION_RESULT" \
+            "$PRODUCTION_SMOKE_RESULT"; do
             if [ "$result" != "success" ]; then
               echo "A required validation job did not succeed."
               exit 1

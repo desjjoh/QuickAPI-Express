@@ -30,7 +30,7 @@ services:
     networks:
       - quickapi
   mysql:
-    image: mysql:8.4.6@sha256:9d3958e9c437542b8f73d7e55a125c03d476dec6450b9e92eddfa9d90b9f7416
+    image: mysql:8.4.6
     container_name: quickapi-express-mysql
     restart: unless-stopped
     environment:
