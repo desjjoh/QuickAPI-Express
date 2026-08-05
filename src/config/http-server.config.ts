@@ -25,14 +25,17 @@ import { not_found } from '@/common/routes/not-found.route';
 
 let instance: Server | null = null;
 
+const publicDirectory = path.resolve(process.cwd(), 'public');
+const faviconPath = path.join(publicDirectory, 'favicon.ico');
+
 export function createApp(): express.Express {
   const app = express();
 
-  app.get('/favicon.ico', (req, res) => {
-    res.sendFile(path.resolve('public/favicon.ico'));
+  app.get('/favicon.ico', (_req, res) => {
+    res.sendFile(faviconPath);
   });
 
-  app.use(express.static('public'));
+  app.use(express.static(publicDirectory));
 
   app.use(metricsMiddleware);
   app.use(requestContextMiddleware);
