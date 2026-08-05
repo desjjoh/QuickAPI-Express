@@ -30,11 +30,10 @@ RUN corepack enable npm && corepack prepare npm@11.4.2 --activate
 RUN apk add --no-cache curl
 
 COPY --from=build --chown=node:node /app/dist ./dist
-COPY --chown=node:node public ./public
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=production-dependencies --chown=node:node /app/package.json /app/package-lock.json ./
 
 USER node
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "start:compiled"]
