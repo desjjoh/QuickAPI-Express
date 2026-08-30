@@ -31,7 +31,6 @@ src/
 │   └── v1/items/                    item routes, controller, request models, and OpenAPI definitions
 ├── application.ts                   lifecycle service graph
 ├── config/                          environment, HTTP, database, logging, metrics, docs, routes
-├── migrations/                      TypeORM migrations
 ├── common/
 │   ├── exceptions/                  typed HTTP errors
 │   ├── handlers/                    startup and shutdown lifecycle
@@ -212,6 +211,7 @@ from `package.json`:
 | `clean`                | `rimraf dist && npm run build`                                                                                                                  |
 | `start`                | `npm run build && node dist/index.js`                                                                                                           |
 | `start:compiled`       | `node dist/index.js`                                                                                                                            |
+| `rebuild`              | `npm start`                                                                                                                                     |
 | `test`                 | `vitest`                                                                                                                                        |
 | `check:format-lint`    | `npm run format && npm run lint`                                                                                                                |
 | `check:type-build`     | `npm run typecheck && npm run build`                                                                                                            |
@@ -252,7 +252,7 @@ smoke commands are intentionally listed rather than implying nonexistent shortcu
 `Dockerfile` uses three stages: a full locked install compiles TypeScript; a second locked install
 retains production dependencies only; and the final Node 24.11.1 Alpine image receives `dist`, package
 metadata, and production `node_modules`. The runtime includes `curl`, exposes port 3000, runs as the
-non-root `node` user, and starts with `npm start`.
+non-root `node` user, and starts with `npm run start:compiled`.
 
 Build the image:
 
@@ -290,15 +290,6 @@ containers, volumes, orphans, and temporary files. It requires `docker`, Docker 
 5. end-to-end tests with the same isolated preparation;
 6. migration drift validation against its own disposable schema; and
 7. digest validation plus the production image smoke test.
-
-## Releases and image publication
-
-**Image publication is not applicable in the current repository.** There is no tag/release workflow,
-registry login, image push, provenance/signing step, or deployment workflow. A release therefore
-requires an external/manual process after the validation jobs succeed and the gate defect above is
-corrected. Add and document a dedicated, authenticated publication workflow before treating
-`quickapi-express` as a published image; the existing `docker:build` and smoke scripts create and
-validate local images only.
 
 ## License
 
