@@ -17,7 +17,7 @@ const numericPort = z.preprocess(
 );
 const tcpPort = numericPort.refine(port => port > 0, 'Port must be between 1 and 65535');
 const requiredDatabaseValue = z.string().trim().min(1);
-const EnvSchema = z
+export const EnvSchema = z
   .object({
     APP_NAME: z.string().default(pkg.name),
     APP_VERSION: z
