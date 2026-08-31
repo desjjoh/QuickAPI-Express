@@ -19,11 +19,11 @@ export const HealthResponseSchema = z
       example: true,
     }),
     status: HealthStatusSchema,
-    uptime: z.number().openapi({
+    uptime: z.number().nonnegative().openapi({
       description: 'Process uptime expressed in seconds.',
       example: 123.45,
     }),
-    timestamp: z.string().openapi({
+    timestamp: z.iso.datetime().openapi({
       description: 'ISO8601 timestamp representing when the health status was generated.',
       example: '2025-08-14T12:00:00Z',
     }),

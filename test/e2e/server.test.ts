@@ -19,6 +19,58 @@ let server: Server;
 let dependencyState: DependencyState = 'healthy';
 let healthBeforeStartup: Response;
 let readyBeforeStartup: Response;
+let systemBeforeStartup: Response;
+
+function expectIsoTimestamp(value: unknown): void {
+  expect(value).toBeTypeOf('string');
+  expect(Number.isNaN(Date.parse(value as string))).toBe(false);
+}
+
+function expectDependencyChecks(response: Response): void {
+  for (const check of response.body.checks as Record<string, unknown>[]) {
+    expect(check).toEqual({
+      name: expect.any(String),
+      status: expect.stringMatching(/^(up|down)$/),
+      response_time_ms: expect.any(Number),
+    });
+    expect(check.response_time_ms).toBeGreaterThanOrEqual(0);
+  }
+}
+
+function expectSystemShape(response: Response, databaseStatus: 'connected' | 'disconnected'): void {
+  expect(response.body).toEqual({
+    cpu: {
+      logical_core_count: expect.any(Number),
+      model: expect.any(String),
+      load_average: {
+        one_minute: expect.any(Number),
+        five_minutes: expect.any(Number),
+        fifteen_minutes: expect.any(Number),
+      },
+    },
+    memory: {
+      total_bytes: expect.any(Number),
+      free_bytes: expect.any(Number),
+      used_bytes: expect.any(Number),
+      used_percent: expect.any(Number),
+    },
+    process: {
+      rss_bytes: expect.any(Number),
+      heap_total_bytes: expect.any(Number),
+      heap_used_bytes: expect.any(Number),
+      external_bytes: expect.any(Number),
+      active_handles: expect.any(Number),
+    },
+    os: { type: expect.any(String), release: expect.any(String), uptime: expect.any(Number) },
+    uptime: expect.any(Number),
+    timestamp: expect.any(Number),
+    event_loop_lag: expect.any(Number),
+    database_status: databaseStatus,
+  });
+  expect(response.body.memory.used_percent).toBeGreaterThanOrEqual(0);
+  expect(response.body.memory.used_percent).toBeLessThanOrEqual(100);
+  expect(response.body.timestamp).toBeGreaterThan(0);
+}
 
 function expectRequestHeaders(response: Response): void {
   expect(response.headers['x-request-id']).toMatch(/^[A-Za-z0-9_-]+$/);
@@ -53,6 +105,7 @@ beforeAll(async () => {
   // Capture probes against the listening application before lifecycle startup.
   healthBeforeStartup = await request(server).get('/health');
   readyBeforeStartup = await request(server).get('/ready');
+  systemBeforeStartup = await request(server).get('/system');
 
   const database: LifecycleService = {
     name: 'disposable migrated mysql',
@@ -90,9 +143,13 @@ afterAll(async () => {
 describe('real application probes', () => {
   it('keeps liveness independent from startup and dependency readiness', () => {
     expect(healthBeforeStartup.status).toBe(200);
-    expect(healthBeforeStartup.body).toMatchObject({ alive: true });
-    expect(healthBeforeStartup.body.uptime).toBeTypeOf('number');
-    expect(healthBeforeStartup.body.timestamp).toBeTypeOf('string');
+    expect(healthBeforeStartup.body).toEqual({
+      alive: true,
+      status: 'healthy',
+      uptime: expect.any(Number),
+      timestamp: expect.any(String),
+    });
+    expectIsoTimestamp(healthBeforeStartup.body.timestamp);
     expectRequestHeaders(healthBeforeStartup);
 
     expect(readyBeforeStartup.status).toBe(503);
@@ -102,13 +159,26 @@ describe('real application probes', () => {
       timestamp: expect.any(String),
       checks: [],
     });
+    expectIsoTimestamp(readyBeforeStartup.body.timestamp);
+    expectDependencyChecks(readyBeforeStartup);
   });
 
-  it('reports ready after startup', async () => {
+  it('reports the complete health, readiness, information, and system shapes', async () => {
+    const health = await request(server).get('/health');
     const response = await request(server).get('/ready');
+    const information = await request(server).get('/info');
+    const system = await request(server).get('/system');
 
+    expect(health.status).toBe(200);
+    expect(health.body).toEqual({
+      alive: true,
+      status: 'healthy',
+      uptime: expect.any(Number),
+      timestamp: expect.any(String),
+    });
+    expectIsoTimestamp(health.body.timestamp);
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({
+    expect(response.body).toEqual({
       ready: true,
       status: 'ready',
       timestamp: expect.any(String),
@@ -117,8 +187,31 @@ describe('real application probes', () => {
         { name: 'ephemeral express listener', status: 'up', response_time_ms: expect.any(Number) },
       ],
     });
+    expectIsoTimestamp(response.body.timestamp);
+    expectDependencyChecks(response);
+    expect(information.status).toBe(200);
+    expect(information.body).toEqual({
+      name: expect.any(String),
+      version: expect.any(String),
+      environment: expect.stringMatching(/^(development|test|production)$/),
+      hostname: expect.any(String),
+      pid: expect.any(Number),
+      node_version: expect.any(String),
+      platform: expect.any(String),
+      architecture: expect.any(String),
+      started_at: expect.any(String),
+      timezone: expect.any(String),
+    });
+    expectIsoTimestamp(information.body.started_at);
+    expect(system.status).toBe(200);
+    expectSystemShape(system, 'connected');
     expectJson(response);
     expectRequestHeaders(response);
+  });
+
+  it('reflects database lifecycle state in system diagnostics', () => {
+    expect(systemBeforeStartup.status).toBe(200);
+    expectSystemShape(systemBeforeStartup, 'disconnected');
   });
 
   it.each(['unhealthy', 'throw'] as const)(
@@ -128,13 +221,21 @@ describe('real application probes', () => {
       const response = await request(server).get('/ready');
 
       expect(response.status).toBe(503);
-      expect(response.body).toMatchObject({ ready: false, status: 'not_ready' });
+      expect(response.body).toMatchObject({
+        ready: false,
+        status: 'not_ready',
+        timestamp: expect.any(String),
+      });
+      expectIsoTimestamp(response.body.timestamp);
+      expectDependencyChecks(response);
       expect(response.body.checks).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ name: 'disposable migrated mysql', status: 'down' }),
         ]),
       );
-      expect((await request(server).get('/health')).body.alive).toBe(true);
+      const health = await request(server).get('/health');
+      expect(health.status).toBe(200);
+      expect(health.body).toMatchObject({ alive: true, status: 'healthy' });
     },
   );
 });

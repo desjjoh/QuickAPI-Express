@@ -125,6 +125,14 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     responses: {
       200: {
         description: 'Prometheus metrics (text/plain)',
+        content: {
+          'text/plain; version=0.0.4; charset=utf-8': {
+            schema: {
+              type: 'string',
+              description: 'Prometheus text exposition format.',
+            },
+          },
+        },
       },
     },
   });
