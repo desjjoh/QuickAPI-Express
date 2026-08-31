@@ -24,14 +24,21 @@ describe('output DTO validation', () => {
       data: [{ price: 12.5 }],
     });
     expect(toRootDTO({ message: 'hello' })).toEqual({ message: 'hello' });
-    expect(toReadyDTO({ ready: true })).toEqual({ ready: true });
+    expect(
+      toReadyDTO({ startupComplete: true, timestamp: '2026-01-01T00:00:00.000Z', checks: [] }),
+    ).toEqual({
+      ready: true,
+      status: 'ready',
+      timestamp: '2026-01-01T00:00:00.000Z',
+      checks: [],
+    });
   });
 
   it.each([
     () => toItemDTO({ ...item, id: 'bad' }),
     () => toItemListDTO({ items: [item], total: -1, page: 1, limit: 25 }),
     () => toRootDTO({ message: 1 } as never),
-    () => toReadyDTO({ ready: 'yes' } as never),
+    () => toReadyDTO({ startupComplete: 'yes' } as never),
   ])('turns invalid output into OutputValidationError', produce => {
     expect(produce).toThrow(OutputValidationError);
   });

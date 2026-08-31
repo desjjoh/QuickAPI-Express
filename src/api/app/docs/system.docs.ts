@@ -66,6 +66,11 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
       },
       503: {
         description: 'Application is not ready',
+        content: {
+          'application/json': {
+            schema: ReadyResponseSchema,
+          },
+        },
       },
     },
   });

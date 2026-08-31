@@ -9,7 +9,14 @@ export type LifecycleService = {
   stop?: () => Promise<void> | void;
 };
 
+export type DependencyCheckResult = {
+  name: string;
+  status: 'up' | 'down';
+  response_time_ms: number;
+};
+
 class LifecycleHandler {
+  private static readonly dependencyCheckTimeoutMs: number = 5_000;
   private static startupServices: LifecycleService[] = [];
   private static initializedServices: LifecycleService[] = [];
 
@@ -27,23 +34,57 @@ class LifecycleHandler {
   }
 
   public static async areAllServicesHealthy(): Promise<boolean> {
-    for (const service of this.startupServices) {
-      if (service.check) {
-        let healthy: boolean;
+    const checks: DependencyCheckResult[] = await this.checkDependencies();
+    return checks.every(check => check.status === 'up');
+  }
+
+  public static async checkDependencies(
+    timeoutMs: number = this.dependencyCheckTimeoutMs,
+  ): Promise<DependencyCheckResult[]> {
+    const boundedTimeoutMs: number = Number.isFinite(timeoutMs)
+      ? Math.min(this.dependencyCheckTimeoutMs, Math.max(0, timeoutMs))
+      : this.dependencyCheckTimeoutMs;
+    const requiredServices: (LifecycleService & Required<Pick<LifecycleService, 'check'>>)[] =
+      this.startupServices.filter(
+        (service): service is LifecycleService & Required<Pick<LifecycleService, 'check'>> =>
+          service.check !== undefined,
+      );
+
+    return Promise.all(
+      requiredServices.map(async service => {
+        const start: number = performance.now();
+        const check = service.check;
+        let timer: NodeJS.Timeout | undefined;
 
         try {
-          healthy = await service.check();
+          const timeout = new Promise<boolean>(resolve => {
+            timer = setTimeout(() => resolve(false), boundedTimeoutMs);
+          });
+
+          const healthy: boolean = await Promise.race([
+            Promise.resolve().then(() => check()),
+            timeout,
+          ]);
+
+          return {
+            name: service.name,
+            status: healthy ? ('up' as const) : ('down' as const),
+            response_time_ms: Math.max(0, performance.now() - start),
+          };
         } catch (err: unknown) {
           const error: Error = err instanceof Error ? err : new Error(String(err));
           logger.error({ stack: error.stack }, `Health check failed → ${service.name}`);
-          return false;
+
+          return {
+            name: service.name,
+            status: 'down' as const,
+            response_time_ms: Math.max(0, performance.now() - start),
+          };
+        } finally {
+          if (timer) clearTimeout(timer);
         }
-
-        if (!healthy) return false;
-      }
-    }
-
-    return true;
+      }),
+    );
   }
 
   public static register = (services: LifecycleService[]): void => {

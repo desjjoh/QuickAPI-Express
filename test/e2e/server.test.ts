@@ -95,14 +95,28 @@ describe('real application probes', () => {
     expect(healthBeforeStartup.body.timestamp).toBeTypeOf('string');
     expectRequestHeaders(healthBeforeStartup);
 
-    expectError(readyBeforeStartup, 503);
+    expect(readyBeforeStartup.status).toBe(503);
+    expect(readyBeforeStartup.body).toMatchObject({
+      ready: false,
+      status: 'not_ready',
+      timestamp: expect.any(String),
+      checks: [],
+    });
   });
 
   it('reports ready after startup', async () => {
     const response = await request(server).get('/ready');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ ready: true });
+    expect(response.body).toMatchObject({
+      ready: true,
+      status: 'ready',
+      timestamp: expect.any(String),
+      checks: [
+        { name: 'disposable migrated mysql', status: 'up', response_time_ms: expect.any(Number) },
+        { name: 'ephemeral express listener', status: 'up', response_time_ms: expect.any(Number) },
+      ],
+    });
     expectJson(response);
     expectRequestHeaders(response);
   });
@@ -113,8 +127,13 @@ describe('real application probes', () => {
       dependencyState = state;
       const response = await request(server).get('/ready');
 
-      expectError(response, 503);
-      expect(response.body.message).toBe('Application not ready');
+      expect(response.status).toBe(503);
+      expect(response.body).toMatchObject({ ready: false, status: 'not_ready' });
+      expect(response.body.checks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'disposable migrated mysql', status: 'down' }),
+        ]),
+      );
       expect((await request(server).get('/health')).body.alive).toBe(true);
     },
   );

@@ -7,7 +7,6 @@ import { metricsRegistry } from '@/config/metrics.config';
 import { getEventLoopLag } from '@/common/helpers/timer.helpers';
 import { LC } from '@/common/handlers/lifecycle.handler';
 
-import { ServiceUnavailableError } from '@/common/exceptions/http.exception';
 import { type HealthResponse, toHealthDTO } from '../models/health.model';
 import { type InfoResponse, toInfoDTO } from '../models/info.model';
 import { type ReadyResponse, toReadyDTO } from '../models/ready.model';
@@ -33,13 +32,14 @@ router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
 
 // GET /ready
 router.get('/ready', async (_req: Request, res: Response<ReadyResponse>) => {
-  const appReady: boolean = LC.isReady();
-  const servicesHealthy: boolean = await LC.areAllServicesHealthy();
+  const checks = await LC.checkDependencies();
+  const response: ReadyResponse = toReadyDTO({
+    startupComplete: LC.isReady(),
+    timestamp: new Date().toISOString(),
+    checks,
+  });
 
-  const ready: boolean = appReady && servicesHealthy;
-  if (!ready) throw new ServiceUnavailableError('Application not ready');
-
-  res.json(toReadyDTO({ ready }));
+  res.status(response.ready ? 200 : 503).json(response);
 });
 
 // GET /info

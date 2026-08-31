@@ -115,4 +115,31 @@ describe('service lifecycle', () => {
     ]);
     expect(await LC.areAllServicesHealthy()).toBe(false);
   });
+
+  it('checks every dependency, bounds slow checks, and returns only structured results', async () => {
+    const LC = await freshLifecycle();
+    const checked: string[] = [];
+    LC.register([
+      {
+        name: 'slow',
+        check: () => new Promise<boolean>(() => undefined),
+      },
+      {
+        name: 'throws',
+        check: () => {
+          checked.push('throws');
+          throw new Error('secret dependency detail');
+        },
+      },
+    ]);
+
+    const results = await LC.checkDependencies(5);
+
+    expect(checked).toEqual(['throws']);
+    expect(results).toEqual([
+      { name: 'slow', status: 'down', response_time_ms: expect.any(Number) },
+      { name: 'throws', status: 'down', response_time_ms: expect.any(Number) },
+    ]);
+    expect(JSON.stringify(results)).not.toContain('secret dependency detail');
+  });
 });
