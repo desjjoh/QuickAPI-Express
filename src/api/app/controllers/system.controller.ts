@@ -1,10 +1,7 @@
-import os from 'node:os';
 import { Router, type Request, type Response } from 'express';
 
 import { env } from '@/config/env.config';
-import { isServerInitialized } from '@/config/database.config';
 import { metricsRegistry } from '@/config/metrics.config';
-import { getEventLoopLag } from '@/common/helpers/timer.helpers';
 import { LC } from '@/common/handlers/lifecycle.handler';
 
 import { type HealthResponse, toHealthDTO } from '../models/health.model';
@@ -12,44 +9,9 @@ import { type InfoResponse, toInfoDTO } from '../models/info.model';
 import { type ReadyResponse, toReadyDTO } from '../models/ready.model';
 import { toSystemDiagnosticsDTO } from '../models/system.model';
 import { toRootDTO, type RootResponse } from '../models/root.model';
+import { systemService } from '../services/system.service';
 
 const router: Router = Router();
-
-export interface RuntimeInfoSource {
-  version: string;
-  platform: NodeJS.Platform;
-  arch: string;
-  pid: number;
-  uptime(): number;
-}
-
-export interface RuntimeInfoDependencies {
-  runtime?: RuntimeInfoSource;
-  now?: () => number;
-  hostname?: () => string;
-  timezone?: () => string;
-}
-
-/** Collect process-specific values separately so callers can inject a deterministic runtime. */
-export function collectRuntimeInfo({
-  runtime = process,
-  now = Date.now,
-  hostname = os.hostname,
-  timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-}: RuntimeInfoDependencies = {}): Pick<
-  InfoResponse,
-  'hostname' | 'pid' | 'node_version' | 'platform' | 'architecture' | 'started_at' | 'timezone'
-> {
-  return {
-    hostname: hostname(),
-    pid: runtime.pid,
-    node_version: runtime.version,
-    platform: runtime.platform,
-    architecture: runtime.arch,
-    started_at: new Date(now() - runtime.uptime() * 1000).toISOString(),
-    timezone: timezone(),
-  };
-}
 
 // GET /
 router.get('/', (_req: Request, res: Response<RootResponse>) => {
@@ -85,24 +47,14 @@ router.get('/info', async (_req: Request, res: Response<InfoResponse>) => {
       name: env.APP_NAME,
       version: env.APP_VERSION,
       environment: env.NODE_ENV,
-      ...collectRuntimeInfo(),
+      ...systemService.collectRuntimeInfo(),
     }),
   );
 });
 
 // GET /system
 router.get('/system', async (_req: Request, res: Response) => {
-  const dbReady: boolean = isServerInitialized();
-  const eventLoopLag: number = await getEventLoopLag();
-
-  res.json(
-    toSystemDiagnosticsDTO({
-      uptime: process.uptime(),
-      timestamp: Date.now(),
-      eventLoopLag,
-      db: dbReady ? 'connected' : 'disconnected',
-    }),
-  );
+  res.json(toSystemDiagnosticsDTO(await systemService.getSystemDiagnostics()));
 });
 
 // GET /metrics
