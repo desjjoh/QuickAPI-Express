@@ -81,7 +81,42 @@ Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON
 Unexpected failures are logged with request context and returned as a generic 500 so internal error
 details are not disclosed. The error envelope contains `status`, `message`, and `timestamp`.
 
-### Design Decisions: `createApp` middleware ordering
+### Design Decisions
+
+The application keeps its boundaries explicit: `src/api/` owns transport and routing; item Zod
+contracts live in `src/api/v1/items/models/` and are applied by `validateRequest`; and
+`src/common/middleware/` owns cross-cutting HTTP policy and centralized error handling. Persistence
+is exposed through `src/database/repositories/item.repo.ts`, while `src/database/entities/` owns the
+TypeORM database mapping. Startup, shutdown, and runtime wiring remain outside the request features
+in `src/application.ts`, `src/common/handlers/lifecycle.handler.ts`, and `src/config/`.
+
+```mermaid
+flowchart LR
+    Client[Client request] --> Policy[Policy middleware<br/>src/common/middleware]
+    Policy --> Validation[validateRequest + Zod<br/>src/api/v1/items/models]
+    Validation --> Controller[Route/controller<br/>src/api]
+    Controller --> Repository[ItemRepository<br/>item.repo.ts]
+    Repository --> ORM[TypeORM + entity mapping<br/>src/database/entities]
+    ORM --> MySQL[(MySQL)]
+    MySQL --> ORM
+    ORM --> Repository
+    Repository --> Mapping[Response DTO mapping<br/>item models]
+    Mapping --> Client
+    Policy -. failure .-> Errors[Centralized error handler<br/>src/common/middleware]
+    Validation -. failure .-> Errors
+    Controller -. failure .-> Errors
+    Repository -. failure .-> Errors
+    Mapping -. failure .-> Errors
+    Errors --> Client
+```
+
+Controllers translate validated HTTP input into repository calls and map returned entities into
+response DTOs. The repository/transport separation prevents TypeORM and MySQL details from leaking
+into routing code, and prevents HTTP status, envelope, and response-mapping mechanics from becoming
+coupled to persistence. Lifecycle and configuration code compose these layers without assigning
+request or storage responsibilities to the process bootstrap.
+
+### `createApp` middleware ordering
 
 The registration order in `createApp` (`src/config/http-server.config.ts`) is part of the HTTP
 server's behavior, not a cosmetic grouping of middleware. Express enters middleware in registration
