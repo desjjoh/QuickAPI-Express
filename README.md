@@ -81,6 +81,48 @@ Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON
 Unexpected failures are logged with request context and returned as a generic 500 so internal error
 details are not disclosed. The error envelope contains `status`, `message`, and `timestamp`.
 
+### Design Decisions: `createApp` middleware ordering
+
+The registration order in `createApp` (`src/config/http-server.config.ts`) is part of the HTTP
+server's behavior, not a cosmetic grouping of middleware. Express enters middleware in registration
+order and unwinds wrappers after downstream processing completes, so preserve these constraints:
+
+1. **Static assets intentionally bypass API telemetry and policies.** The explicit favicon handler
+   and public-directory middleware run first so asset requests do not consume API rate-limit budget,
+   produce API metrics or logs, acquire request context, or encounter API content-type and method
+   rules. Moving either static handler below those layers would change both observability data and
+   the policy surface for assets; moving arbitrary application routes above the policy stack would,
+   conversely, create an unprotected bypass.
+2. **Telemetry wraps downstream processing.** Metrics, request context, and HTTP logging are entered
+   before policies and routes so they can observe outcomes and latency from everything downstream,
+   including policy rejections, controller responses, 404s, and errors. Moving them after a rejecting
+   policy would make those rejected requests invisible, while putting request-context creation after
+   logging could deprive logs and error reporting of correlation data.
+3. **Proxy trust precedes IP-based rate limiting.** `trust proxy` must be set before the limiter is
+   registered and handles requests because the limiter keys on `req.ip`. Reversing that dependency
+   can group clients under the proxy address or derive identities from the wrong hop, weakening or
+   misapplying throttling. The configured trust boundary must not be broadened casually either,
+   because trusting unvalidated forwarding data can allow clients to spoof the identity used by the
+   limiter.
+4. **Cheap request policies reject before expensive request work.** Security headers, rate limiting,
+   header sanitization and limits, timeouts, content-type enforcement, the method allowlist, and CORS
+   all run before body parsing and controllers. Moving parsing or route dispatch ahead of them would
+   spend CPU and memory on requests that should have been rejected and could let a route escape a
+   security, abuse-prevention, protocol, or cross-origin control. Their relative order also has
+   observable consequences: for example, moving the limiter before proxy trust changes its key, and
+   moving timeout setup after parsing leaves body consumption outside that timeout protection.
+5. **Body limits and parsing precede dispatch.** `bodyLimitMiddleware` selects and advertises the
+   applicable size limit, then parses JSON before any supported route runs. Dispatching first would
+   let controllers receive an unparsed body or consume payloads without the centralized limit;
+   parsing before the limit would allocate work before oversized input is rejected.
+6. **The not-found handler follows every supported route.** Application, versioned API, and
+   documentation routes must all have a chance to match before `not_found` converts the request to a
+   typed 404. Moving it upward would shadow every route registered below it.
+7. **The error handler remains last.** `errorHandler` must follow routes and `not_found` so failures
+   passed from any downstream policy, parser, controller, or fallback are mapped to the same safe
+   response envelope. Middleware or routes placed after it would not have their failures mapped
+   consistently and could leak Express's default error behavior instead.
+
 ### Shutdown path
 
 The lifecycle handler installs one-shot `SIGINT` and `SIGTERM` handlers and fatal handlers for
