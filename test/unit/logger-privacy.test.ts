@@ -20,19 +20,23 @@ function capture(production = true, level: 'debug' | 'info' = 'debug') {
 }
 
 describe('logger privacy and NestJS presentation', () => {
-  it('shows actionable safe console diagnostics without raw exception messages', () => {
+  it('keeps console errors on one line without diagnostic details', () => {
     const { log, lines } = capture(false);
     const error = Object.assign(new Error('private connection details'), {
       code: 'APP_PENDING_MIGRATIONS',
     });
 
-    log.error({ error }, 'Application bootstrap failed.');
-    expect(lines[0]).toContain('Application bootstrap failed.\n  error: ');
-    expect(lines[0]).toContain('APP_PENDING_MIGRATIONS');
-    expect(lines[0]).toContain(
-      'Apply pending migrations before starting the API',
+    log.error(
+      { error, err: error, reason: error },
+      'Application bootstrap failed.',
     );
-    expect(lines[0]).not.toContain('private connection details');
+    const output = stripVTControlCharacters(lines[0]);
+
+    expect(output).toMatch(/\[error\]\s+Application bootstrap failed\.\n$/);
+    expect(output.trimEnd().split('\n')).toHaveLength(1);
+    expect(output).not.toMatch(
+      /private connection details|APP_PENDING_MIGRATIONS|errorHint|errorFingerprint|errorType|error:|err:|reason:/,
+    );
   });
 
   it('writes production UTC timestamps and keeps request context without raw paths', () => {

@@ -70,14 +70,7 @@ function formatLog(
   const rid = context.requestId ? magenta(`[${context.requestId}]`) + ' ' : '';
   const pid = context.pid ? cyan(`[${context.pid}]`) + ' ' : '';
 
-  const diagnostics = ['error', 'err', 'reason']
-    .filter(
-      (field) => typeof context[field] === 'object' && context[field] !== null,
-    )
-    .map((field) => `\n  ${field}: ${JSON.stringify(context[field])}`)
-    .join('');
-
-  return `${timestamp} ${pid}${levelLabel} ${rid}${msg}${diagnostics}`;
+  return `${timestamp} ${pid}${levelLabel} ${rid}${msg}`;
 }
 
 export function createLogger(

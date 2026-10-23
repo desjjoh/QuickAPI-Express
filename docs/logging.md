@@ -10,11 +10,9 @@ Production writes structured JSON with an ISO-8601 UTC `time`, `levelLabel`,
 `pid`, `hostname`, and `msg`. Production timestamps are an explicit improvement
 over the current NestJS configuration; console styling remains aligned.
 
-Console error records include an indented line containing the already-sanitized
-diagnostics, so development failures retain useful error types/codes/fingerprints.
-`APP_PENDING_MIGRATIONS` also includes fixed migration guidance. These lines never
-print raw exception messages or stacks. This diagnostic detail extends the shared
-NestJS prefix/layout without weakening the privacy rules below.
+Console error records show the standard prefix and message on one line, without
+appending diagnostic objects. Production JSON retains the allowlisted error
+diagnostics described below, including fixed guidance for `APP_PENDING_MIGRATIONS`.
 
 `LOG_LEVEL` filters output. Completed request logs use `debug` for statuses below
 400, `warn` for 4xx, and `error` for 5xx. Consequently `LOG_LEVEL=info` suppresses
