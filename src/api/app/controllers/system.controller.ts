@@ -1,3 +1,7 @@
+import {
+  trackHandler,
+  canRespond,
+} from '@/common/handlers/request-lifecycle.handler';
 import { Router, type Request, type Response } from 'express';
 
 import { env } from '@/config/env.config';
@@ -29,39 +33,59 @@ router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
 });
 
 // GET /ready
-router.get('/ready', async (_req: Request, res: Response<ReadyResponse>) => {
-  const checks = await LC.checkDependencies();
-  const response: ReadyResponse = toReadyDTO({
-    startupComplete: LC.isReady(),
-    timestamp: new Date().toISOString(),
-    checks,
-  });
+router.get(
+  '/ready',
+  trackHandler(async (req: Request, res: Response<ReadyResponse>) => {
+    const checks = await LC.checkDependencies();
+    const response: ReadyResponse = toReadyDTO({
+      startupComplete: LC.isReady(),
+      timestamp: new Date().toISOString(),
+      checks,
+    });
 
-  res.status(response.ready ? 200 : 503).json(response);
-});
+    if (!canRespond(req, res)) return;
+    res.status(response.ready ? 200 : 503).json(response);
+  }),
+);
 
 // GET /info
-router.get('/info', async (_req: Request, res: Response<InfoResponse>) => {
-  res.json(
-    toInfoDTO({
-      name: env.APP_NAME,
-      version: env.APP_VERSION,
-      environment: env.NODE_ENV,
-      ...systemService.collectRuntimeInfo(),
-    }),
-  );
-});
+router.get(
+  '/info',
+  trackHandler(async (req: Request, res: Response<InfoResponse>) => {
+    if (!canRespond(req, res)) return;
+    res.json(
+      toInfoDTO({
+        name: env.APP_NAME,
+        version: env.APP_VERSION,
+        environment: env.NODE_ENV,
+        ...systemService.collectRuntimeInfo(),
+      }),
+    );
+  }),
+);
 
 // GET /system
-router.get('/system', async (_req: Request, res: Response) => {
-  res.json(toSystemDiagnosticsDTO(await systemService.getSystemDiagnostics()));
-});
+router.get(
+  '/system',
+  trackHandler(async (req: Request, res: Response) => {
+    const diagnostics = await systemService.getSystemDiagnostics();
+
+    if (!canRespond(req, res)) return;
+    res.json(toSystemDiagnosticsDTO(diagnostics));
+  }),
+);
 
 // GET /metrics
-router.get('/metrics', async (_req: Request, res: Response) => {
-  res.set('Content-Type', metricsRegistry.contentType);
+router.get(
+  '/metrics',
+  trackHandler(async (req: Request, res: Response) => {
+    const metrics = await metricsRegistry.metrics();
 
-  res.end(await metricsRegistry.metrics());
-});
+    if (!canRespond(req, res)) return;
+    res.set('Content-Type', metricsRegistry.contentType);
+
+    res.end(metrics);
+  }),
+);
 
 export default router;

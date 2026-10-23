@@ -33,12 +33,17 @@ describe('HTTP server configuration', () => {
 
   it('registers idempotently and closes the active server', async () => {
     expect(isServerRunning()).toBe(false);
-    await registerServer();
-    await new Promise((resolve) => setImmediate(resolve));
+    const starting = registerServer();
+    expect(registerServer()).toBe(starting);
+    expect(isServerRunning()).toBe(false);
+    await starting;
     expect(isServerRunning()).toBe(true);
     await registerServer();
     expect(isServerRunning()).toBe(true);
-    await closeServer();
+    const closing = closeServer();
+    expect(closeServer()).toBe(closing);
+    expect(isServerRunning()).toBe(false);
+    await closing;
     expect(isServerRunning()).toBe(false);
     await closeServer();
   });

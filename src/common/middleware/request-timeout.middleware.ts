@@ -1,51 +1,37 @@
 import type { Request, Response, NextFunction } from 'express';
 import { RequestTimeoutError } from '@/common/exceptions/http.exception';
+import { abandonRequest } from '@/common/handlers/request-lifecycle.handler';
 
-interface Options {
-  headerTimeout?: number;
-  chunkTimeout?: number;
-  totalTimeout?: number;
-}
+/** A response deadline, not cancellation of handler promises or database mutations. */
+export function requestTimeout(timeoutMs: number = 10_000) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      req.off('aborted', disconnected);
+      res.off('finish', cleanup);
+      res.off('close', disconnected);
+    };
 
-export function requestTimeout({
-  headerTimeout = 5_000,
-  chunkTimeout = 2_000,
-  totalTimeout = 10_000,
-}: Options = {}) {
-  return (req: Request, _: Response, next: NextFunction) => {
-    const start: number = Date.now();
-    let receivedFirstChunk: boolean = false;
-    let lastChunkTime: number = Date.now();
+    const disconnected = () => {
+      if (!res.writableFinished) abandonRequest(req);
+      cleanup();
+    };
 
-    req.socket.setTimeout(headerTimeout);
-    req.socket.on('timeout', () => {
-      req.destroy();
-    });
+    const timer = setTimeout(() => {
+      abandonRequest(req);
+      cleanup();
+      if (res.destroyed || res.writableEnded) return;
+      const error = new RequestTimeoutError(
+        'Application response deadline exceeded.',
+      );
 
-    const totalTimer: NodeJS.Timeout = setTimeout(() => {
-      req.destroy(new RequestTimeoutError('Request exceeded total timeout.'));
-    }, totalTimeout);
+      if (res.headersSent) res.destroy(error);
+      else next(error);
+    }, timeoutMs);
 
-    req.on('data', () => {
-      const now: number = Date.now();
-
-      if (!receivedFirstChunk) {
-        receivedFirstChunk = true;
-
-        if (now - start > headerTimeout)
-          req.destroy(new RequestTimeoutError('Header timeout exceeded.'));
-      }
-
-      if (now - lastChunkTime > chunkTimeout)
-        req.destroy(new RequestTimeoutError('Chunk timeout exceeded.'));
-
-      lastChunkTime = now;
-    });
-
-    req.on('end', () => {
-      clearTimeout(totalTimer);
-    });
-
-    return next();
+    req.once('aborted', disconnected);
+    res.once('finish', cleanup);
+    res.once('close', disconnected);
+    next();
   };
 }

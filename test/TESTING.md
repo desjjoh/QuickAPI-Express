@@ -65,6 +65,17 @@ its original labels and event types.
 
 Coverage thresholds and exclusions are defined in [vitest.config.ts](../vitest.config.ts). CI gates coverage from the unit project; integration and E2E run as separate jobs. Passing that gate does not imply combined-suite coverage or complete runtime protection.
 
+## HTTP lifecycle evidence
+
+`integration/http-lifecycle.test.ts` uses real listeners and raw sockets for bind
+failure, slow headers/body, delayed responses, disconnects, partial responses,
+keep-alive reuse, and finite drain. `integration/lifecycle-process.test.ts` runs
+isolated processes for readiness withdrawal, cleanup ordering, stuck work, and
+forced exit 1. Its portable control emits SIGTERM inside the child on Windows;
+the production container smoke sends the actual operating-system signal.
+`integration/http-database-drain.test.ts` verifies that disconnected accepted work
+can still query real disposable MySQL before shutdown closes it.
+
 ## PowerShell
 
 Database wrapper and production smoke scripts require Bash as well as Docker. Use a Bash environment with access to the same Node and Docker installation, or prepare infrastructure explicitly in PowerShell and run the direct project commands:

@@ -35,7 +35,12 @@ export const errorHandler: ErrorRequestHandler = (
   res: Response,
   next: NextFunction,
 ) => {
-  void next;
+  if (res.destroyed || res.writableEnded) return;
+  if (res.headersSent) {
+    next(err);
+
+    return;
+  }
 
   let status: number = 500;
   let message: string = INTERNAL_SERVER_ERROR;

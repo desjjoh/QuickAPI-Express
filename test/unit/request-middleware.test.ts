@@ -81,6 +81,20 @@ describe('validateRequest', () => {
 });
 
 describe('errorHandler', () => {
+  it('delegates errors after headers and ignores already closed responses', () => {
+    const error = new Error('stream failed');
+    const next = vi.fn();
+    const partial = { ...response(), headersSent: true };
+    errorHandler(error, {} as never, partial as never, next);
+    expect(next).toHaveBeenCalledWith(error);
+    expect(partial.status).not.toHaveBeenCalled();
+    for (const flags of [{ destroyed: true }, { writableEnded: true }]) {
+      const closed = { ...response(), ...flags };
+      errorHandler(error, {} as never, closed as never, next);
+      expect(closed.json).not.toHaveBeenCalled();
+    }
+    expect(next).toHaveBeenCalledTimes(1);
+  });
   it('returns and logs a public HTTP error', () => {
     const res = response();
     const warning = vi.spyOn(logger, 'warn').mockImplementation(() => logger);

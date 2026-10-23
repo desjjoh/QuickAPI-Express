@@ -13,6 +13,40 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it('defaults to finite transport, response, drain, and shutdown deadlines', () => {
+    expect(parseEnv(valid)).toMatchObject({
+      HTTP_HEADERS_TIMEOUT_MS: 5_000,
+      HTTP_REQUEST_TIMEOUT_MS: 10_000,
+      REQUEST_TIMEOUT_MS: 10_000,
+      HTTP_DRAIN_TIMEOUT_MS: 25_000,
+      SHUTDOWN_TIMEOUT_MS: 30_000,
+    });
+  });
+
+  it.each(['', '0', '-1', '1.5', 'NaN', '2147483648'])(
+    'rejects invalid finite deadlines %j',
+    (value) => {
+      for (const key of [
+        'HTTP_HEADERS_TIMEOUT_MS',
+        'HTTP_REQUEST_TIMEOUT_MS',
+        'REQUEST_TIMEOUT_MS',
+        'HTTP_DRAIN_TIMEOUT_MS',
+        'SHUTDOWN_TIMEOUT_MS',
+      ]) {
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+      }
+    },
+  );
+
+  it('requires headers to fit the receive budget and reserves shutdown cleanup time', () => {
+    expect(() =>
+      parseEnv({ ...valid, HTTP_HEADERS_TIMEOUT_MS: '11000' }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({ ...valid, HTTP_DRAIN_TIMEOUT_MS: '30000' }),
+    ).toThrow();
+  });
+
   it('defaults to direct access and the existing localhost CORS policy', () => {
     expect(parseEnv(valid)).toMatchObject({
       TRUST_PROXY: [],

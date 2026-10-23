@@ -22,6 +22,12 @@ const tcpPort = numericPort.refine(
   'Port must be between 1 and 65535',
 );
 const requiredDatabaseValue = z.string().trim().min(1);
+const duration = (fallback: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === 'string' && value.trim() === '' ? Number.NaN : value,
+    z.coerce.number().int().min(1).max(2_147_483_647).default(fallback),
+  );
 
 const commaSeparated = z
   .string()
@@ -74,6 +80,12 @@ export const EnvSchema = z
       'silent',
     ]),
 
+    HTTP_HEADERS_TIMEOUT_MS: duration(5_000),
+    HTTP_REQUEST_TIMEOUT_MS: duration(10_000),
+    REQUEST_TIMEOUT_MS: duration(10_000),
+    HTTP_DRAIN_TIMEOUT_MS: duration(25_000),
+    SHUTDOWN_TIMEOUT_MS: duration(30_000),
+
     TRUST_PROXY: commaSeparated.pipe(z.array(trustedProxy)).default([]),
     CORS_ORIGINS: commaSeparated
       .pipe(z.array(corsOrigin).min(1))
@@ -120,6 +132,19 @@ export const EnvSchema = z
   .refine(({ NODE_ENV, PORT }) => NODE_ENV === 'test' || PORT !== 0, {
     message: 'PORT must be between 1 and 65535 outside the test environment',
     path: ['PORT'],
+  })
+  .refine(
+    (value) => value.HTTP_HEADERS_TIMEOUT_MS <= value.HTTP_REQUEST_TIMEOUT_MS,
+    {
+      message:
+        'HTTP_HEADERS_TIMEOUT_MS must not exceed HTTP_REQUEST_TIMEOUT_MS',
+      path: ['HTTP_HEADERS_TIMEOUT_MS'],
+    },
+  )
+  .refine((value) => value.HTTP_DRAIN_TIMEOUT_MS < value.SHUTDOWN_TIMEOUT_MS, {
+    message:
+      'HTTP_DRAIN_TIMEOUT_MS must leave time for cleanup before SHUTDOWN_TIMEOUT_MS',
+    path: ['HTTP_DRAIN_TIMEOUT_MS'],
   });
 
 export type Env = z.infer<typeof EnvSchema>;

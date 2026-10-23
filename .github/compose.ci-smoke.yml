@@ -42,6 +42,7 @@ services:
         condition: service_healthy
 
   api:
+    stop_grace_period: 40s
     image: ${SMOKE_IMAGE:?Set SMOKE_IMAGE to the production image under test}
     environment: *application-environment
     ports:

@@ -1,3 +1,7 @@
+import {
+  trackHandler,
+  canRespond,
+} from '@/common/handlers/request-lifecycle.handler';
 import { Router, type Response } from 'express';
 
 import { itemRepository as repo } from '@/database/repositories/item.repo';
@@ -37,115 +41,147 @@ const router: Router = Router();
 router.post(
   '/',
   validateRequest({ body: CreateItemSchema }),
-  async (
-    req: ValidatedRequest<null, null, CreateItemInput>,
-    res: Response<ItemResponse>,
-  ) => {
-    const item: ItemEntity = await repo.create(req.validated!.body);
+  trackHandler(
+    async (
+      req: ValidatedRequest<null, null, CreateItemInput>,
+      res: Response<ItemResponse>,
+    ) => {
+      const item: ItemEntity = await repo.create(req.validated!.body);
 
-    res.status(201).json(toItemDTO(item));
-  },
+      if (!canRespond(req, res)) return;
+
+      res.status(201).json(toItemDTO(item));
+    },
+  ),
 );
 
 // GET /items
 router.get(
   '/',
   validateRequest({ query: ItemPaginationQuerySchema }),
-  async (
-    req: ValidatedRequest<null, ItemPaginationQuery, null>,
-    res: Response<ItemListResponse>,
-  ) => {
-    const pagination: ListDTOParams<ItemEntity> = await repo.get_many(
-      req.validated!.query,
-    );
+  trackHandler(
+    async (
+      req: ValidatedRequest<null, ItemPaginationQuery, null>,
+      res: Response<ItemListResponse>,
+    ) => {
+      const pagination: ListDTOParams<ItemEntity> = await repo.get_many(
+        req.validated!.query,
+      );
 
-    res.json(toItemListDTO(pagination));
-  },
+      if (!canRespond(req, res)) return;
+
+      res.json(toItemListDTO(pagination));
+    },
+  ),
 );
 
 // GET /items/:id
 router.get(
   '/:id',
   validateRequest({ params: IdParams }),
-  async (
-    req: ValidatedRequest<IdRouteParams, null, null>,
-    res: Response<ItemResponse>,
-  ) => {
-    const item: ItemEntity | null = await repo.get_by_id(
-      req.validated!.params.id,
-    );
+  trackHandler(
+    async (
+      req: ValidatedRequest<IdRouteParams, null, null>,
+      res: Response<ItemResponse>,
+    ) => {
+      const item: ItemEntity | null = await repo.get_by_id(
+        req.validated!.params.id,
+      );
 
-    if (!item)
-      throw new NotFoundError('No item exists with the provided identifier.');
+      if (!canRespond(req, res)) return;
 
-    res.json(toItemDTO(item));
-  },
+      if (!item)
+        throw new NotFoundError('No item exists with the provided identifier.');
+
+      if (!canRespond(req, res)) return;
+
+      res.json(toItemDTO(item));
+    },
+  ),
 );
 
 // PATCH /items/:id
 router.patch(
   '/:id',
   validateRequest({ params: IdParams, body: UpdateItemSchema }),
-  async (
-    req: ValidatedRequest<IdRouteParams, null, UpdateItemInput>,
-    res: Response<ItemResponse>,
-  ) => {
-    const item: ItemEntity | null = await repo.get_by_id(
-      req.validated!.params.id,
-    );
+  trackHandler(
+    async (
+      req: ValidatedRequest<IdRouteParams, null, UpdateItemInput>,
+      res: Response<ItemResponse>,
+    ) => {
+      const item: ItemEntity | null = await repo.get_by_id(
+        req.validated!.params.id,
+      );
 
-    if (!item)
-      throw new NotFoundError('No item exists with the provided identifier.');
+      if (!canRespond(req, res)) return;
 
-    const updated: ItemEntity = await repo.update(item, req.validated!.body);
+      if (!item)
+        throw new NotFoundError('No item exists with the provided identifier.');
 
-    res.json(toItemDTO(updated));
-  },
+      const updated: ItemEntity = await repo.update(item, req.validated!.body);
+
+      if (!canRespond(req, res)) return;
+
+      res.json(toItemDTO(updated));
+    },
+  ),
 );
 
 // PUT /items/:id
 router.put(
   '/:id',
   validateRequest({ params: IdParams, body: CreateItemSchema }),
-  async (
-    req: ValidatedRequest<IdRouteParams, null, CreateItemInput>,
-    res: Response<ItemResponse>,
-  ) => {
-    const item: ItemEntity | null = await repo.get_by_id(
-      req.validated!.params.id,
-    );
+  trackHandler(
+    async (
+      req: ValidatedRequest<IdRouteParams, null, CreateItemInput>,
+      res: Response<ItemResponse>,
+    ) => {
+      const item: ItemEntity | null = await repo.get_by_id(
+        req.validated!.params.id,
+      );
 
-    if (!item)
-      throw new NotFoundError('No item exists with the provided identifier.');
+      if (!canRespond(req, res)) return;
 
-    const updated: ItemEntity = await repo.update(item, {
-      ...req.validated!.body,
-      description: req.validated!.body.description ?? null,
-    });
+      if (!item)
+        throw new NotFoundError('No item exists with the provided identifier.');
 
-    res.json(toItemDTO(updated));
-  },
+      const updated: ItemEntity = await repo.update(item, {
+        ...req.validated!.body,
+        description: req.validated!.body.description ?? null,
+      });
+
+      if (!canRespond(req, res)) return;
+
+      res.json(toItemDTO(updated));
+    },
+  ),
 );
 
 // DELETE /items/:id
 router.delete(
   '/:id',
   validateRequest({ params: IdParams }),
-  async (
-    req: ValidatedRequest<IdRouteParams, null, null>,
-    res: Response<ItemResponse>,
-  ) => {
-    const item: ItemEntity | null = await repo.get_by_id(
-      req.validated!.params.id,
-    );
+  trackHandler(
+    async (
+      req: ValidatedRequest<IdRouteParams, null, null>,
+      res: Response<ItemResponse>,
+    ) => {
+      const item: ItemEntity | null = await repo.get_by_id(
+        req.validated!.params.id,
+      );
 
-    if (!item)
-      throw new NotFoundError('No item exists with the provided identifier.');
+      if (!canRespond(req, res)) return;
 
-    const removed: ItemEntity = await repo.remove(item);
+      if (!item)
+        throw new NotFoundError('No item exists with the provided identifier.');
 
-    res.json(toItemDTO(removed));
-  },
+      const removed: ItemEntity = await repo.remove(item);
+
+      if (!canRespond(req, res)) return;
+
+      res.json(toItemDTO(removed));
+    },
+  ),
 );
 
 export default router;
