@@ -85,6 +85,28 @@ configured later when item idempotency is implemented; this change adds no repla
 behavior. See [deployment proxy requirements](deployment.md#proxy-and-browser-access)
 before trusting any ingress.
 
+### HTTP deadlines and shutdown configuration
+
+All durations are optional integer milliseconds from 1 through 2147483647.
+Empty values are invalid. Existing environment files receive defaults until updated.
+
+| Variable                  | Default | Meaning                                                                                                   |
+| ------------------------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `HTTP_HEADERS_TIMEOUT_MS` | `5000`  | Server deadline for receiving complete headers.                                                           |
+| `HTTP_REQUEST_TIMEOUT_MS` | `10000` | Server deadline for receiving the whole request, including headers and body.                              |
+| `REQUEST_TIMEOUT_MS`      | `10000` | API response deadline, starting before body parsing and ending when the response finishes or disconnects. |
+| `HTTP_DRAIN_TIMEOUT_MS`   | `25000` | Maximum wait for HTTP connections and tracked asynchronous handlers during shutdown.                      |
+| `SHUTDOWN_TIMEOUT_MS`     | `30000` | Overall shutdown deadline, including pending startup and database cleanup; expiry forces exit code 1.     |
+
+The header deadline must not exceed the complete-request deadline. HTTP drain must
+be shorter than total shutdown, reserving time for database cleanup. These are
+separate clocks: receiving a request does not finish its response deadline.
+Transport deadline checks run periodically and are not precise scheduling guarantees.
+
+Use the production `registerServer`/`HttpListener` wiring for transport deadlines;
+calling `createApp().listen()` directly only installs Express middleware policies.
+See [deployment shutdown behavior](deployment.md#http-deadlines-and-shutdown).
+
 ## Local MySQL, migrations, and development
 
 The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user

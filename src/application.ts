@@ -7,6 +7,7 @@ import {
   closeServer,
   isServerRunning,
   registerServer,
+  beginServerShutdown,
 } from '@/config/http-server.config';
 import type { LifecycleService } from '@/common/handlers/lifecycle.handler';
 
@@ -22,6 +23,7 @@ export function createApplicationServices(): LifecycleService[] {
     {
       name: 'http server (express)',
       start: registerServer,
+      quiesce: beginServerShutdown,
       stop: closeServer,
       check: isServerRunning,
     },

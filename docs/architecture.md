@@ -43,8 +43,9 @@ multi-version application. Routes currently comprise the application/operational
 1. Importing configuration loads `.env` through `dotenv/config`, validates the complete environment,
    and stops immediately on invalid or missing values.
 2. `src/index.ts` registers the service graph with the lifecycle handler.
-3. Startup initializes MySQL/TypeORM first and then creates the Express listener. A database failure
-   therefore prevents the HTTP port from opening.
+3. Startup initializes MySQL/TypeORM first and then awaits the HTTP listening event.
+   A database failure prevents the port from opening; a bind failure rejects startup.
+   Concurrent startup calls share the pending operation.
 4. If a later service fails, already initialized services are stopped in reverse order. A bootstrap
    failure is logged and shutdown sets a failing process exit code.
 
@@ -53,7 +54,8 @@ Startup deliberately does **not** synchronize the schema or run migrations
 
 ### Request path
 
-Express serves the favicon/static files first. Application traffic then passes through metrics,
+Shutdown admission runs before all routes, including static files. Express then serves the
+favicon/static files. Application traffic passes through metrics,
 request-context and HTTP logging, security headers and rate limiting, header sanitization/limits,
 request timeouts, content-type and method policies, CORS, and the body-size/parser middleware. It is
 then dispatched to application routes, `/api/v1`, or the documentation routes (`/docs`,
@@ -105,7 +107,7 @@ The registration order in `createApp` (`src/config/http-server.config.ts`) is pa
 server's behavior, not a cosmetic grouping of middleware. Express enters middleware in registration
 order and unwinds wrappers after downstream processing completes, so preserve these constraints:
 
-1. **Static assets intentionally bypass API telemetry and policies.** The explicit favicon handler
+1. **Static assets intentionally bypass API telemetry and policies.** After shutdown admission, the explicit favicon handler
    and public-directory middleware run first so asset requests do not consume API rate-limit budget,
    produce API metrics or logs, acquire request context, or encounter API content-type and method
    rules. Moving either static handler below those layers would change both observability data and
@@ -151,4 +153,18 @@ The lifecycle handler installs one-shot `SIGINT` and `SIGTERM` handlers and fata
 uncaught exceptions and unhandled rejections. Shutdown immediately makes readiness false, closes
 initialized services in reverse startup order (HTTP listener first, then TypeORM), waits for the
 listener to drain, and preserves a nonzero exit code for fatal or cleanup failures. Repeated shutdown
-requests are ignored. This is the path exercised by the production SIGTERM smoke check.
+requests share the pending cleanup. HTTP drain is bounded separately from the overall
+shutdown watchdog; see [deadline settings](development.md#http-deadlines-and-shutdown-configuration).
+HTTP readiness checks the actual listening state. Shutdown quiesces services
+synchronously before awaiting pending startup or reverse cleanup, so late startup
+cannot restore readiness or admit new work.
+
+Async controllers use `trackHandler` to retain their promises beyond response
+completion or disconnect. They check `canRespond` after awaits, before writes or
+starting another mutation. New async routes must follow this boundary and await
+their work; detached tasks are outside the drain contract. A response deadline
+does not cancel an already-running database operation. Database cleanup begins
+after handler work settles, or after a failed finite HTTP drain. A failed drain
+keeps exit status nonzero and retains the overall watchdog for live stuck work.
+The production smoke check exercises real container SIGTERM; focused process and
+MySQL tests exercise accepted work and deadline failures.

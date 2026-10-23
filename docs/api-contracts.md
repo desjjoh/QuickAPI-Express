@@ -21,6 +21,19 @@ The [item schemas](../src/api/v1/items/models) define field validation and respo
 
 `page` defaults to 1; `limit` defaults to 25 and accepts positive integers up to 100. `search` matches item name or description. `sort` accepts `name`, `price`, or `createdAt`; the repository defaults to `price`. `order` accepts `ASC` or `DESC` case-insensitively and defaults to ascending. Optional `min_price` and `max_price` are positive integers; the minimum cannot exceed the maximum.
 
+## Response deadlines
+
+The API response deadline defaults to 10 seconds, including body parsing. Expiry
+returns the JSON error envelope with status 408 if no headers were sent; otherwise
+the incomplete response is closed. Late controller responses are suppressed.
+Server receive deadlines can return a raw 408 before Express handles the request.
+
+A timeout or disconnect does not cancel an already-running database mutation or
+guarantee rollback. A lost response can mean the write succeeded. Item operations
+still have no idempotency contract; reconcile uncertain results before retrying.
+New requests reaching the shutdown admission guard receive 503 with connection
+closure; once the listener closes, connections are refused instead.
+
 ## Errors and HTTP policies
 
 Errors use `{ status, message, timestamp }`. Schema validation and malformed JSON return 400; missing items return 404. Unexpected failures return a generic 500 while internal details are logged. Body limits, content-type restrictions, header policies, and rate limiting apply before routes; see [middleware ordering](architecture.md#createapp-middleware-ordering).

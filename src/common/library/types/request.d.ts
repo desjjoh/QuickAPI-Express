@@ -1,10 +1,12 @@
+import type { Request } from 'express';
+
 declare global {
   namespace Express {
     interface Request {
       validated?: {
-        params: P;
-        query: Q;
-        body: B;
+        params: unknown;
+        query: unknown;
+        body: unknown;
       };
     }
   }

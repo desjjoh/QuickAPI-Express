@@ -1,5 +1,6 @@
 services:
   api:
+    stop_grace_period: 40s
     build:
       context: .
       dockerfile: Dockerfile

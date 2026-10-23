@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { EventEmitter } from 'node:events';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/logger.config', () => ({
   logger: {
@@ -15,11 +16,72 @@ async function freshLifecycle() {
   return (await import('@/common/handlers/lifecycle.handler')).LC;
 }
 
+const processEvents = [
+  'SIGINT',
+  'SIGTERM',
+  'uncaughtException',
+  'unhandledRejection',
+  'exit',
+] as const;
+const events: EventEmitter = process;
+let baseline: Map<string, ReturnType<EventEmitter['listeners']>>;
+beforeEach(() => {
+  baseline = new Map(
+    processEvents.map((event) => [event, events.listeners(event)]),
+  );
+});
 afterEach(() => {
+  for (const event of processEvents) {
+    for (const listener of events.listeners(event)) {
+      if (!baseline.get(event)?.includes(listener))
+        events.removeListener(
+          event,
+          listener as Parameters<EventEmitter['removeListener']>[1],
+        );
+    }
+  }
   process.exitCode = 0;
 });
 
 describe('service lifecycle', () => {
+  it('shares pending startup and shutdown, quiesces immediately, and cleans up a late start', async () => {
+    const LC = await freshLifecycle();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const calls: string[] = [];
+    LC.register([
+      {
+        name: 'database',
+        start: () => gate,
+        stop: () => {
+          calls.push('database-stop');
+        },
+      },
+      {
+        name: 'http',
+        start: () => {
+          calls.push('http-start');
+        },
+        quiesce: () => {
+          calls.push('http-quiesce');
+        },
+      },
+    ]);
+    const start = LC.startup();
+    expect(LC.startup()).toBe(start);
+    const shutdown = LC.shutdown();
+    expect(LC.shutdown()).toBe(shutdown);
+    expect(LC.isReady()).toBe(false);
+    expect(calls).toEqual(['http-quiesce']);
+    release();
+    await Promise.all([start, shutdown]);
+    expect(calls).toEqual(['http-quiesce', 'database-stop']);
+    expect(LC.isReady()).toBe(false);
+    await expect(LC.startup()).rejects.toThrow('shutdown');
+  });
+
   it('starts in registration order, stops in reverse order, and transitions readiness', async () => {
     const LC = await freshLifecycle();
     const calls: string[] = [];

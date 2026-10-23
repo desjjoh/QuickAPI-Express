@@ -1,12 +1,14 @@
 import { performance } from 'node:perf_hooks';
 
 import { logger } from '@/config/logger.config';
+import { env } from '@/config/env.config';
 
 export type LifecycleService = {
   name: string;
   check?: () => Promise<boolean> | boolean;
   start?: () => Promise<void> | void;
   stop?: () => Promise<void> | void;
+  quiesce?: () => void;
 };
 
 export type DependencyCheckResult = {
@@ -20,7 +22,9 @@ class LifecycleHandler {
   private static startupServices: LifecycleService[] = [];
   private static initializedServices: LifecycleService[] = [];
 
-  private static startupStarted: boolean = false;
+  private static startupPromise: Promise<void> | undefined;
+  private static shutdownPromise: Promise<void> | undefined;
+  private static handlersRegistered = false;
   private static startupCompleted: boolean = false;
 
   private static shutdownStarted: boolean = false;
@@ -106,6 +110,9 @@ class LifecycleHandler {
       this.startupServices.push(service);
     }
 
+    if (this.handlersRegistered) return;
+    this.handlersRegistered = true;
+
     ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
       process.once(sig, () => {
         logger.warn(`${sig} received — initiating shutdown`);
@@ -149,34 +156,32 @@ class LifecycleHandler {
     });
   }
 
-  public static startup = async (): Promise<void> => {
-    if (this.startupStarted) return;
-    this.startupStarted = true;
+  public static startup = (): Promise<void> => {
+    if (this.shutdownStarted)
+      return Promise.reject(new Error('Startup interrupted by shutdown.'));
+    if (this.startupPromise) return this.startupPromise;
+    if (this.startupCompleted) return Promise.resolve();
+    this.startupPromise = (async () => {
+      try {
+        for (const service of this.startupServices) {
+          if (this.shutdownStarted) break;
+          if (!service.start) continue;
+          await service.start();
+          this.initializedServices.push(service);
+          logger.debug(`Service started → ${service.name}`);
+        }
 
-    const start: number = performance.now();
+        if (!this.shutdownStarted) this.startupCompleted = true;
+      } catch (error) {
+        if (await this.stopInitializedServices()) process.exitCode = 1;
 
-    logger.debug(`Starting services…`);
-
-    try {
-      for (const service of this.startupServices) {
-        if (!service.start) continue;
-
-        await service.start();
-        this.initializedServices.push(service);
-        logger.debug(`Service started → ${service.name}`);
+        throw error;
       }
-    } catch (err: unknown) {
-      this.startupStarted = false;
-      await this.stopInitializedServices();
+    })().finally(() => {
+      this.startupPromise = undefined;
+    });
 
-      throw err;
-    }
-
-    this.startupCompleted = true;
-
-    const duration: string = (performance.now() - start).toFixed(2);
-
-    logger.debug(`All services started in ${duration}ms`);
+    return this.startupPromise;
   };
 
   private static async stopInitializedServices(): Promise<boolean> {
@@ -203,31 +208,47 @@ class LifecycleHandler {
     return cleanupFailed;
   }
 
-  public static shutdown = async (exitCode: number = 0): Promise<void> => {
-    const currentExitCode: number =
-      typeof process.exitCode === 'number'
-        ? process.exitCode
-        : Number(process.exitCode ?? 0);
+  public static shutdown = (exitCode: number = 0): Promise<void> => {
+    const current = Number(process.exitCode ?? 0);
 
-    process.exitCode = Math.max(currentExitCode, exitCode);
-    if (this.shutdownStarted) return;
+    process.exitCode = Math.max(current, exitCode);
+    if (this.shutdownPromise) return this.shutdownPromise;
     this.shutdownStarted = true;
     this.startupCompleted = false;
+    let cleanupFailed = false;
+    const watchdog = setTimeout(() => {
+      logger.fatal(
+        'Shutdown deadline exceeded; forcing exit. Unfinished work may have an unknown outcome.',
+      );
+      process.exit(1);
+    }, env.SHUTDOWN_TIMEOUT_MS);
 
-    const start: number = performance.now();
-
-    logger.debug('Stopping services…');
-
-    const cleanupFailed: boolean = await this.stopInitializedServices();
-
-    if (cleanupFailed) {
-      process.exitCode = 1;
-      logger.error('Shutdown completed with cleanup failures');
+    for (const service of [...this.startupServices].reverse()) {
+      try {
+        service.quiesce?.();
+      } catch (error) {
+        cleanupFailed = true;
+        process.exitCode = 1;
+        logger.error({ error }, 'Service quiesce failed.');
+      }
     }
 
-    const duration: string = (performance.now() - start).toFixed(2);
+    this.shutdownPromise = (async () => {
+      // A service completing startup after the signal still belongs to reverse cleanup.
+      await this.startupPromise?.catch(() => undefined);
+      if (await this.stopInitializedServices()) {
+        cleanupFailed = true;
+        process.exitCode = 1;
+      }
 
-    logger.debug(`Shutdown completed in ${duration}ms`);
+      logger.debug('Shutdown cleanup completed.');
+    })().finally(() => {
+      // A forced/failed drain may leave live work after cleanup returned.
+      if (cleanupFailed) watchdog.unref();
+      else clearTimeout(watchdog);
+    });
+
+    return this.shutdownPromise;
   };
 }
 

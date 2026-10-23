@@ -47,15 +47,43 @@ trust boundary. No schema migration is required for this HTTP policy change.
   MySQL and should answer while the process is alive and not shutting down.
 - `GET /ready` is **traffic readiness**. It returns 200 only after lifecycle startup completes and
   every registered service check passes (the TypeORM data source is initialized and the HTTP server
-  is registered). Otherwise the normal error path returns 503. Readiness becomes false as soon as
+  is actually listening). Otherwise the normal error path returns 503. Readiness becomes false as soon as
   graceful shutdown starts.
 
-Compose uses `/ready` for the API healthcheck. On `SIGTERM`, the process withdraws readiness, closes
-the HTTP listener, destroys the database connection, and exits cleanly after in-flight listener work
-drains.
+Compose uses `/ready` for the API healthcheck. Startup resolves only after the
+listener binds; a bind failure unwinds already-started services, including MySQL.
 
 Additional implemented endpoints are `/info`, `/system`, `/metrics`, `/docs`, `/docs-json`, and
 `/redoc`.
+
+## HTTP deadlines and shutdown
+
+The [validated duration settings](development.md#http-deadlines-and-shutdown-configuration)
+default to 5 seconds for receiving headers, 10 seconds for receiving the complete
+request, and 10 seconds for producing an API response. Node rejects slow input
+with 408; transport errors can occur before Express and need not use the JSON
+error envelope. API response expiry returns JSON 408 when headers are unsent;
+after headers are sent, it closes the incomplete response. Static files bypass
+the API response timer but remain subject to server receive deadlines and shutdown.
+
+On SIGINT/SIGTERM or fatal shutdown, readiness and new request admission are
+withdrawn immediately. HTTP closes first, allowing accepted requests and tracked
+handler promises to drain for up to 25 seconds. MySQL stays available during that
+drain and closes afterward. Responses that already timed out or disconnected do
+not imply that their underlying database work finished. Repeated shutdown calls
+share the same cleanup; a fatal signal path preserves a failing exit code.
+
+When HTTP drain expires, remaining connections are destroyed, cleanup proceeds,
+and exit status is 1. The overall 30-second watchdog forces exit 1 if work or
+cleanup still keeps the process alive. Unfinished mutations can have an unknown
+outcome: a response timeout or process exit does not promise cancellation or rollback.
+Clients must reconcile uncertain writes rather than assume a retry is safe.
+
+Both Compose API services allow 40 seconds before the container supervisor kills
+the process. Keep deployment termination grace longer than `SHUTDOWN_TIMEOUT_MS`
+when overriding it. The supervisor remains the fallback for a blocked JavaScript
+event loop, where application timers cannot run. Apply the same ordering in any
+orchestrator or ingress drain policy. No schema migration is required.
 
 ## Production image and smoke validation
 
