@@ -1,377 +1,64 @@
 # QuickAPI-Express
 
-QuickAPI-Express is a TypeScript and Express 5 API backed by MySQL through TypeORM. The repository
-contains an item CRUD API, operational endpoints, OpenAPI documentation, structured logging,
-request-policy middleware, explicit schema migrations, disposable database tests, and a production
-container smoke test. This document describes only the behavior currently implemented in the
-repository.
+A TypeScript and Express 5 API with MySQL persistence, explicit migrations, structured logging, and production container checks.
 
-## Runtime requirements
+## What's included
 
-- **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.11.1`).
-- **Package manager:** `npm@11.4.2`, as declared by `packageManager` in `package.json`.
-- Use `npm ci` with the committed `package-lock.json`; do not substitute another package manager.
-- Docker with the Compose plugin is required for MySQL-backed tests and container validation.
+- Item CRUD with Zod validation, pagination, filtering, and response DTOs.
+- TypeORM repositories and explicit MySQL schema migrations.
+- Request policies, centralized errors, request correlation, and Prometheus metrics.
+- Liveness/readiness endpoints, OpenAPI documentation, disposable database tests, and a production container smoke test.
 
-Install dependencies with:
+## Getting started
 
-```bash
-npm ci
-```
+Use Node.js 24 (`>=24 <25`), npm 11.4.2, Docker Engine, and Docker Compose v2.
 
-## Architecture and execution paths
+1. Run `npm ci`, then copy [.env.example](.env.example) to a gitignored `.env`.
+2. Follow [local configuration](docs/development.md#configuration): the development Compose database uses host port 3307, database `quickapi`, and user/password `app`. The example file needs these overrides for this topology.
+3. Start MySQL and wait for it to become healthy, then apply migrations and start the API:
 
-### Source layout
+   ```bash
+   docker compose up -d mysql
+   npm run migration:run
+   npm run dev
+   ```
 
-```text
-src/
-├── index.ts                         process entry point
-├── api/
-│   ├── app/                         root and operational endpoints
-│   └── v1/items/                    item routes, controller, request models, and OpenAPI definitions
-├── application.ts                   lifecycle service graph
-├── config/                          environment, HTTP, database, logging, metrics, docs, routes
-├── common/
-│   ├── exceptions/                  typed HTTP errors
-│   ├── handlers/                    startup and shutdown lifecycle
-│   ├── helpers/                     shared helpers
-│   ├── library/                     shared response/query models
-│   ├── middleware/                  request policy, telemetry, validation, and error middleware
-│   ├── routes/                      final not-found handler
-│   └── store/                       request context storage
-└── database/
-    ├── entities/
-    ├── migrations/
-    └── repositories/
+The local API is at `http://localhost:3000`. Swagger is served at `/docs`, OpenAPI JSON at `/docs-json`, and ReDoc at `/redoc`.
 
-test/
-├── unit/
-├── integration/
-├── e2e/
-└── helpers/database/                disposable-MySQL orchestration and safety guard
-```
+## Documentation
 
-There is one HTTP process and one TypeORM `DataSource`; this is not a generated multi-service or
-multi-version application. Routes currently comprise the application/operational routes and the
-`/api/v1/items` resource.
+| Guide                                           | Contents                                                                |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| [Development](docs/development.md)              | Setup, configuration, migrations, commands, and readability conventions |
+| [Architecture](docs/architecture.md)            | Layer boundaries, middleware ordering, startup, and shutdown            |
+| [API contracts](docs/api-contracts.md)          | Item routes, validation, pagination, and errors                         |
+| [Testing](test/TESTING.md)                      | Test categories, database safety, PowerShell commands, coverage, and CI |
+| [Deployment and operations](docs/deployment.md) | Production image, operational endpoints, and container smoke validation |
+| [Technical backlog](docs/backlog.md)            | Verified gaps and follow-up work                                        |
 
-### Startup path
+Configuration is defined by [.env.example](.env.example) and [environment validation](src/config/env.config.ts). Commands are defined in [package.json](package.json).
 
-1. Importing configuration loads `.env` through `dotenv/config`, validates the complete environment,
-   and stops immediately on invalid or missing values.
-2. `src/index.ts` registers the service graph with the lifecycle handler.
-3. Startup initializes MySQL/TypeORM first and then creates the Express listener. A database failure
-   therefore prevents the HTTP port from opening.
-4. If a later service fails, already initialized services are stopped in reverse order. A bootstrap
-   failure is logged and shutdown sets a failing process exit code.
+## API overview
 
-Startup deliberately does **not** synchronize the schema or run migrations
-(`synchronize: false`, `migrationsRun: false`). Migrations are a separate operator/deployment step.
+| Resource                           | Route              |
+| ---------------------------------- | ------------------ |
+| Items                              | `/api/v1/items`    |
+| Process liveness                   | `/health`          |
+| Traffic readiness                  | `/ready`           |
+| Application and system information | `/info`, `/system` |
+| Prometheus metrics                 | `/metrics`         |
 
-### Request path
+See [API contracts](docs/api-contracts.md) for implemented behavior and [deployment](docs/deployment.md) for operational access. The item API currently has no authentication or authorization layer.
 
-Express serves the favicon/static files first. Application traffic then passes through metrics,
-request-context and HTTP logging, security headers and rate limiting, header sanitization/limits,
-request timeouts, content-type and method policies, CORS, and the body-size/parser middleware. It is
-then dispatched to application routes, `/api/v1`, or the documentation routes (`/docs`,
-`/docs-json`, and `/redoc`). Unknown routes become a typed 404.
-
-Controllers validate inputs with Zod models and call the domain repository, which uses TypeORM.
-Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON error responses.
-Unexpected failures are logged with request context and returned as a generic 500 so internal error
-details are not disclosed. The error envelope contains `status`, `message`, and `timestamp`.
-
-### Design Decisions
-
-The application keeps its boundaries explicit: `src/api/` owns transport and routing; item Zod
-contracts live in `src/api/v1/items/models/` and are applied by `validateRequest`; and
-`src/common/middleware/` owns cross-cutting HTTP policy and centralized error handling. Persistence
-is exposed through `src/database/repositories/item.repo.ts`, while `src/database/entities/` owns the
-TypeORM database mapping. Startup, shutdown, and runtime wiring remain outside the request features
-in `src/application.ts`, `src/common/handlers/lifecycle.handler.ts`, and `src/config/`.
-
-```mermaid
-flowchart LR
-    Client[Client request] --> Policy[Policy middleware<br/>src/common/middleware]
-    Policy --> Validation[validateRequest + Zod<br/>src/api/v1/items/models]
-    Validation --> Controller[Route/controller<br/>src/api]
-    Controller --> Repository[ItemRepository<br/>item.repo.ts]
-    Repository --> ORM[TypeORM + entity mapping<br/>src/database/entities]
-    ORM --> MySQL[(MySQL)]
-    MySQL --> ORM
-    ORM --> Repository
-    Repository --> Mapping[Response DTO mapping<br/>item models]
-    Mapping --> Client
-    Policy -. failure .-> Errors[Centralized error handler<br/>src/common/middleware]
-    Validation -. failure .-> Errors
-    Controller -. failure .-> Errors
-    Repository -. failure .-> Errors
-    Mapping -. failure .-> Errors
-    Errors --> Client
-```
-
-Controllers translate validated HTTP input into repository calls and map returned entities into
-response DTOs. The repository/transport separation prevents TypeORM and MySQL details from leaking
-into routing code, and prevents HTTP status, envelope, and response-mapping mechanics from becoming
-coupled to persistence. Lifecycle and configuration code compose these layers without assigning
-request or storage responsibilities to the process bootstrap.
-
-### `createApp` middleware ordering
-
-The registration order in `createApp` (`src/config/http-server.config.ts`) is part of the HTTP
-server's behavior, not a cosmetic grouping of middleware. Express enters middleware in registration
-order and unwinds wrappers after downstream processing completes, so preserve these constraints:
-
-1. **Static assets intentionally bypass API telemetry and policies.** The explicit favicon handler
-   and public-directory middleware run first so asset requests do not consume API rate-limit budget,
-   produce API metrics or logs, acquire request context, or encounter API content-type and method
-   rules. Moving either static handler below those layers would change both observability data and
-   the policy surface for assets; moving arbitrary application routes above the policy stack would,
-   conversely, create an unprotected bypass.
-2. **Telemetry wraps downstream processing.** Metrics, request context, and HTTP logging are entered
-   before policies and routes so they can observe outcomes and latency from everything downstream,
-   including policy rejections, controller responses, 404s, and errors. Moving them after a rejecting
-   policy would make those rejected requests invisible, while putting request-context creation after
-   logging could deprive logs and error reporting of correlation data.
-3. **Proxy trust precedes IP-based rate limiting.** `trust proxy` must be set before the limiter is
-   registered and handles requests because the limiter keys on `req.ip`. Reversing that dependency
-   can group clients under the proxy address or derive identities from the wrong hop, weakening or
-   misapplying throttling. The configured trust boundary must not be broadened casually either,
-   because trusting unvalidated forwarding data can allow clients to spoof the identity used by the
-   limiter.
-4. **Cheap request policies reject before expensive request work.** Security headers, rate limiting,
-   header sanitization and limits, timeouts, content-type enforcement, the method allowlist, and CORS
-   all run before body parsing and controllers. Moving parsing or route dispatch ahead of them would
-   spend CPU and memory on requests that should have been rejected and could let a route escape a
-   security, abuse-prevention, protocol, or cross-origin control. Their relative order also has
-   observable consequences: for example, moving the limiter before proxy trust changes its key, and
-   moving timeout setup after parsing leaves body consumption outside that timeout protection.
-5. **Body limits and parsing precede dispatch.** `bodyLimitMiddleware` selects and advertises the
-   applicable size limit, then parses JSON before any supported route runs. Dispatching first would
-   let controllers receive an unparsed body or consume payloads without the centralized limit;
-   parsing before the limit would allocate work before oversized input is rejected.
-6. **The not-found handler follows every supported route.** Application, versioned API, and
-   documentation routes must all have a chance to match before `not_found` converts the request to a
-   typed 404. Moving it upward would shadow every route registered below it.
-7. **The error handler remains last.** `errorHandler` must follow routes and `not_found` so failures
-   passed from any downstream policy, parser, controller, or fallback are mapped to the same safe
-   response envelope. Middleware or routes placed after it would not have their failures mapped
-   consistently and could leak Express's default error behavior instead.
-
-### Shutdown path
-
-The lifecycle handler installs one-shot `SIGINT` and `SIGTERM` handlers and fatal handlers for
-uncaught exceptions and unhandled rejections. Shutdown immediately makes readiness false, closes
-initialized services in reverse startup order (HTTP listener first, then TypeORM), waits for the
-listener to drain, and preserves a nonzero exit code for fatal or cleanup failures. Repeated shutdown
-requests are ignored. This is the path exercised by the production SIGTERM smoke check.
-
-## Configuration
-
-Create `.env` for local development. Every variable below is consumed at startup:
-
-```dotenv
-NODE_ENV=development
-PORT=3000
-LOG_LEVEL=debug
-
-DB_HOST=127.0.0.1
-DB_PORT=3307
-DB_USER=app
-DB_PASSWORD=app
-DB_DATABASE=quickapi
-
-# Optional; defaults come from package.json
-APP_NAME=quickapi-express
-APP_VERSION=1.0.0
-```
-
-| Variable      | Validation and meaning                                                                                                                                    |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`    | Required: exactly `development`, `test`, or `production`.                                                                                                 |
-| `PORT`        | Required integer from `0` through `65535`; `0` (an ephemeral test listener) is allowed only when `NODE_ENV=test`, otherwise the port must be `1`–`65535`. |
-| `LOG_LEVEL`   | Required: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`.                                                                                |
-| `DB_HOST`     | Required non-empty MySQL host.                                                                                                                            |
-| `DB_PORT`     | Required integer from `1` through `65535`.                                                                                                                |
-| `DB_USER`     | Required non-empty MySQL user.                                                                                                                            |
-| `DB_PASSWORD` | Required non-empty MySQL password.                                                                                                                        |
-| `DB_DATABASE` | Required non-empty MySQL database/schema name.                                                                                                            |
-| `APP_NAME`    | Optional; defaults to the package name.                                                                                                                   |
-| `APP_VERSION` | Optional; defaults to the package version and, when supplied, must be full SemVer.                                                                        |
-
-Values are trimmed/coerced where the schema specifies it. Validation prints all Zod issues to
-stderr and throws before database or HTTP startup; there are no silent database defaults.
-
-## Local MySQL, migrations, and development
-
-The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user
-`app`, password `app`, and a persistent `mysql_data` volume. Start the database, apply migrations
-explicitly using the `.env` above, and then start the source server:
+## Quality checks
 
 ```bash
-docker compose up -d mysql
-npm run migration:run
-npm run dev
+npm run check
+npm run test:unit:coverage
 ```
 
-Alternatively, after migrations have been applied, `npm run docker:up` builds and starts both the API
-and MySQL. Compose waits for MySQL health before starting the API, but it does **not** apply
-migrations. `docker compose down` stops the stack while retaining data; use
-`docker compose down --volumes --remove-orphans` only when intentionally deleting the development
-database.
-
-After changing an entity, use the fixed generation destination, review the generated migration, and
-validate that no uncommitted schema difference remains:
-
-```bash
-npm run migration:generate
-npm run migration:run
-npm run migration:validate
-```
-
-`npm run migration:revert` reverts the most recently applied migration. All TypeORM commands use the
-same validated environment as the application, so select the intended database before running them.
-
-## Tests and database safety
-
-Unit tests need no container. Integration, end-to-end, and migration tests use the wrapper commands,
-which validate the target, start `docker-compose.test.yml`, wait for disposable MySQL, apply
-migrations, run the selected Vitest project/validation, and always execute teardown from an `EXIT`
-trap—even when startup or tests fail:
-
-```bash
-npm run test:unit
-npm run test:integration
-npm run test:e2e
-npm run test:migration
-```
-
-The disposable service binds only to `127.0.0.1:3308` and stores MySQL data in `tmpfs`. Destructive
-infrastructure commands first require all of the following:
-
-- `NODE_ENV` is exactly `test`;
-- `DB_DATABASE` matches `^[a-z0-9_]+_disposable_test$` and is not a protected generic name; and
-- `DB_HOST` is a recognized local/CI host, or is explicitly included in the comma-separated
-  `TEST_DB_ALLOWED_HOSTS` allowlist.
-
-Set a safe test environment before using local infrastructure commands; for example,
-`DB_DATABASE=quickapi_disposable_test` with `DB_HOST=localhost`. `npm run test:infra:down` removes
-containers, anonymous resources, orphans, and volumes. Do not point these commands at development,
-staging, or production data.
-
-## Liveness, readiness, and operations
-
-- `GET /health` is **process liveness**. It reports `alive`, uptime, and a timestamp; it does not query
-  MySQL and should answer while the process is alive and not shutting down.
-- `GET /ready` is **traffic readiness**. It returns 200 only after lifecycle startup completes and
-  every registered service check passes (the TypeORM data source is initialized and the HTTP server
-  is registered). Otherwise the normal error path returns 503. Readiness becomes false as soon as
-  graceful shutdown starts.
-
-Compose uses `/ready` for the API healthcheck. On `SIGTERM`, the process withdraws readiness, closes
-the HTTP listener, destroys the database connection, and exits cleanly after in-flight listener work
-drains.
-
-Additional implemented endpoints are `/info`, `/system`, `/metrics`, `/docs`, `/docs-json`, and
-`/redoc`.
-
-## Package scripts
-
-The following is the complete implemented script surface, with command bodies reproduced exactly
-from `package.json`:
-
-| Script                 | Exact definition                                                                                                                                |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dev`                  | `node --watch --import tsx src/index.ts`                                                                                                        |
-| `build`                | `tsc -p tsconfig.build.json && tsc-alias`                                                                                                       |
-| `typecheck`            | `tsc --noEmit`                                                                                                                                  |
-| `clean`                | `rimraf dist && npm run build`                                                                                                                  |
-| `start`                | `npm run build && node dist/index.js`                                                                                                           |
-| `start:compiled`       | `node dist/index.js`                                                                                                                            |
-| `rebuild`              | `npm start`                                                                                                                                     |
-| `test`                 | `vitest`                                                                                                                                        |
-| `check:format-lint`    | `npm run format && npm run lint`                                                                                                                |
-| `check:type-build`     | `npm run typecheck && npm run build`                                                                                                            |
-| `test:unit`            | `vitest run --project unit`                                                                                                                     |
-| `test:unit:coverage`   | `vitest run --project unit --coverage`                                                                                                          |
-| `test:integration`     | `bash test/helpers/database/run-with-infra.sh integration`                                                                                      |
-| `test:integration:run` | `vitest run --project integration`                                                                                                              |
-| `test:e2e`             | `bash test/helpers/database/run-with-infra.sh e2e`                                                                                              |
-| `test:e2e:run`         | `vitest run --project e2e`                                                                                                                      |
-| `test:migration`       | `bash test/helpers/database/run-with-infra.sh migration`                                                                                        |
-| `test:db:safety`       | `node --env-file=.env.test --import tsx test/helpers/database/safety.ts`                                                                        |
-| `test:infra:up`        | `npm run test:db:safety && docker compose -f docker-compose.test.yml up -d --wait`                                                              |
-| `test:infra:prepare`   | `npm run test:db:safety && node --env-file=.env.test --import tsx ./node_modules/typeorm/cli.js migration:run -d src/config/database.config.ts` |
-| `test:infra:logs`      | `docker compose -f docker-compose.test.yml logs`                                                                                                |
-| `test:infra:down`      | `npm run test:db:safety && docker compose -f docker-compose.test.yml down --volumes --remove-orphans`                                           |
-| `test:coverage`        | `vitest run --coverage`                                                                                                                         |
-| `coverage`             | `vitest run --coverage`                                                                                                                         |
-| `lint`                 | `eslint .`                                                                                                                                      |
-| `lint:fix`             | `eslint . --fix`                                                                                                                                |
-| `format`               | `prettier --check .`                                                                                                                            |
-| `quality`              | `npm run format && npm run lint && npm run typecheck && npm run test -- --run && npm run test:coverage && npm run build`                        |
-| `format:fix`           | `prettier --write .`                                                                                                                            |
-| `typeorm`              | `node --import tsx ./node_modules/typeorm/cli.js`                                                                                               |
-| `migration:generate`   | `npm run typeorm -- migration:generate src/database/migrations/SchemaUpdate -d src/config/database.config.ts`                                   |
-| `migration:run`        | `npm run typeorm -- migration:run -d src/config/database.config.ts`                                                                             |
-| `migration:revert`     | `npm run typeorm -- migration:revert -d src/config/database.config.ts`                                                                          |
-| `migration:validate`   | `npm run typeorm -- migration:generate src/database/migrations/SchemaValidation -d src/config/database.config.ts --check`                       |
-| `docker:build`         | `docker build -t quickapi-express .`                                                                                                            |
-| `docker:run`           | `docker run -dp 3000:3000 quickapi-express`                                                                                                     |
-| `docker:up`            | `docker compose up --build`                                                                                                                     |
-| `smoke:production`     | `bash .github/scripts/ci-smoke.sh`                                                                                                              |
-
-The CI-oriented `check:*`, coverage, database-backed wrapper, migration validation, and production
-smoke commands are intentionally listed rather than implying nonexistent shortcuts.
-
-## Production image and smoke validation
-
-`Dockerfile` uses three stages: a full locked install compiles TypeScript; a second locked install
-retains production dependencies only; and the final Node 24.11.1 Alpine image receives `dist`, package
-metadata, and production `node_modules`. The runtime includes `curl`, exposes port 3000, runs as the
-non-root `node` user, and starts with `npm run start:compiled`.
-
-Build the image:
-
-```bash
-npm run docker:build
-```
-
-`npm run docker:run` reproduces the package's minimal `docker run` command, but a real API run must
-also supply all required environment variables, a reachable migrated MySQL database, and typically a
-container network. For example, the Compose topology supplies those settings; apply migrations
-before bringing up its API as described above.
-
-The canonical production validation is:
-
-```bash
-npm run smoke:production
-```
-
-It validates Compose configuration, builds the production image once, starts isolated MySQL, runs
-the compiled migration CLI as a one-shot deployment step, starts the API, and verifies readiness and
-liveness, security headers, absence of `x-powered-by`, item CRUD, validation/content-type/not-found
-errors, and their JSON envelope. It then sends `SIGTERM` and verifies readiness withdrawal, listener
-drain, container exit, and exit code 0. Its trap prints service logs on failure and always removes
-containers, volumes, orphans, and temporary files. It requires `docker`, Docker Compose, `curl`, and
-`node`.
-
-## Continuous integration and deployment gate
-
-`.github/workflows/ci.yml` runs on every push and pull request with Node 24.11.1 and locked installs:
-
-1. formatting and linting (`check:format-lint`);
-2. type-check and production build (`check:type-build`);
-3. unit tests with coverage and uploaded reports;
-4. integration tests against a MySQL service after the safety check and migrations;
-5. end-to-end tests with the same isolated preparation;
-6. migration drift validation against its own disposable schema; and
-7. digest validation plus the production image smoke test.
+`check` verifies formatting, lint, types, unit tests, and build without requiring MySQL. Read [Testing](test/TESTING.md) before running database-backed tests. CI separately checks integration, E2E, migration drift, and production topology; a green run does not establish readiness for every deployment environment.
 
 ## License
 
-[MIT](LICENSE)
-
----
-
-QuickAPI-Express — part of the **QuickAPI** template ecosystem by **John Desjardins**.
+[MIT](LICENSE).

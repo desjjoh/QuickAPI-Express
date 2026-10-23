@@ -17,15 +17,20 @@ const localAndCiHosts = new Set([
 ]);
 
 /** Refuse to authorize destructive test-database operations unless every guard is explicit. */
-export function assertSafeTestDatabase(environment: NodeJS.ProcessEnv = process.env): void {
+export function assertSafeTestDatabase(
+  environment: NodeJS.ProcessEnv = process.env,
+): void {
   const errors: string[] = [];
   const database = environment.DB_DATABASE?.trim().toLowerCase() ?? '';
   const host = environment.DB_HOST?.trim().toLowerCase() ?? '';
 
-  if (environment.NODE_ENV !== 'test') errors.push('NODE_ENV must be exactly "test"');
+  if (environment.NODE_ENV !== 'test')
+    errors.push('NODE_ENV must be exactly "test"');
 
   if (!/^[a-z0-9_]+_disposable_test$/.test(database)) {
-    errors.push('DB_DATABASE must end in the explicit "_disposable_test" convention');
+    errors.push(
+      'DB_DATABASE must end in the explicit "_disposable_test" convention',
+    );
   }
 
   if (protectedDatabaseNames.has(database)) {
@@ -34,9 +39,12 @@ export function assertSafeTestDatabase(environment: NodeJS.ProcessEnv = process.
 
   const additionallyAllowedHosts = (environment.TEST_DB_ALLOWED_HOSTS ?? '')
     .split(',')
-    .map(value => value.trim().toLowerCase())
+    .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
-  const permittedHosts = new Set([...localAndCiHosts, ...additionallyAllowedHosts]);
+  const permittedHosts = new Set([
+    ...localAndCiHosts,
+    ...additionallyAllowedHosts,
+  ]);
 
   if (!permittedHosts.has(host)) {
     errors.push(
@@ -46,11 +54,16 @@ export function assertSafeTestDatabase(environment: NodeJS.ProcessEnv = process.
   }
 
   if (errors.length > 0) {
-    throw new Error(`Unsafe test database configuration:\n- ${errors.join('\n- ')}`);
+    throw new Error(
+      `Unsafe test database configuration:\n- ${errors.join('\n- ')}`,
+    );
   }
 }
 
-if (process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href) {
+if (
+  process.argv[1] &&
+  import.meta.url === new URL(process.argv[1], 'file:').href
+) {
   assertSafeTestDatabase();
   process.stdout.write('Test database safety checks passed.\n');
 }

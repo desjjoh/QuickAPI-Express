@@ -37,14 +37,18 @@ export function bodyLimitMiddleware(options: BodyLimitOptions) {
     const jsonParser = express.json({
       limit,
       verify: (_req, _res, body) => {
-        res.setHeader('X-Body-Remaining-Bytes', String(Math.max(limit - body.length, 0)));
+        res.setHeader(
+          'X-Body-Remaining-Bytes',
+          String(Math.max(limit - body.length, 0)),
+        );
       },
     });
 
-    jsonParser(req, res, error => {
+    jsonParser(req, res, (error) => {
       if (isEntityTooLargeError(error)) {
         res.setHeader('X-Body-Remaining-Bytes', '0');
         next(new RequestBodyTooLargeError(limit));
+
         return;
       }
 

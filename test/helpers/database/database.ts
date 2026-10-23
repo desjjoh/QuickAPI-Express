@@ -10,7 +10,8 @@ export async function connectTestDatabase(): Promise<void> {
 
 /** Reset mutable tables without dropping the schema or migration history. */
 export async function resetTestDatabase(): Promise<void> {
-  if (!AppDataSource.isInitialized) throw new Error('Test database is not connected');
+  if (!AppDataSource.isInitialized)
+    throw new Error('Test database is not connected');
 
   await AppDataSource.query('DELETE FROM `items`');
 }

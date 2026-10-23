@@ -12,7 +12,11 @@ export interface CorsOptions {
 }
 
 export function createCorsMiddleware(opts: CorsOptions) {
-  return function corsMiddleware(req: Request, res: Response, next: NextFunction): void {
+  return function corsMiddleware(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void {
     const origin: string | null = req.headers.origin ?? null;
 
     // Check if origin is allowed
@@ -23,14 +27,23 @@ export function createCorsMiddleware(opts: CorsOptions) {
     // CORS header: Access-Control-Allow-Origin
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (opts.origin === '*' || (Array.isArray(opts.origin) && opts.origin.includes('*'))) {
+    } else if (
+      opts.origin === '*' ||
+      (Array.isArray(opts.origin) && opts.origin.includes('*'))
+    ) {
       res.setHeader('Access-Control-Allow-Origin', '*');
     }
 
     // Static CORS headers
     res.setHeader('Access-Control-Allow-Methods', opts.methods.join(', '));
-    res.setHeader('Access-Control-Allow-Headers', opts.allowedHeaders.join(', '));
-    res.setHeader('Access-Control-Expose-Headers', opts.exposedHeaders.join(', '));
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      opts.allowedHeaders.join(', '),
+    );
+    res.setHeader(
+      'Access-Control-Expose-Headers',
+      opts.exposedHeaders.join(', '),
+    );
     res.setHeader('Access-Control-Max-Age', String(opts.maxAge ?? 86400));
 
     if (opts.credentials) {
@@ -40,6 +53,7 @@ export function createCorsMiddleware(opts: CorsOptions) {
     // OPTIONS → preflight
     if (req.method === 'OPTIONS') {
       res.status(204).send();
+
       return;
     }
 

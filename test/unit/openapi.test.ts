@@ -8,8 +8,9 @@ type JsonObject = Record<string, any>;
 const schemas = (openApiSpec.components?.schemas ?? {}) as JsonObject;
 
 function responseSchema(path: string, status: number): JsonObject {
-  return (openApiSpec.paths as JsonObject)[path].get.responses[status].content['application/json']
-    .schema;
+  return (openApiSpec.paths as JsonObject)[path].get.responses[status].content[
+    'application/json'
+  ].schema;
 }
 
 function expectRequired(schema: string, properties: string[]): void {
@@ -20,9 +21,18 @@ function expectRequired(schema: string, properties: string[]): void {
 describe('generated OpenAPI contract', () => {
   it('publishes every status and operations route with its response codes and schemas', () => {
     expect(Object.keys(openApiSpec.paths)).toEqual(
-      expect.arrayContaining(['/', '/health', '/ready', '/info', '/system', '/metrics']),
+      expect.arrayContaining([
+        '/',
+        '/health',
+        '/ready',
+        '/info',
+        '/system',
+        '/metrics',
+      ]),
     );
-    expect(responseSchema('/', 200)).toEqual({ $ref: '#/components/schemas/RootResponse' });
+    expect(responseSchema('/', 200)).toEqual({
+      $ref: '#/components/schemas/RootResponse',
+    });
     expect(responseSchema('/health', 200)).toEqual({
       $ref: '#/components/schemas/HealthResponse',
     });
@@ -38,15 +48,19 @@ describe('generated OpenAPI contract', () => {
     expect(responseSchema('/system', 200)).toEqual({
       $ref: '#/components/schemas/SystemDiagnostics',
     });
-    expect(Object.keys((openApiSpec.paths as JsonObject)['/ready'].get.responses)).toEqual([
-      '200',
-      '503',
-    ]);
+    expect(
+      Object.keys((openApiSpec.paths as JsonObject)['/ready'].get.responses),
+    ).toEqual(['200', '503']);
   });
 
   it('defines required health, readiness, information, and diagnostics properties', () => {
     expectRequired('RootResponse', ['message']);
-    expectRequired('HealthResponse', ['alive', 'status', 'uptime', 'timestamp']);
+    expectRequired('HealthResponse', [
+      'alive',
+      'status',
+      'uptime',
+      'timestamp',
+    ]);
     expectRequired('DependencyCheck', ['name', 'status', 'response_time_ms']);
     expectRequired('ReadyResponse', ['ready', 'status', 'timestamp', 'checks']);
     expectRequired('SystemInfoResponse', [
@@ -61,8 +75,16 @@ describe('generated OpenAPI contract', () => {
       'started_at',
       'timezone',
     ]);
-    expectRequired('CpuLoadAverage', ['one_minute', 'five_minutes', 'fifteen_minutes']);
-    expectRequired('CpuDiagnostics', ['logical_core_count', 'model', 'load_average']);
+    expectRequired('CpuLoadAverage', [
+      'one_minute',
+      'five_minutes',
+      'fifteen_minutes',
+    ]);
+    expectRequired('CpuDiagnostics', [
+      'logical_core_count',
+      'model',
+      'load_average',
+    ]);
     expectRequired('MemoryDiagnostics', [
       'total_bytes',
       'free_bytes',
@@ -124,10 +146,14 @@ describe('generated OpenAPI contract', () => {
   });
 
   it('documents metrics using the Prometheus media type rather than JSON', () => {
-    const content = (openApiSpec.paths as JsonObject)['/metrics'].get.responses[200].content;
+    const content = (openApiSpec.paths as JsonObject)['/metrics'].get
+      .responses[200].content;
     expect(content).toEqual({
       'text/plain; version=0.0.4; charset=utf-8': {
-        schema: { type: 'string', description: 'Prometheus text exposition format.' },
+        schema: {
+          type: 'string',
+          description: 'Prometheus text exposition format.',
+        },
       },
     });
     expect(content).not.toHaveProperty('application/json');

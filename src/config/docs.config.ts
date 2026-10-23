@@ -4,7 +4,10 @@ import Redoc from 'redoc-express';
 
 import { env } from '@/config/env.config';
 
-import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import {
+  OpenApiGeneratorV3,
+  OpenAPIRegistry,
+} from '@asteasolutions/zod-to-openapi';
 
 import { registerSystemPaths } from '@/api/app/docs/system.docs';
 import { registerItemPaths } from '@/api/v1/items/docs/items.docs';

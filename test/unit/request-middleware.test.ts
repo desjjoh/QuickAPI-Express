@@ -23,7 +23,11 @@ describe('validateRequest', () => {
   };
 
   it('stores parsed values from every request location', () => {
-    const req = { params: { id: '7' }, query: { enabled: 'yes' }, body: { name: 'ok' } };
+    const req = {
+      params: { id: '7' },
+      query: { enabled: 'yes' },
+      body: { name: 'ok' },
+    };
     const next = vi.fn();
 
     validateRequest(schemas)(req as never, {} as never, next);
@@ -37,20 +41,41 @@ describe('validateRequest', () => {
   });
 
   it.each([
-    ['params', { params: { id: 'bad' }, query: { enabled: 'yes' }, body: { name: 'ok' } }],
-    ['query', { params: { id: '7' }, query: { enabled: 'maybe' }, body: { name: 'ok' } }],
-    ['body', { params: { id: '7' }, query: { enabled: 'yes' }, body: { name: '' } }],
+    [
+      'params',
+      {
+        params: { id: 'bad' },
+        query: { enabled: 'yes' },
+        body: { name: 'ok' },
+      },
+    ],
+    [
+      'query',
+      {
+        params: { id: '7' },
+        query: { enabled: 'maybe' },
+        body: { name: 'ok' },
+      },
+    ],
+    [
+      'body',
+      { params: { id: '7' }, query: { enabled: 'yes' }, body: { name: '' } },
+    ],
   ])('reports invalid %s input as a validation error', (_location, req) => {
-    expect(() => validateRequest(schemas)(req as never, {} as never, vi.fn())).toThrow(
-      ValidationError,
-    );
+    expect(() =>
+      validateRequest(schemas)(req as never, {} as never, vi.fn()),
+    ).toThrow(ValidationError);
   });
 
   it('supports an empty schema set', () => {
     const req = { params: {}, query: {}, body: {} };
     const next = vi.fn();
     validateRequest({})(req as never, {} as never, next);
-    expect(req).toHaveProperty('validated', { params: null, query: null, body: null });
+    expect(req).toHaveProperty('validated', {
+      params: null,
+      query: null,
+      body: null,
+    });
     expect(next).toHaveBeenCalledOnce();
   });
 });
@@ -60,16 +85,28 @@ describe('errorHandler', () => {
     const res = response();
     const warning = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
 
-    errorHandler(new HttpError(409, 'Conflict', 'CONFLICT'), {} as never, res as never, vi.fn());
+    errorHandler(
+      new HttpError(409, 'Conflict', 'CONFLICT'),
+      {} as never,
+      res as never,
+      vi.fn(),
+    );
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'Conflict' }));
-    expect(warning).toHaveBeenCalledWith({ status: 409, code: 'CONFLICT' }, 'Conflict');
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Conflict' }),
+    );
+    expect(warning).toHaveBeenCalledWith(
+      { status: 409, code: 'CONFLICT' },
+      'Conflict',
+    );
   });
 
   it('formats Zod errors without exposing internals', () => {
     const res = response();
-    const result = z.object({ name: z.string().min(2) }).safeParse({ name: '' });
+    const result = z
+      .object({ name: z.string().min(2) })
+      .safeParse({ name: '' });
     if (result.success) throw new Error('Expected invalid fixture');
 
     errorHandler(result.error, {} as never, res as never, vi.fn());

@@ -12,11 +12,16 @@ const pkgPath = path.join(rootPath, 'package.json');
 const pkg = require(pkgPath);
 
 const numericPort = z.preprocess(
-  value => (typeof value === 'string' && value.trim() === '' ? Number.NaN : value),
+  (value) =>
+    typeof value === 'string' && value.trim() === '' ? Number.NaN : value,
   z.coerce.number().int().min(0).max(65_535),
 );
-const tcpPort = numericPort.refine(port => port > 0, 'Port must be between 1 and 65535');
+const tcpPort = numericPort.refine(
+  (port) => port > 0,
+  'Port must be between 1 and 65535',
+);
 const requiredDatabaseValue = z.string().trim().min(1);
+
 export const EnvSchema = z
   .object({
     APP_NAME: z.string().default(pkg.name),
@@ -29,7 +34,15 @@ export const EnvSchema = z
       .default(pkg.version),
     NODE_ENV: z.enum(['development', 'test', 'production']),
     PORT: numericPort,
-    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
+    LOG_LEVEL: z.enum([
+      'fatal',
+      'error',
+      'warn',
+      'info',
+      'debug',
+      'trace',
+      'silent',
+    ]),
 
     DB_HOST: requiredDatabaseValue,
     DB_PORT: tcpPort,
@@ -67,15 +80,22 @@ function formatIssue(issue: z.core.$ZodIssue): string {
 
 function printEnvErrors(issues: z.ZodIssue[]): void {
   const count = issues.length;
+
   process.stderr.write(
-    red(bold(`❌ Environment validation failed (${count} issue${count === 1 ? '' : 's'})`)),
+    red(
+      bold(
+        `❌ Environment validation failed (${count} issue${count === 1 ? '' : 's'})`,
+      ),
+    ),
   );
   process.stderr.write('\n\n');
 
   for (const issue of issues) process.stderr.write(`${formatIssue(issue)}\n`);
 
   process.stderr.write('\n');
-  process.stderr.write(dim(green('Fix the fields above and restart the application…\n\n')));
+  process.stderr.write(
+    dim(green('Fix the fields above and restart the application…\n\n')),
+  );
 }
 
 let env: Env;
@@ -84,6 +104,7 @@ try {
   env = parseEnv(process.env);
 } catch (error) {
   if (error instanceof ZodError) printEnvErrors(error.issues);
+
   throw error;
 }
 

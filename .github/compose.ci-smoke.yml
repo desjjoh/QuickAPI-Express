@@ -7,7 +7,11 @@ services:
       MYSQL_PASSWORD: quickapi_smoke_password
       MYSQL_ROOT_PASSWORD: quickapi_smoke_root_password
     healthcheck:
-      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent']
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent',
+        ]
       interval: 2s
       timeout: 3s
       retries: 30

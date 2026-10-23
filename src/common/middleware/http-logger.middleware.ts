@@ -3,7 +3,11 @@ import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@/config/logger.config';
 import { shortenPath } from '@/common/helpers/string.helpers';
 
-export function httpLogger(req: Request, res: Response, next: NextFunction): void {
+export function httpLogger(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const start: number = performance.now();
   const { method, originalUrl } = req;
 

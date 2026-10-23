@@ -13,24 +13,29 @@ describe('test database safety', () => {
     expect(() => assertSafeTestDatabase(safeEnvironment)).not.toThrow();
   });
 
-  it.each(['test', 'dev', 'development', 'staging', 'stage', 'production', 'prod'])(
-    'rejects the protected database name %s',
-    database => {
-      expect(() => assertSafeTestDatabase({ ...safeEnvironment, DB_DATABASE: database })).toThrow(
-        /ambiguous or protected/,
-      );
-    },
-  );
+  it.each([
+    'test',
+    'dev',
+    'development',
+    'staging',
+    'stage',
+    'production',
+    'prod',
+  ])('rejects the protected database name %s', (database) => {
+    expect(() =>
+      assertSafeTestDatabase({ ...safeEnvironment, DB_DATABASE: database }),
+    ).toThrow(/ambiguous or protected/);
+  });
 
   it('requires the test environment', () => {
-    expect(() => assertSafeTestDatabase({ ...safeEnvironment, NODE_ENV: 'development' })).toThrow(
-      /NODE_ENV must be exactly "test"/,
-    );
+    expect(() =>
+      assertSafeTestDatabase({ ...safeEnvironment, NODE_ENV: 'development' }),
+    ).toThrow(/NODE_ENV must be exactly "test"/);
   });
 
   it('rejects a remote host unless CI explicitly permits it', () => {
-    expect(() => assertSafeTestDatabase({ ...safeEnvironment, DB_HOST: 'db.example.com' })).toThrow(
-      /not a permitted local\/CI host/,
-    );
+    expect(() =>
+      assertSafeTestDatabase({ ...safeEnvironment, DB_HOST: 'db.example.com' }),
+    ).toThrow(/not a permitted local\/CI host/);
   });
 });

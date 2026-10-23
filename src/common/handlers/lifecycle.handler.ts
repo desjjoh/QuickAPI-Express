@@ -35,7 +35,8 @@ class LifecycleHandler {
 
   public static async areAllServicesHealthy(): Promise<boolean> {
     const checks: DependencyCheckResult[] = await this.checkDependencies();
-    return checks.every(check => check.status === 'up');
+
+    return checks.every((check) => check.status === 'up');
   }
 
   public static async checkDependencies(
@@ -44,20 +45,24 @@ class LifecycleHandler {
     const boundedTimeoutMs: number = Number.isFinite(timeoutMs)
       ? Math.min(this.dependencyCheckTimeoutMs, Math.max(0, timeoutMs))
       : this.dependencyCheckTimeoutMs;
-    const requiredServices: (LifecycleService & Required<Pick<LifecycleService, 'check'>>)[] =
+    const requiredServices: (LifecycleService &
+      Required<Pick<LifecycleService, 'check'>>)[] =
       this.startupServices.filter(
-        (service): service is LifecycleService & Required<Pick<LifecycleService, 'check'>> =>
+        (
+          service,
+        ): service is LifecycleService &
+          Required<Pick<LifecycleService, 'check'>> =>
           service.check !== undefined,
       );
 
     return Promise.all(
-      requiredServices.map(async service => {
+      requiredServices.map(async (service) => {
         const start: number = performance.now();
         const check = service.check;
         let timer: NodeJS.Timeout | undefined;
 
         try {
-          const timeout = new Promise<boolean>(resolve => {
+          const timeout = new Promise<boolean>((resolve) => {
             timer = setTimeout(() => resolve(false), boundedTimeoutMs);
           });
 
@@ -72,8 +77,13 @@ class LifecycleHandler {
             response_time_ms: Math.max(0, performance.now() - start),
           };
         } catch (err: unknown) {
-          const error: Error = err instanceof Error ? err : new Error(String(err));
-          logger.error({ stack: error.stack }, `Health check failed → ${service.name}`);
+          const error: Error =
+            err instanceof Error ? err : new Error(String(err));
+
+          logger.error(
+            { stack: error.stack },
+            `Health check failed → ${service.name}`,
+          );
 
           return {
             name: service.name,
@@ -89,6 +99,7 @@ class LifecycleHandler {
 
   public static register = (services: LifecycleService[]): void => {
     const start: number = performance.now();
+
     logger.debug(`Registering lifecycle services (${services.length} total)`);
 
     for (const service of services) {
@@ -105,22 +116,31 @@ class LifecycleHandler {
     this.registerInternalHandlers();
 
     const duration: string = (performance.now() - start).toFixed(2);
+
     logger.debug(`Lifecycle registration completed in ${duration}ms`);
   };
 
   private static registerInternalHandlers(): void {
     process.on('uncaughtException', (err: unknown) => {
       const error: Error = err instanceof Error ? err : new Error(String(err));
-      logger.error({ stack: error.stack }, `Uncaught exception — ${error.message}`);
 
-      logger.fatal('Fatal error caused by uncaught exception — initiating shutdown');
+      logger.error(
+        { stack: error.stack },
+        `Uncaught exception — ${error.message}`,
+      );
+
+      logger.fatal(
+        'Fatal error caused by uncaught exception — initiating shutdown',
+      );
       void this.shutdown(1);
     });
 
     process.on('unhandledRejection', (reason: unknown) => {
       logger.error({ reason }, `Unhandled rejection — ${String(reason)}`);
 
-      logger.fatal('Fatal error handling promise rejection — initiating shutdown');
+      logger.fatal(
+        'Fatal error handling promise rejection — initiating shutdown',
+      );
       void this.shutdown(1);
     });
 
@@ -134,6 +154,7 @@ class LifecycleHandler {
     this.startupStarted = true;
 
     const start: number = performance.now();
+
     logger.debug(`Starting services…`);
 
     try {
@@ -147,12 +168,14 @@ class LifecycleHandler {
     } catch (err: unknown) {
       this.startupStarted = false;
       await this.stopInitializedServices();
+
       throw err;
     }
 
     this.startupCompleted = true;
 
     const duration: string = (performance.now() - start).toFixed(2);
+
     logger.debug(`All services started in ${duration}ms`);
   };
 
@@ -161,6 +184,7 @@ class LifecycleHandler {
 
     while (this.initializedServices.length > 0) {
       const service = this.initializedServices.pop();
+
       if (!service?.stop) continue;
 
       try {
@@ -168,7 +192,9 @@ class LifecycleHandler {
         logger.debug(`Service stopped ← ${service.name}`);
       } catch (err: unknown) {
         cleanupFailed = true;
-        const error: Error = err instanceof Error ? err : new Error(String(err));
+        const error: Error =
+          err instanceof Error ? err : new Error(String(err));
+
         logger.error({ stack: error.stack }, `Error — ${error.message}`);
         logger.warn(`Failed to stop service → ${service.name}`);
       }
@@ -179,7 +205,10 @@ class LifecycleHandler {
 
   public static shutdown = async (exitCode: number = 0): Promise<void> => {
     const currentExitCode: number =
-      typeof process.exitCode === 'number' ? process.exitCode : Number(process.exitCode ?? 0);
+      typeof process.exitCode === 'number'
+        ? process.exitCode
+        : Number(process.exitCode ?? 0);
+
     process.exitCode = Math.max(currentExitCode, exitCode);
     if (this.shutdownStarted) return;
     this.shutdownStarted = true;
@@ -190,12 +219,14 @@ class LifecycleHandler {
     logger.debug('Stopping services…');
 
     const cleanupFailed: boolean = await this.stopInitializedServices();
+
     if (cleanupFailed) {
       process.exitCode = 1;
       logger.error('Shutdown completed with cleanup failures');
     }
 
     const duration: string = (performance.now() - start).toFixed(2);
+
     logger.debug(`Shutdown completed in ${duration}ms`);
   };
 }

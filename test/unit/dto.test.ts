@@ -60,7 +60,9 @@ const system = {
 describe('output DTO validation', () => {
   it('returns validated entity and list DTOs', () => {
     expect(toItemDTO(item)).toMatchObject({ name: 'Sword', price: 12.5 });
-    expect(toItemListDTO({ items: [item], total: 1, page: 1, limit: 25 })).toMatchObject({
+    expect(
+      toItemListDTO({ items: [item], total: 1, page: 1, limit: 25 }),
+    ).toMatchObject({
       total: 1,
       page: 1,
       limit: 25,
@@ -68,7 +70,11 @@ describe('output DTO validation', () => {
     });
     expect(toRootDTO({ message: 'hello' })).toEqual({ message: 'hello' });
     expect(
-      toReadyDTO({ startupComplete: true, timestamp: '2026-01-01T00:00:00.000Z', checks: [] }),
+      toReadyDTO({
+        startupComplete: true,
+        timestamp: '2026-01-01T00:00:00.000Z',
+        checks: [],
+      }),
     ).toEqual({
       ready: true,
       status: 'ready',
@@ -80,7 +86,11 @@ describe('output DTO validation', () => {
 
   it('validates health and derives its status from liveness', () => {
     expect(
-      toHealthDTO({ alive: true, uptime: 12.5, timestamp: '2026-08-31T12:00:00.000Z' }),
+      toHealthDTO({
+        alive: true,
+        uptime: 12.5,
+        timestamp: '2026-08-31T12:00:00.000Z',
+      }),
     ).toEqual({
       alive: true,
       status: 'healthy',
@@ -88,12 +98,20 @@ describe('output DTO validation', () => {
       timestamp: '2026-08-31T12:00:00.000Z',
     });
     expect(
-      toHealthDTO({ alive: false, uptime: 12.5, timestamp: '2026-08-31T12:00:00.000Z' }),
+      toHealthDTO({
+        alive: false,
+        uptime: 12.5,
+        timestamp: '2026-08-31T12:00:00.000Z',
+      }),
     ).toMatchObject({ alive: false, status: 'unhealthy' });
   });
 
   it('validates dependency checks and derives readiness from startup and check state', () => {
-    const up = { name: 'database', status: 'up' as const, response_time_ms: 2.5 };
+    const up = {
+      name: 'database',
+      status: 'up' as const,
+      response_time_ms: 2.5,
+    };
     const down = { ...up, status: 'down' as const };
     expect(toDependencyCheckDTO(up)).toEqual(up);
     expect(
@@ -132,29 +150,76 @@ describe('output DTO validation', () => {
     () => toInfoDTO({ ...info, environment: 'staging' } as never),
     () => toInfoDTO({ ...info, pid: 1.5 }),
     () => toInfoDTO({ ...info, started_at: 'last Tuesday' }),
-    () => toHealthDTO({ alive: true, uptime: -1, timestamp: '2026-08-31T12:00:00.000Z' }),
+    () =>
+      toHealthDTO({
+        alive: true,
+        uptime: -1,
+        timestamp: '2026-08-31T12:00:00.000Z',
+      }),
     () => toHealthDTO({ alive: true, uptime: 1, timestamp: 'not-a-timestamp' }),
     () => toDependencyCheckDTO({ name: '', status: 'up', response_time_ms: 1 }),
     () =>
-      toDependencyCheckDTO({ name: 'database', status: 'unknown' as never, response_time_ms: 1 }),
-    () => toDependencyCheckDTO({ name: 'database', status: 'up', response_time_ms: -0.1 }),
-    () => toReadyDTO({ startupComplete: true, timestamp: 'not-a-timestamp', checks: [] }),
-    () => toSystemDiagnosticsDTO({ ...system, cpu: { ...system.cpu, logical_core_count: 0 } }),
+      toDependencyCheckDTO({
+        name: 'database',
+        status: 'unknown' as never,
+        response_time_ms: 1,
+      }),
+    () =>
+      toDependencyCheckDTO({
+        name: 'database',
+        status: 'up',
+        response_time_ms: -0.1,
+      }),
+    () =>
+      toReadyDTO({
+        startupComplete: true,
+        timestamp: 'not-a-timestamp',
+        checks: [],
+      }),
     () =>
       toSystemDiagnosticsDTO({
         ...system,
-        cpu: { ...system.cpu, load_average: { ...system.cpu.load_average, one_minute: -1 } },
+        cpu: { ...system.cpu, logical_core_count: 0 },
       }),
-    () => toSystemDiagnosticsDTO({ ...system, memory: { ...system.memory, total_bytes: -1 } }),
-    () => toSystemDiagnosticsDTO({ ...system, memory: { ...system.memory, used_percent: 101 } }),
-    () => toSystemDiagnosticsDTO({ ...system, process: { ...system.process, rss_bytes: -1 } }),
-    () => toSystemDiagnosticsDTO({ ...system, process: { ...system.process, active_handles: -1 } }),
-    () => toSystemDiagnosticsDTO({ ...system, os: { ...system.os, uptime: -1 } }),
+    () =>
+      toSystemDiagnosticsDTO({
+        ...system,
+        cpu: {
+          ...system.cpu,
+          load_average: { ...system.cpu.load_average, one_minute: -1 },
+        },
+      }),
+    () =>
+      toSystemDiagnosticsDTO({
+        ...system,
+        memory: { ...system.memory, total_bytes: -1 },
+      }),
+    () =>
+      toSystemDiagnosticsDTO({
+        ...system,
+        memory: { ...system.memory, used_percent: 101 },
+      }),
+    () =>
+      toSystemDiagnosticsDTO({
+        ...system,
+        process: { ...system.process, rss_bytes: -1 },
+      }),
+    () =>
+      toSystemDiagnosticsDTO({
+        ...system,
+        process: { ...system.process, active_handles: -1 },
+      }),
+    () =>
+      toSystemDiagnosticsDTO({ ...system, os: { ...system.os, uptime: -1 } }),
     () => toSystemDiagnosticsDTO({ ...system, uptime: -1 }),
     () => toSystemDiagnosticsDTO({ ...system, timestamp: -1 }),
     () => toSystemDiagnosticsDTO({ ...system, event_loop_lag: -1 }),
-    () => toSystemDiagnosticsDTO({ ...system, database_status: 'starting' as never }),
-  ])('turns invalid output into OutputValidationError', produce => {
+    () =>
+      toSystemDiagnosticsDTO({
+        ...system,
+        database_status: 'starting' as never,
+      }),
+  ])('turns invalid output into OutputValidationError', (produce) => {
     expect(produce).toThrow(OutputValidationError);
   });
 });

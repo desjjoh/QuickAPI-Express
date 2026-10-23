@@ -16,7 +16,11 @@ function mount(middleware: express.RequestHandler) {
   const app = express();
   app.use(middleware);
   app.all('/test', (req, res) =>
-    res.json({ headers: req.headers, requestId: RequestContext.getId(), body: req.body }),
+    res.json({
+      headers: req.headers,
+      requestId: RequestContext.getId(),
+      body: req.body,
+    }),
   );
   app.use(errorHandler);
   return app;
@@ -24,7 +28,9 @@ function mount(middleware: express.RequestHandler) {
 
 describe('security and policy middleware', () => {
   it('requires an allowed content type for body methods but accepts parameterized JSON', async () => {
-    expect((await request(mount(enforceContentType())).post('/test')).status).toBe(415);
+    expect(
+      (await request(mount(enforceContentType())).post('/test')).status,
+    ).toBe(415);
     expect(
       (
         await request(mount(enforceContentType()))
@@ -54,7 +60,11 @@ describe('security and policy middleware', () => {
     });
     const next = vi.fn();
     const response = {} as express.Response;
-    middleware({ headers: { a: '123' } } as unknown as express.Request, response, next);
+    middleware(
+      { headers: { a: '123' } } as unknown as express.Request,
+      response,
+      next,
+    );
     expect(next).toHaveBeenLastCalledWith();
     for (const headers of [
       { a: '1', b: '2' },
@@ -75,13 +85,24 @@ describe('security and policy middleware', () => {
     expect(ok.body.headers).not.toHaveProperty('x-untrusted');
     expect(ok.body.headers['x-request-id']).toBe('kept');
     expect(
-      (await request(mount(sanitizeHeaders())).get('/test').set('X-Forwarded-Host', 'evil')).status,
+      (
+        await request(mount(sanitizeHeaders()))
+          .get('/test')
+          .set('X-Forwarded-Host', 'evil')
+      ).status,
     ).toBe(400);
   });
   it('applies route-specific body limits at the byte boundary', async () => {
-    const app = mount(bodyLimitMiddleware({ defaultLimit: 7, routeOverrides: [['/test', 8]] }));
-    expect((await request(app).post('/test').type('json').send('{}')).status).toBe(200);
-    const oversized = await request(app).post('/test').type('json').send('{"long":1}');
+    const app = mount(
+      bodyLimitMiddleware({ defaultLimit: 7, routeOverrides: [['/test', 8]] }),
+    );
+    expect(
+      (await request(app).post('/test').type('json').send('{}')).status,
+    ).toBe(200);
+    const oversized = await request(app)
+      .post('/test')
+      .type('json')
+      .send('{"long":1}');
     expect(oversized.status).toBe(413);
     expect(oversized.headers['x-body-remaining-bytes']).toBe('0');
   });
@@ -94,11 +115,17 @@ describe('security and policy middleware', () => {
       credentials: true,
       maxAge: 60,
     });
-    const ok = await request(mount(cors)).options('/test').set('Origin', 'https://good.test');
+    const ok = await request(mount(cors))
+      .options('/test')
+      .set('Origin', 'https://good.test');
     expect(ok.status).toBe(204);
     expect(ok.headers['access-control-allow-origin']).toBe('https://good.test');
     expect(
-      (await request(mount(cors)).get('/test').set('Origin', 'https://evil.test')).status,
+      (
+        await request(mount(cors))
+          .get('/test')
+          .set('Origin', 'https://evil.test')
+      ).status,
     ).toBe(403);
   });
   it('creates a request ID and rate limits independently by key', async () => {
@@ -107,13 +134,17 @@ describe('security and policy middleware', () => {
     const limiter = createRateLimitMiddleware({
       windowMs: 60_000,
       max: 1,
-      keyGenerator: req => String(req.headers['x-api-key']),
+      keyGenerator: (req) => String(req.headers['x-api-key']),
     });
     const app = mount(limiter);
-    expect((await request(app).get('/test').set('X-Api-Key', 'a')).status).toBe(200);
+    expect((await request(app).get('/test').set('X-Api-Key', 'a')).status).toBe(
+      200,
+    );
     const blocked = await request(app).get('/test').set('X-Api-Key', 'a');
     expect(blocked.status).toBe(429);
     expect(blocked.headers['retry-after']).toBe('60');
-    expect((await request(app).get('/test').set('X-Api-Key', 'b')).status).toBe(200);
+    expect((await request(app).get('/test').set('X-Api-Key', 'b')).status).toBe(
+      200,
+    );
   });
 });

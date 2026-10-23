@@ -23,7 +23,9 @@ function app() {
 
 describe('request validation', () => {
   it('stores parsed params, query, and body for handlers', async () => {
-    const response = await request(app()).post('/items/42?active=yes').send({ name: 'item' });
+    const response = await request(app())
+      .post('/items/42?active=yes')
+      .send({ name: 'item' });
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       params: { id: 42 },
@@ -35,9 +37,12 @@ describe('request validation', () => {
     ['/items/nope?active=yes', { name: 'item' }, 'path.id'],
     ['/items/42?active=maybe', { name: 'item' }, 'query.active'],
     ['/items/42?active=yes', { name: '' }, 'body.name'],
-  ] as const)('returns useful validation failures for %s', async (url, body, field) => {
-    const response = await request(app()).post(url).send(body);
-    expect(response.status).toBe(422);
-    expect(response.body.message).toContain(field);
-  });
+  ] as const)(
+    'returns useful validation failures for %s',
+    async (url, body, field) => {
+      const response = await request(app()).post(url).send(body);
+      expect(response.status).toBe(422);
+      expect(response.body.message).toContain(field);
+    },
+  );
 });

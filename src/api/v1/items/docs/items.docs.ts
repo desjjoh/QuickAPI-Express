@@ -6,7 +6,10 @@ import { IdParams } from '@/common/library/models/parameters.model';
 
 import { CreateItemSchema } from '../models/item-create.model';
 import { UpdateItemSchema } from '../models/item-update.model';
-import { ItemListResponseSchema, ItemResponseSchema } from '../models/item.model';
+import {
+  ItemListResponseSchema,
+  ItemResponseSchema,
+} from '../models/item.model';
 import { ItemPaginationQuerySchema } from '../models/pagination-query.model';
 
 export function registerItemPaths(registry: OpenAPIRegistry): void {

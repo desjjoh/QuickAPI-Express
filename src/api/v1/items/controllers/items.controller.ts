@@ -13,10 +13,19 @@ import {
   type ItemListResponse,
   type ItemResponse,
 } from '../models/item.model';
-import { IdParams, type IdRouteParams } from '@/common/library/models/parameters.model';
+import {
+  IdParams,
+  type IdRouteParams,
+} from '@/common/library/models/parameters.model';
 
-import { CreateItemSchema, type CreateItemInput } from '../models/item-create.model';
-import { UpdateItemSchema, type UpdateItemInput } from '../models/item-update.model';
+import {
+  CreateItemSchema,
+  type CreateItemInput,
+} from '../models/item-create.model';
+import {
+  UpdateItemSchema,
+  type UpdateItemInput,
+} from '../models/item-update.model';
 import {
   ItemPaginationQuerySchema,
   type ItemPaginationQuery,
@@ -28,7 +37,10 @@ const router: Router = Router();
 router.post(
   '/',
   validateRequest({ body: CreateItemSchema }),
-  async (req: ValidatedRequest<null, null, CreateItemInput>, res: Response<ItemResponse>) => {
+  async (
+    req: ValidatedRequest<null, null, CreateItemInput>,
+    res: Response<ItemResponse>,
+  ) => {
     const item: ItemEntity = await repo.create(req.validated!.body);
 
     res.status(201).json(toItemDTO(item));
@@ -43,7 +55,9 @@ router.get(
     req: ValidatedRequest<null, ItemPaginationQuery, null>,
     res: Response<ItemListResponse>,
   ) => {
-    const pagination: ListDTOParams<ItemEntity> = await repo.get_many(req.validated!.query);
+    const pagination: ListDTOParams<ItemEntity> = await repo.get_many(
+      req.validated!.query,
+    );
 
     res.json(toItemListDTO(pagination));
   },
@@ -53,9 +67,16 @@ router.get(
 router.get(
   '/:id',
   validateRequest({ params: IdParams }),
-  async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
-    const item: ItemEntity | null = await repo.get_by_id(req.validated!.params.id);
-    if (!item) throw new NotFoundError('No item exists with the provided identifier.');
+  async (
+    req: ValidatedRequest<IdRouteParams, null, null>,
+    res: Response<ItemResponse>,
+  ) => {
+    const item: ItemEntity | null = await repo.get_by_id(
+      req.validated!.params.id,
+    );
+
+    if (!item)
+      throw new NotFoundError('No item exists with the provided identifier.');
 
     res.json(toItemDTO(item));
   },
@@ -69,8 +90,12 @@ router.patch(
     req: ValidatedRequest<IdRouteParams, null, UpdateItemInput>,
     res: Response<ItemResponse>,
   ) => {
-    const item: ItemEntity | null = await repo.get_by_id(req.validated!.params.id);
-    if (!item) throw new NotFoundError('No item exists with the provided identifier.');
+    const item: ItemEntity | null = await repo.get_by_id(
+      req.validated!.params.id,
+    );
+
+    if (!item)
+      throw new NotFoundError('No item exists with the provided identifier.');
 
     const updated: ItemEntity = await repo.update(item, req.validated!.body);
 
@@ -86,8 +111,12 @@ router.put(
     req: ValidatedRequest<IdRouteParams, null, CreateItemInput>,
     res: Response<ItemResponse>,
   ) => {
-    const item: ItemEntity | null = await repo.get_by_id(req.validated!.params.id);
-    if (!item) throw new NotFoundError('No item exists with the provided identifier.');
+    const item: ItemEntity | null = await repo.get_by_id(
+      req.validated!.params.id,
+    );
+
+    if (!item)
+      throw new NotFoundError('No item exists with the provided identifier.');
 
     const updated: ItemEntity = await repo.update(item, {
       ...req.validated!.body,
@@ -102,9 +131,16 @@ router.put(
 router.delete(
   '/:id',
   validateRequest({ params: IdParams }),
-  async (req: ValidatedRequest<IdRouteParams, null, null>, res: Response<ItemResponse>) => {
-    const item: ItemEntity | null = await repo.get_by_id(req.validated!.params.id);
-    if (!item) throw new NotFoundError('No item exists with the provided identifier.');
+  async (
+    req: ValidatedRequest<IdRouteParams, null, null>,
+    res: Response<ItemResponse>,
+  ) => {
+    const item: ItemEntity | null = await repo.get_by_id(
+      req.validated!.params.id,
+    );
+
+    if (!item)
+      throw new NotFoundError('No item exists with the provided identifier.');
 
     const removed: ItemEntity = await repo.remove(item);
 
