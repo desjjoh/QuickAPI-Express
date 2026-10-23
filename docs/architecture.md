@@ -126,6 +126,14 @@ order and unwinds wrappers after downstream processing completes, so preserve th
    including policy rejections, controller responses, 404s, and errors. Moving them after a rejecting
    policy would make those rejected requests invisible, while putting request-context creation after
    logging could deprive logs and error reporting of correlation data.
+
+   Metrics and HTTP logging subscribe to one request-outcome observer. It takes a
+   single timing/outcome snapshot on finish or disconnect and removes its own
+   request/response listeners before notifying subscribers. Aborted responses go
+   to a separate counter rather than completed-response metrics. Full declared
+   route templates keep series bounded and distinguish router mounts. See
+   [logging and metrics](logging.md) for fields, labels, and observation boundaries.
+
 3. **Proxy trust precedes identity capture and IP-based rate limiting.** `trust proxy` is configured
    from validated `TRUST_PROXY` addresses/CIDRs immediately after app creation, before request-context
    and logging middleware. It defaults to false. It must be set before the limiter is

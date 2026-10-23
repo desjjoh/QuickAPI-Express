@@ -86,7 +86,11 @@ describe('errorHandler', () => {
     const next = vi.fn();
     const partial = { ...response(), headersSent: true };
     errorHandler(error, {} as never, partial as never, next);
-    expect(next).toHaveBeenCalledWith(error);
+    expect(next).toHaveBeenCalledWith(expect.any(Error));
+    expect(next.mock.calls[0][0].message).toBe(
+      'Response failed after headers were sent.',
+    );
+    expect(next.mock.calls[0][0].stack).toBeUndefined();
     expect(partial.status).not.toHaveBeenCalled();
     for (const flags of [{ destroyed: true }, { writableEnded: true }]) {
       const closed = { ...response(), ...flags };
@@ -111,8 +115,8 @@ describe('errorHandler', () => {
       expect.objectContaining({ message: 'Conflict' }),
     );
     expect(warning).toHaveBeenCalledWith(
-      { status: 409, code: 'CONFLICT' },
-      'Conflict',
+      { status: 409 },
+      'HTTP request rejected.',
     );
   });
 

@@ -1,11 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import { RequestContext } from '@/common/store/request-context.store';
 import { generateRequestId } from '@/common/helpers/nanoid.helper';
+import { requestLogMethod } from '@/common/helpers/request-log.helper';
 
 interface Context {
   requestId: string;
   timestamp: number;
-  path: string;
   method: string;
   ip: string | undefined;
 }
@@ -18,13 +18,11 @@ export function requestContextMiddleware(
   const context: Context = {
     requestId: generateRequestId(),
     timestamp: Date.now(),
-    path: req.path,
-    method: req.method,
+    method: requestLogMethod(req),
     ip: req.ip,
   };
 
-  RequestContext.initialize(context);
   res.setHeader('X-Request-Id', context.requestId);
 
-  next();
+  RequestContext.run(context, next);
 }

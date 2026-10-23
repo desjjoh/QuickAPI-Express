@@ -20,5 +20,12 @@ export const httpRequestDuration = new Histogram({
   buckets: [5, 15, 50, 100, 250, 500, 1000],
 });
 
+export const httpRequestAbortedCounter = new client.Counter({
+  name: 'http_requests_aborted_total',
+  help: 'HTTP requests whose response did not finish before disconnection',
+  labelNames: ['method', 'route'],
+});
+
 metricsRegistry.registerMetric(httpRequestCounter);
 metricsRegistry.registerMetric(httpRequestDuration);
+metricsRegistry.registerMetric(httpRequestAbortedCounter);

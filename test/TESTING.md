@@ -108,6 +108,27 @@ the production container smoke sends the actual operating-system signal.
 `integration/http-database-drain.test.ts` verifies that disconnected accepted work
 can still query real disposable MySQL before shutdown closes it.
 
+## Logging and metrics evidence
+
+`test/unit/request-outcome.test.ts` verifies shared terminal-event observation,
+listener cleanup, event races, and bounded method/route fallbacks.
+`test/integration/request-telemetry.test.ts` exercises real disconnects before
+and after headers, aborted uploads, full and partial response deadlines, completed
+errors, repeated keep-alive requests, distinct router mounts, and bounded metric
+series across many concrete URLs. It verifies that aborted responses never enter
+completed-request counters or histograms and that logs and metrics share duration.
+The privacy suites separately capture actual Pino output and request correlation.
+
+These focused suites do not require MySQL or Docker:
+
+```bash
+npx vitest run --project unit test/unit/request-outcome.test.ts test/unit/logger-privacy.test.ts
+npx vitest run --project integration test/integration/request-telemetry.test.ts test/integration/logging-privacy.test.ts
+```
+
+See [Logging and metrics](../docs/logging.md) for the metric contract, changed
+route label values, transport boundaries, and deployment implications.
+
 ## PowerShell
 
 Database wrapper and production smoke scripts require Bash as well as Docker. Use a Bash environment with access to the same Node and Docker installation, or prepare infrastructure explicitly in PowerShell and run the direct project commands:

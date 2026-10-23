@@ -26,6 +26,7 @@ import { createCorsMiddleware } from '@/common/middleware/cors.middleware';
 import { createRateLimitMiddleware } from '@/common/middleware/rate-limit.middleware';
 
 import { not_found } from '@/common/routes/not-found.route';
+import { logRoute } from '@/common/helpers/request-log.helper';
 
 let instance: HttpListener | null = null;
 let starting: Promise<void> | undefined;
@@ -142,7 +143,7 @@ export function createApp(
   app.use('/', api_routes);
 
   if (policy.DOCS_ENABLED) {
-    app.use('/docs', ...swaggerDocs);
+    app.use('/docs', logRoute({ route: '/docs' }), ...swaggerDocs);
     app.get('/docs-json', docsJson);
     app.get('/redoc', redocDocs);
   }

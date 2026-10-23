@@ -2,27 +2,43 @@ import type { Request, Response, NextFunction } from 'express';
 
 import { logger } from '@/config/logger.config';
 import { shortenPath } from '@/common/helpers/string.helpers';
+import { observeRequestOutcome } from '@/common/handlers/request-outcome.handler';
+import { RequestContext } from '@/common/store/request-context.store';
 
 export function httpLogger(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  const start: number = performance.now();
-  const { method, originalUrl } = req;
+  const context = RequestContext.get();
 
-  res.on('finish', () => {
-    const duration: string = (performance.now() - start).toFixed(2);
-    const { statusCode } = res;
+  observeRequestOutcome(req, res, (result) => {
+    const { outcome, method, route, status: statusCode } = result;
+    const duration = result.durationMs.toFixed(2);
 
-    const level: 'error' | 'warn' | 'info' =
-      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+    let level: 'error' | 'warn' | 'debug' = 'debug';
 
-    const pathPadded: string = shortenPath(originalUrl, 30).padEnd(32);
-    const status: string = String(statusCode).padEnd(3, ' ');
+    if (outcome === 'aborted' || (statusCode ?? 0) >= 400) level = 'warn';
+    if ((statusCode ?? 0) >= 500) level = 'error';
+
+    const pathPadded: string = shortenPath(route, 30).padEnd(32);
+    const status: string =
+      outcome === 'aborted' ? 'ABORTED' : String(statusCode).padEnd(3, ' ');
     const methodPadded: string = method.padEnd(7, ' ');
 
-    logger[level](`${status} ${methodPadded} ${pathPadded} ${duration}ms`);
+    logger[level](
+      {
+        requestId: context?.requestId,
+        ip: context?.ip,
+        outcome,
+        headersSent: result.headersSent,
+        method,
+        route,
+        ...(statusCode === undefined ? {} : { status: statusCode }),
+        durationMs: result.durationMs,
+      },
+      `${status} ${methodPadded} ${pathPadded} ${duration}ms`,
+    );
   });
 
   next();

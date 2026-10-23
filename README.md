@@ -38,6 +38,7 @@ See [Database readiness and recovery](docs/database-lifecycle.md) for startup mi
 | [API contracts](docs/api-contracts.md)          | Item routes, validation, pagination, and errors                         |
 | [Testing](test/TESTING.md)                      | Test categories, database safety, PowerShell commands, coverage, and CI |
 | [Deployment and operations](docs/deployment.md) | Production image, operational endpoints, and container smoke validation |
+| [Logging and metrics](docs/logging.md)          | NestJS-style output, privacy, request outcomes, and metric contracts    |
 | [Technical backlog](docs/backlog.md)            | Verified gaps and follow-up work                                        |
 
 Configuration is defined by [.env.example](.env.example) and [environment validation](src/config/env.config.ts). Commands are defined in [package.json](package.json).

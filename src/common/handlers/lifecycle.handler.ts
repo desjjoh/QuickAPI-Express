@@ -83,13 +83,7 @@ class LifecycleHandler {
             response_time_ms: Math.max(0, performance.now() - start),
           };
         } catch (err: unknown) {
-          const error: Error =
-            err instanceof Error ? err : new Error(String(err));
-
-          logger.error(
-            { stack: error.stack },
-            `Health check failed → ${service.name}`,
-          );
+          logger.error({ error: err }, `Health check failed → ${service.name}`);
 
           return {
             name: service.name,
@@ -133,12 +127,7 @@ class LifecycleHandler {
 
   private static registerInternalHandlers(): void {
     process.on('uncaughtException', (err: unknown) => {
-      const error: Error = err instanceof Error ? err : new Error(String(err));
-
-      logger.error(
-        { stack: error.stack },
-        `Uncaught exception — ${error.message}`,
-      );
+      logger.error({ error: err }, 'Uncaught exception.');
 
       logger.fatal(
         'Fatal error caused by uncaught exception — initiating shutdown',
@@ -148,7 +137,7 @@ class LifecycleHandler {
     });
 
     process.on('unhandledRejection', (reason: unknown) => {
-      logger.error({ reason }, `Unhandled rejection — ${String(reason)}`);
+      logger.error({ error: reason }, 'Unhandled promise rejection.');
 
       logger.fatal(
         'Fatal error handling promise rejection — initiating shutdown',
@@ -209,10 +198,7 @@ class LifecycleHandler {
       } catch (err: unknown) {
         cleanupFailed = true;
 
-        const error: Error =
-          err instanceof Error ? err : new Error(String(err));
-
-        logger.error({ stack: error.stack }, `Error — ${error.message}`);
+        logger.error({ error: err }, 'Service cleanup failed.');
         logger.warn(`Failed to stop service → ${service.name}`);
       }
     }
