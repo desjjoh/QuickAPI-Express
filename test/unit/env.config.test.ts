@@ -1,5 +1,13 @@
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { parseEnv } from '@/config/env.config';
+
+const packageMetadata = createRequire(import.meta.url)(
+  '../../package.json',
+) as {
+  name: string;
+  version: string;
+};
 
 const valid = {
   NODE_ENV: 'development',
@@ -212,8 +220,8 @@ describe('environment configuration', () => {
   it('uses package defaults and coerces numeric ports', () => {
     const result = parseEnv(valid);
     expect(result).toMatchObject({
-      APP_NAME: 'quickapi-express',
-      APP_VERSION: '1.0.0',
+      APP_NAME: packageMetadata.name,
+      APP_VERSION: packageMetadata.version,
       PORT: 3000,
       DB_PORT: 3306,
     });
