@@ -107,6 +107,14 @@ Use the production `registerServer`/`HttpListener` wiring for transport deadline
 calling `createApp().listen()` directly only installs Express middleware policies.
 See [deployment shutdown behavior](deployment.md#http-deadlines-and-shutdown).
 
+### Rate limiting configuration
+
+`RATE_LIMIT_WINDOW_MS` defaults to `60000`, `RATE_LIMIT_MAX` to `200`, and
+`RATE_LIMIT_MAX_CLIENTS` to `10000`. The quota remains an exact rolling window.
+Configuration validates individual limits and their combined storage budget.
+See [bounded rate limiting](rate-limiting.md) for ranges, 429 versus 503, expiry,
+retry timing, memory bounds, and the process-local enforcement boundary.
+
 ### Database readiness configuration
 
 The optional `DB_READINESS_TIMEOUT_MS` and `DB_READINESS_CACHE_MS` settings both

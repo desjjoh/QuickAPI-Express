@@ -27,6 +27,8 @@ The local API is at `http://localhost:3000`. Swagger is served at `/docs`, OpenA
 
 ## Documentation
 
+See [Bounded rate limiting](docs/rate-limiting.md) for rolling-window quotas, capacity behavior, retry timing, and deployment limits.
+
 See [Database readiness and recovery](docs/database-lifecycle.md) for startup migration checks, runtime probes, and outage/shutdown behavior.
 
 | Guide                                           | Contents                                                                |
