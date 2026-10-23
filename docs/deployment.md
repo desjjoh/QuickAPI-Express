@@ -79,6 +79,10 @@ error envelope. API response expiry returns JSON 408 when headers are unsent;
 after headers are sent, it closes the incomplete response. Static files bypass
 the API response timer but remain subject to server receive deadlines and shutdown.
 
+Calling `res.end()` does not finish the response deadline while its final write is
+still pending. The timer is cleared on response finish or disconnection; an
+unfinished response is destroyed at the deadline even after `end()` was called.
+
 On SIGINT/SIGTERM or fatal shutdown, readiness and new request admission are
 withdrawn immediately. HTTP closes first, allowing accepted requests and tracked
 handler promises to drain for up to 25 seconds. MySQL stays available during that

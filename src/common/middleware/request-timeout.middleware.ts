@@ -20,7 +20,7 @@ export function requestTimeout(timeoutMs: number = 10_000) {
     const timer = setTimeout(() => {
       abandonRequest(req);
       cleanup();
-      if (res.destroyed || res.writableEnded) return;
+      if (res.destroyed || res.writableFinished) return;
       const error = new RequestTimeoutError(
         'Application response deadline exceeded.',
       );

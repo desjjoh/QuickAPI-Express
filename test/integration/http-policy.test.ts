@@ -157,6 +157,29 @@ describe('configured HTTP policy in the application stack', () => {
     CORS_MAX_AGE_SECONDS: 60,
   };
 
+  it('supports credentialed preflight and actual responses only for exact allowed origins', async () => {
+    const app = createApp({ ...corsPolicy, CORS_CREDENTIALS: true });
+    const preflight = await request(app)
+      .options('/identity')
+      .set('Origin', 'https://web.example')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers['access-control-allow-credentials']).toBe('true');
+    const actual = await request(app)
+      .get('/identity')
+      .set('Origin', 'https://web.example');
+    expect(actual.status).toBe(200);
+    expect(actual.headers['access-control-allow-origin']).toBe(
+      'https://web.example',
+    );
+    expect(actual.headers['access-control-allow-credentials']).toBe('true');
+    const rejected = await request(app)
+      .get('/identity')
+      .set('Origin', 'https://web.example.evil');
+    expect(rejected.status).toBe(403);
+    expect(rejected.headers).not.toHaveProperty('access-control-allow-origin');
+  });
+
   it('preserves and validates browser preflight through header sanitization', async () => {
     const app = createApp(corsPolicy);
     const preflight = await request(app)
