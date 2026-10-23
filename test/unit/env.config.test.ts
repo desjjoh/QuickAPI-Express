@@ -13,6 +13,44 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it.each(['development', 'test', 'production'])(
+    'uses deliberate operational exposure defaults in %s',
+    (NODE_ENV) => {
+      const enabled = NODE_ENV !== 'production';
+
+      expect(parseEnv({ ...valid, NODE_ENV })).toMatchObject({
+        DOCS_ENABLED: enabled,
+        DIAGNOSTICS_ENABLED: enabled,
+        METRICS_ENABLED: enabled,
+      });
+      expect(
+        parseEnv({
+          ...valid,
+          NODE_ENV,
+          DOCS_ENABLED: 'false',
+          DIAGNOSTICS_ENABLED: 'true',
+          METRICS_ENABLED: 'false',
+        }),
+      ).toMatchObject({
+        DOCS_ENABLED: false,
+        DIAGNOSTICS_ENABLED: true,
+        METRICS_ENABLED: false,
+      });
+    },
+  );
+
+  it.each(['', 'yes', '1', 'TRUE', ' false '])(
+    'rejects ambiguous exposure flags %j',
+    (value) => {
+      for (const key of [
+        'DOCS_ENABLED',
+        'DIAGNOSTICS_ENABLED',
+        'METRICS_ENABLED',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+
   it('preserves the rate quota with bounded client capacity by default', () => {
     expect(parseEnv(valid)).toMatchObject({
       RATE_LIMIT_WINDOW_MS: 60_000,

@@ -48,6 +48,9 @@ type HttpPolicy = Pick<
   | 'RATE_LIMIT_WINDOW_MS'
   | 'RATE_LIMIT_MAX'
   | 'RATE_LIMIT_MAX_CLIENTS'
+  | 'DOCS_ENABLED'
+  | 'DIAGNOSTICS_ENABLED'
+  | 'METRICS_ENABLED'
 >;
 
 export function createApp(
@@ -132,11 +135,17 @@ export function createApp(
     if (canRespond(req, res)) next();
   });
 
+  // Gate every method and nested path before operational handlers can execute.
+  if (!policy.DIAGNOSTICS_ENABLED) app.use(['/info', '/system'], not_found);
+  if (!policy.METRICS_ENABLED) app.use('/metrics', not_found);
+
   app.use('/', api_routes);
 
-  app.use('/docs', ...swaggerDocs);
-  app.get('/docs-json', docsJson);
-  app.get('/redoc', redocDocs);
+  if (policy.DOCS_ENABLED) {
+    app.use('/docs', ...swaggerDocs);
+    app.get('/docs-json', docsJson);
+    app.get('/redoc', redocDocs);
+  }
 
   app.use(not_found);
   app.use(errorHandler);

@@ -8,6 +8,10 @@ Startup verifies that MySQL connects and all committed migrations have been appl
 After successful startup, `/ready` tests runtime connectivity through the same pool
 used by item operations. `/health` reports process liveness without consulting MySQL.
 Readiness checks run on demand: there is no background database monitor or retry loop.
+
+The public `/ready` response contains only `ready`, `status`, and `timestamp`.
+Dependency names and timings remain internal; probes and recovery still operate
+when documentation, metrics, or diagnostics endpoints are disabled.
 The detailed `/system` endpoint retains its existing database initialization
 indicator; `/ready` is the endpoint that actively verifies connectivity.
 

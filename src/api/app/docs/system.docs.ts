@@ -54,7 +54,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     tags: [tag],
     summary: 'Report application readiness state.',
     description:
-      'Readiness check — verifies that the app has completed startup and all required services are healthy.',
+      'Public readiness state only; dependency names and timings remain internal. Verifies startup and required services.',
     responses: {
       200: {
         description: 'Application is ready',
@@ -82,7 +82,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     tags: [tag],
     summary: 'Return application and runtime metadata.',
     description:
-      'Returns application metadata including name, version, environment, hostname, and PID.',
+      'Requires DIAGNOSTICS_ENABLED (disabled by default in production). Returns application metadata including name, version, environment, hostname, and PID.',
     responses: {
       200: {
         description: 'Application information',
@@ -102,7 +102,7 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     tags: [tag],
     summary: 'Return system-level diagnostics.',
     description:
-      'System diagnostics including memory usage, load averages, event loop lag, and database status.',
+      'Requires DIAGNOSTICS_ENABLED (disabled by default in production). Includes memory usage, load averages, event loop lag, and database status.',
     responses: {
       200: {
         description: 'System diagnostics snapshot',
@@ -121,7 +121,8 @@ export const registerSystemPaths = (registry: OpenAPIRegistry) => {
     path: '/metrics',
     tags: [tag],
     summary: 'Expose Prometheus-formatted metrics.',
-    description: 'Prometheus metrics in plaintext exposition format. Not JSON.',
+    description:
+      'Requires METRICS_ENABLED (disabled by default in production) and deployment-level access restrictions. Prometheus plaintext, not JSON.',
     responses: {
       200: {
         description: 'Prometheus metrics (text/plain)',

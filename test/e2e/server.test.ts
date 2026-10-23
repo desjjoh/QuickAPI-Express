@@ -26,15 +26,8 @@ function expectIsoTimestamp(value: unknown): void {
   expect(Number.isNaN(Date.parse(value as string))).toBe(false);
 }
 
-function expectDependencyChecks(response: Response): void {
-  for (const check of response.body.checks as Record<string, unknown>[]) {
-    expect(check).toEqual({
-      name: expect.any(String),
-      status: expect.stringMatching(/^(up|down)$/),
-      response_time_ms: expect.any(Number),
-    });
-    expect(check.response_time_ms).toBeGreaterThanOrEqual(0);
-  }
+function expectMinimalReadiness(response: Response): void {
+  expect(response.body).not.toHaveProperty('checks');
 }
 
 function expectSystemShape(
@@ -167,10 +160,9 @@ describe('real application probes', () => {
       ready: false,
       status: 'not_ready',
       timestamp: expect.any(String),
-      checks: [],
     });
     expectIsoTimestamp(readyBeforeStartup.body.timestamp);
-    expectDependencyChecks(readyBeforeStartup);
+    expectMinimalReadiness(readyBeforeStartup);
   });
 
   it('reports the complete health, readiness, information, and system shapes', async () => {
@@ -192,21 +184,9 @@ describe('real application probes', () => {
       ready: true,
       status: 'ready',
       timestamp: expect.any(String),
-      checks: [
-        {
-          name: 'disposable migrated mysql',
-          status: 'up',
-          response_time_ms: expect.any(Number),
-        },
-        {
-          name: 'ephemeral express listener',
-          status: 'up',
-          response_time_ms: expect.any(Number),
-        },
-      ],
     });
     expectIsoTimestamp(response.body.timestamp);
-    expectDependencyChecks(response);
+    expectMinimalReadiness(response);
     expect(information.status).toBe(200);
     expect(information.body).toEqual({
       name: expect.any(String),
@@ -245,15 +225,7 @@ describe('real application probes', () => {
         timestamp: expect.any(String),
       });
       expectIsoTimestamp(response.body.timestamp);
-      expectDependencyChecks(response);
-      expect(response.body.checks).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            name: 'disposable migrated mysql',
-            status: 'down',
-          }),
-        ]),
-      );
+      expectMinimalReadiness(response);
       const health = await request(server).get('/health');
       expect(health.status).toBe(200);
       expect(health.body).toMatchObject({ alive: true, status: 'healthy' });

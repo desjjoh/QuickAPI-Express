@@ -27,6 +27,10 @@ const tcpPort = numericPort.refine(
   'Port must be between 1 and 65535',
 );
 const requiredDatabaseValue = z.string().trim().min(1);
+const optionalBoolean = z
+  .enum(['true', 'false'])
+  .transform((value) => value === 'true')
+  .optional();
 const duration = (fallback: number) =>
   z.preprocess(
     (value) =>
@@ -63,6 +67,12 @@ const trustedProxy = z.string().refine((value) => {
   );
 }, 'Use an IP address or CIDR with a nonzero prefix; blanket trust and hop counts are not supported');
 
+export const NodeEnvironmentSchema = z.enum([
+  'development',
+  'test',
+  'production',
+]);
+
 export const EnvSchema = z
   .object({
     APP_NAME: z.string().default(pkg.name),
@@ -73,7 +83,7 @@ export const EnvSchema = z
         'APP_VERSION must follow full SemVer (e.g., 1.2.3 or 1.2.3-beta+001)',
       )
       .default(pkg.version),
-    NODE_ENV: z.enum(['development', 'test', 'production']),
+    NODE_ENV: NodeEnvironmentSchema,
     PORT: numericPort,
     LOG_LEVEL: z.enum([
       'fatal',
@@ -86,6 +96,9 @@ export const EnvSchema = z
     ]),
 
     HTTP_HEADERS_TIMEOUT_MS: duration(5_000),
+    DOCS_ENABLED: optionalBoolean,
+    DIAGNOSTICS_ENABLED: optionalBoolean,
+    METRICS_ENABLED: optionalBoolean,
     HTTP_REQUEST_TIMEOUT_MS: duration(10_000),
     REQUEST_TIMEOUT_MS: duration(10_000),
     HTTP_DRAIN_TIMEOUT_MS: duration(25_000),
@@ -146,6 +159,13 @@ export const EnvSchema = z
     DB_PASSWORD: requiredDatabaseValue,
     DB_DATABASE: requiredDatabaseValue,
   })
+  .transform((value) => ({
+    ...value,
+    DOCS_ENABLED: value.DOCS_ENABLED ?? value.NODE_ENV !== 'production',
+    DIAGNOSTICS_ENABLED:
+      value.DIAGNOSTICS_ENABLED ?? value.NODE_ENV !== 'production',
+    METRICS_ENABLED: value.METRICS_ENABLED ?? value.NODE_ENV !== 'production',
+  }))
   .refine(
     (value) =>
       value.RATE_LIMIT_MAX * value.RATE_LIMIT_MAX_CLIENTS <=

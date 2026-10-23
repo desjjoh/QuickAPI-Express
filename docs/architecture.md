@@ -63,7 +63,11 @@ favicon/static files. Application traffic passes through metrics,
 request-context and HTTP logging, security headers and rate limiting, header sanitization/limits,
 request timeouts, content-type and method policies, CORS, and the body-size/parser middleware. It is
 then dispatched to application routes, `/api/v1`, or the documentation routes (`/docs`,
-`/docs-json`, and `/redoc`). Unknown routes become a typed 404.
+`/docs-json`, and `/redoc`). Disabled diagnostics/metrics groups are rejected
+before their handlers execute, and documentation is mounted only when enabled.
+See [operational exposure](development.md#operational-endpoint-exposure) for
+environment defaults and the external access-control boundary. Unknown routes
+become a typed 404.
 
 Controllers validate inputs with Zod models and call the domain repository, which uses TypeORM.
 Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON error responses.
