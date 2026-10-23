@@ -63,7 +63,11 @@ favicon/static files. Application traffic passes through metrics,
 request-context and HTTP logging, security headers and rate limiting, header sanitization/limits,
 request timeouts, content-type and method policies, CORS, and the body-size/parser middleware. It is
 then dispatched to application routes, `/api/v1`, or the documentation routes (`/docs`,
-`/docs-json`, and `/redoc`). Unknown routes become a typed 404.
+`/docs-json`, and `/redoc`). Disabled diagnostics/metrics groups are rejected
+before their handlers execute, and documentation is mounted only when enabled.
+See [operational exposure](development.md#operational-endpoint-exposure) for
+environment defaults and the external access-control boundary. Unknown routes
+become a typed 404.
 
 Controllers validate inputs with Zod models and call the domain repository, which uses TypeORM.
 Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON error responses.
@@ -122,6 +126,14 @@ order and unwinds wrappers after downstream processing completes, so preserve th
    including policy rejections, controller responses, 404s, and errors. Moving them after a rejecting
    policy would make those rejected requests invisible, while putting request-context creation after
    logging could deprive logs and error reporting of correlation data.
+
+   Metrics and HTTP logging subscribe to one request-outcome observer. It takes a
+   single timing/outcome snapshot on finish or disconnect and removes its own
+   request/response listeners before notifying subscribers. Aborted responses go
+   to a separate counter rather than completed-response metrics. Full declared
+   route templates keep series bounded and distinguish router mounts. See
+   [logging and metrics](logging.md) for fields, labels, and observation boundaries.
+
 3. **Proxy trust precedes identity capture and IP-based rate limiting.** `trust proxy` is configured
    from validated `TRUST_PROXY` addresses/CIDRs immediately after app creation, before request-context
    and logging middleware. It defaults to false. It must be set before the limiter is

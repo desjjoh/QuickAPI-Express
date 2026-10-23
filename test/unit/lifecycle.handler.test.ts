@@ -44,6 +44,33 @@ afterEach(() => {
 });
 
 describe('service lifecycle', () => {
+  it.each([
+    ['uncaughtException', 'Uncaught exception.'],
+    ['unhandledRejection', 'Unhandled promise rejection.'],
+  ])(
+    'uses fixed messages and safe serializer fields for %s',
+    async (event, message) => {
+      const LC = await freshLifecycle();
+      const { logger } = await import('@/config/logger.config');
+      const error = {
+        toString() {
+          throw new Error('Do not coerce provider failures.');
+        },
+      };
+
+      LC.register([]);
+      const listener = events
+        .listeners(event)
+        .find((candidate) => !baseline.get(event)?.includes(candidate));
+
+      expect(listener).toBeDefined();
+      listener!(error);
+      await LC.shutdown(1);
+      expect(logger.error).toHaveBeenCalledWith({ error }, message);
+      expect(process.exitCode).toBe(1);
+    },
+  );
+
   it('shares pending startup and shutdown, quiesces immediately, and cleans up a late start', async () => {
     const LC = await freshLifecycle();
     let release!: () => void;

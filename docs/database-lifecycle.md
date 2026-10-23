@@ -8,6 +8,10 @@ Startup verifies that MySQL connects and all committed migrations have been appl
 After successful startup, `/ready` tests runtime connectivity through the same pool
 used by item operations. `/health` reports process liveness without consulting MySQL.
 Readiness checks run on demand: there is no background database monitor or retry loop.
+
+The public `/ready` response contains only `ready`, `status`, and `timestamp`.
+Dependency names and timings remain internal; probes and recovery still operate
+when documentation, metrics, or diagnostics endpoints are disabled.
 The detailed `/system` endpoint retains its existing database initialization
 indicator; `/ready` is the endpoint that actively verifies connectivity.
 
@@ -26,7 +30,8 @@ indicator; `/ready` is the endpoint that actively verifies connectivity.
 
 The migration deadline covers pool acquisition and migration inspection after
 TypeORM initialization; it is not an overall initialization deadline. Initial
-connection and ORM setup continue to use their existing driver behavior. Migration
+connection setup now uses the [explicit connection deadline](database-settings.md).
+Later ORM metadata queries retain their existing behavior. Migration
 history verification does not detect arbitrary schema drift, missing manually
 deleted tables, data correctness, or compatibility with another writer version.
 
@@ -70,15 +75,15 @@ are released normally. A failed or stalled active query connection is destroyed 
 it cannot reenter the pool with unread results; its runner is then released. Other
 requests' connections and the application pool are not destroyed by probe failure.
 
-mysql2 does not expose cancellation of an acquisition already queued in the pool.
-When acquisition exceeds the deadline, callers receive `down`, while that **one**
-acquisition remains owned. Further checks share its failed result instead of creating
-more queued acquisitions. If a connection arrives later, release it immediately
-without executing SQL. A new probe becomes eligible after cleanup and cache expiry.
-If the pool stays exhausted, readiness stays down; no probe queue accumulates.
+The application now owns a bounded acquisition queue in front of mysql2's native
+pool. The readiness deadline can report `down` before the separate acquisition
+deadline; that **one** acquisition remains owned until the adapter expires/removes
+it or a lease arrives. Further checks share its failed result during cleanup. A
+late lease is released without running SQL. New probes become eligible after
+cleanup/cache expiry. Pool exhaustion cannot accumulate an unbounded probe queue.
 
 These guarantees bound probe concurrency and readiness waiting. They do not cancel
-business queries, prevent other application requests from exhausting the pool, or
+business queries, reserve a separate connection for probes, or
 provide an overall query timeout for item operations. The lifecycle handler also
 has its existing five-second dependency-response cap, which may return before a
 larger configured probe deadline; probe ownership still remains enforced.
@@ -111,6 +116,10 @@ marked expired and cannot start SQL or restore readiness. Shutdown does not wait
 indefinitely for that queue; the existing overall shutdown watchdog remains in force.
 
 ## Configuration and operations
+
+Pool limits, acquisition/connection deadlines, and strict TLS configuration are
+documented in [Database transport and capacity](database-settings.md). They apply
+to API startup/runtime and migration CLI connections.
 
 All values are optional integer milliseconds from 1 through 2147483647; empty values
 are invalid. Changes require restarting the application.

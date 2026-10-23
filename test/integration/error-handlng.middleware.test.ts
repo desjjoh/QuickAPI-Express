@@ -69,11 +69,10 @@ describe('request body parsing and error handling', () => {
     expect(JSON.stringify(response.body)).not.toContain('password=secret');
     expect(log).toHaveBeenCalledWith(
       expect.objectContaining({
-        errorType: 'Error',
-        stack: expect.stringContaining('database connection password=secret'),
+        error: expect.any(Error),
         status: 500,
       }),
-      'database connection password=secret',
+      'HTTP request failed.',
     );
 
     log.mockRestore();

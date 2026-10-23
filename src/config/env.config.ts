@@ -27,6 +27,10 @@ const tcpPort = numericPort.refine(
   'Port must be between 1 and 65535',
 );
 const requiredDatabaseValue = z.string().trim().min(1);
+const optionalBoolean = z
+  .enum(['true', 'false'])
+  .transform((value) => value === 'true')
+  .optional();
 const duration = (fallback: number) =>
   z.preprocess(
     (value) =>
@@ -63,6 +67,12 @@ const trustedProxy = z.string().refine((value) => {
   );
 }, 'Use an IP address or CIDR with a nonzero prefix; blanket trust and hop counts are not supported');
 
+export const NodeEnvironmentSchema = z.enum([
+  'development',
+  'test',
+  'production',
+]);
+
 export const EnvSchema = z
   .object({
     APP_NAME: z.string().default(pkg.name),
@@ -73,7 +83,7 @@ export const EnvSchema = z
         'APP_VERSION must follow full SemVer (e.g., 1.2.3 or 1.2.3-beta+001)',
       )
       .default(pkg.version),
-    NODE_ENV: z.enum(['development', 'test', 'production']),
+    NODE_ENV: NodeEnvironmentSchema,
     PORT: numericPort,
     LOG_LEVEL: z.enum([
       'fatal',
@@ -86,6 +96,9 @@ export const EnvSchema = z
     ]),
 
     HTTP_HEADERS_TIMEOUT_MS: duration(5_000),
+    DOCS_ENABLED: optionalBoolean,
+    DIAGNOSTICS_ENABLED: optionalBoolean,
+    METRICS_ENABLED: optionalBoolean,
     HTTP_REQUEST_TIMEOUT_MS: duration(10_000),
     REQUEST_TIMEOUT_MS: duration(10_000),
     HTTP_DRAIN_TIMEOUT_MS: duration(25_000),
@@ -145,6 +158,35 @@ export const EnvSchema = z
     DB_USER: requiredDatabaseValue,
     DB_PASSWORD: requiredDatabaseValue,
     DB_DATABASE: requiredDatabaseValue,
+    DB_POOL_CONNECTION_LIMIT: duration(10).pipe(z.number().max(1000)),
+    DB_POOL_QUEUE_LIMIT: z.preprocess(
+      (value) =>
+        typeof value === 'string' && value.trim() === '' ? Number.NaN : value,
+      z.coerce.number().int().min(0).max(10_000).default(50),
+    ),
+    DB_POOL_ACQUIRE_TIMEOUT_MS: duration(1_000),
+    DB_CONNECT_TIMEOUT_MS: duration(10_000),
+    DB_SSL: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    DB_SSL_CA_FILE: z.string().trim().min(1).optional(),
+  })
+  .transform((value) => ({
+    ...value,
+    DOCS_ENABLED: value.DOCS_ENABLED ?? value.NODE_ENV !== 'production',
+    DIAGNOSTICS_ENABLED:
+      value.DIAGNOSTICS_ENABLED ?? value.NODE_ENV !== 'production',
+    METRICS_ENABLED: value.METRICS_ENABLED ?? value.NODE_ENV !== 'production',
+  }))
+  .refine((value) => value.DB_SSL || value.DB_SSL_CA_FILE === undefined, {
+    message: 'DB_SSL_CA_FILE requires DB_SSL=true',
+    path: ['DB_SSL_CA_FILE'],
+  })
+  .refine((value) => !value.DB_SSL || !isIP(value.DB_HOST), {
+    message:
+      'TLS requires a DNS DB_HOST matching the server certificate; IP hosts are not supported by this driver policy',
+    path: ['DB_HOST'],
   })
   .refine(
     (value) =>

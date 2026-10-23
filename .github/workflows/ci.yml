@@ -104,6 +104,7 @@ jobs:
       - run: npm ci
       - run: npm run test:infra:prepare
       - run: npm run test:integration:run
+      - run: npm run test:database:tls
       - name: Capture MySQL logs after failure
         if: failure()
         run: docker logs "${{ job.services.mysql.id }}" > mysql.log 2>&1

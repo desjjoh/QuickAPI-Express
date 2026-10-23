@@ -1,5 +1,13 @@
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { parseEnv } from '@/config/env.config';
+
+const packageMetadata = createRequire(import.meta.url)(
+  '../../package.json',
+) as {
+  name: string;
+  version: string;
+};
 
 const valid = {
   NODE_ENV: 'development',
@@ -13,6 +21,90 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it('defaults to bounded database capacity, separate deadlines, and local non-TLS operation', () => {
+    expect(parseEnv(valid)).toMatchObject({
+      DB_POOL_CONNECTION_LIMIT: 10,
+      DB_POOL_QUEUE_LIMIT: 50,
+      DB_POOL_ACQUIRE_TIMEOUT_MS: 1000,
+      DB_CONNECT_TIMEOUT_MS: 10000,
+      DB_SSL: false,
+    });
+    expect(
+      parseEnv({ ...valid, DB_POOL_QUEUE_LIMIT: '0' }).DB_POOL_QUEUE_LIMIT,
+    ).toBe(0);
+  });
+
+  it.each(['', '-1', '1.5', 'NaN', 'Infinity'])(
+    'rejects invalid database resource values %j',
+    (value) => {
+      for (const key of [
+        'DB_POOL_CONNECTION_LIMIT',
+        'DB_POOL_QUEUE_LIMIT',
+        'DB_POOL_ACQUIRE_TIMEOUT_MS',
+        'DB_CONNECT_TIMEOUT_MS',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+
+  it('rejects unbounded/excessive database resources and invalid TLS combinations', () => {
+    for (const [key, value] of [
+      ['DB_POOL_CONNECTION_LIMIT', '0'],
+      ['DB_POOL_CONNECTION_LIMIT', '1001'],
+      ['DB_POOL_QUEUE_LIMIT', '10001'],
+      ['DB_POOL_ACQUIRE_TIMEOUT_MS', '0'],
+      ['DB_CONNECT_TIMEOUT_MS', '0'],
+      ['DB_SSL', 'yes'],
+      ['DB_SSL_CA_FILE', ''],
+      ['DB_SSL_CA_FILE', 'ca.pem'],
+    ])
+      expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    expect(() =>
+      parseEnv({ ...valid, DB_SSL: 'true', DB_HOST: '127.0.0.1' }),
+    ).toThrow();
+    expect(
+      parseEnv({ ...valid, DB_SSL: 'true', DB_SSL_CA_FILE: 'ca.pem' }),
+    ).toMatchObject({ DB_SSL: true, DB_SSL_CA_FILE: 'ca.pem' });
+  });
+
+  it.each(['development', 'test', 'production'])(
+    'uses deliberate operational exposure defaults in %s',
+    (NODE_ENV) => {
+      const enabled = NODE_ENV !== 'production';
+
+      expect(parseEnv({ ...valid, NODE_ENV })).toMatchObject({
+        DOCS_ENABLED: enabled,
+        DIAGNOSTICS_ENABLED: enabled,
+        METRICS_ENABLED: enabled,
+      });
+      expect(
+        parseEnv({
+          ...valid,
+          NODE_ENV,
+          DOCS_ENABLED: 'false',
+          DIAGNOSTICS_ENABLED: 'true',
+          METRICS_ENABLED: 'false',
+        }),
+      ).toMatchObject({
+        DOCS_ENABLED: false,
+        DIAGNOSTICS_ENABLED: true,
+        METRICS_ENABLED: false,
+      });
+    },
+  );
+
+  it.each(['', 'yes', '1', 'TRUE', ' false '])(
+    'rejects ambiguous exposure flags %j',
+    (value) => {
+      for (const key of [
+        'DOCS_ENABLED',
+        'DIAGNOSTICS_ENABLED',
+        'METRICS_ENABLED',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+
   it('preserves the rate quota with bounded client capacity by default', () => {
     expect(parseEnv(valid)).toMatchObject({
       RATE_LIMIT_WINDOW_MS: 60_000,
@@ -174,8 +266,8 @@ describe('environment configuration', () => {
   it('uses package defaults and coerces numeric ports', () => {
     const result = parseEnv(valid);
     expect(result).toMatchObject({
-      APP_NAME: 'quickapi-express',
-      APP_VERSION: '1.0.0',
+      APP_NAME: packageMetadata.name,
+      APP_VERSION: packageMetadata.version,
       PORT: 3000,
       DB_PORT: 3306,
     });

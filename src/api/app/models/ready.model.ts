@@ -49,7 +49,6 @@ export const ReadyResponseSchema = z
         'ISO-8601 timestamp representing when readiness was evaluated.',
       example: '2025-08-14T12:00:00.000Z',
     }),
-    checks: z.array(DependencyCheckSchema),
   })
   .openapi('ReadyResponse', {
     description:
@@ -89,7 +88,6 @@ export function toReadyDTO(payload: ReadyDTOInput): ReadyResponse {
     ready,
     status: ready ? 'ready' : 'not_ready',
     timestamp: payload.timestamp,
-    checks,
   });
 
   if (!success)

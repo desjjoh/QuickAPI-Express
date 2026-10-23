@@ -66,6 +66,14 @@ its original labels and event types.
 - `test/e2e` exercises the listening application with disposable MySQL.
 - `test/helpers/database` owns infrastructure orchestration and target safety checks.
 
+`npm run test:database:tls` is an additional Docker Compose check, run by CI's
+integration job. It starts a separate disposable MySQL service on a dynamically
+published loopback port, verifies encrypted connections and certificate rejection,
+then tears down only its own project. It does not use or reset `.env.test`'s database.
+The standard unit/integration/E2E commands do not invoke this extra Docker check,
+so native-MySQL workflows remain supported. See [database settings](../docs/database-settings.md)
+for pool, deadline, TLS evidence, and fixture details.
+
 `npm run test` starts Vitest in watch mode. `test:integration:run` and `test:e2e:run` run their projects directly against already prepared infrastructure, as CI does. `test:coverage` runs all projects with coverage and likewise requires database preparation.
 
 For unit-only watch mode, use `npm test -- --project unit`. For database-backed
@@ -107,6 +115,27 @@ forced exit 1. Its portable control emits SIGTERM inside the child on Windows;
 the production container smoke sends the actual operating-system signal.
 `integration/http-database-drain.test.ts` verifies that disconnected accepted work
 can still query real disposable MySQL before shutdown closes it.
+
+## Logging and metrics evidence
+
+`test/unit/request-outcome.test.ts` verifies shared terminal-event observation,
+listener cleanup, event races, and bounded method/route fallbacks.
+`test/integration/request-telemetry.test.ts` exercises real disconnects before
+and after headers, aborted uploads, full and partial response deadlines, completed
+errors, repeated keep-alive requests, distinct router mounts, and bounded metric
+series across many concrete URLs. It verifies that aborted responses never enter
+completed-request counters or histograms and that logs and metrics share duration.
+The privacy suites separately capture actual Pino output and request correlation.
+
+These focused suites do not require MySQL or Docker:
+
+```bash
+npx vitest run --project unit test/unit/request-outcome.test.ts test/unit/logger-privacy.test.ts
+npx vitest run --project integration test/integration/request-telemetry.test.ts test/integration/logging-privacy.test.ts
+```
+
+See [Logging and metrics](../docs/logging.md) for the metric contract, changed
+route label values, transport boundaries, and deployment implications.
 
 ## PowerShell
 

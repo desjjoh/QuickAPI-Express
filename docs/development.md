@@ -51,6 +51,24 @@ APP_VERSION=1.0.0
 Values are trimmed/coerced where the schema specifies it. Validation prints all Zod issues to
 stderr and throws before database or HTTP startup; there are no silent database defaults.
 
+### Operational endpoint exposure
+
+`DOCS_ENABLED` controls `/docs`, `/docs-json`, and `/redoc` together.
+`DIAGNOSTICS_ENABLED` controls `/info` and `/system`. `METRICS_ENABLED` controls
+`/metrics`. Each optional flag accepts exactly `true` or `false`; empty values,
+numeric values, and other spellings fail startup validation.
+
+When omitted, all three default to `true` in development/test and `false` in
+production. Explicit values override these defaults independently. Disabled
+endpoints return the standard 404 response, including HEAD and documentation
+asset requests. Restart the application after changing settings.
+
+`/health` and `/ready` remain public. Readiness still evaluates dependencies,
+but its public body contains only `ready`, `status`, and `timestamp`; dependency
+names and probe timings are no longer exposed, in any environment.
+See [deployment access restrictions](deployment.md#operational-endpoint-access)
+before enabling metrics or diagnostics outside development.
+
 ### Proxy and CORS configuration
 
 The HTTP policy keys use the same names as QuickAPI-NestJS. They are optional;
@@ -117,6 +135,11 @@ retry timing, memory bounds, and the process-local enforcement boundary.
 
 ### Database readiness configuration
 
+For pool capacity, queue bounds, acquisition/connection deadlines, and TLS, see
+[Database transport and capacity](database-settings.md). All six optional settings
+are listed in the environment files. TLS is disabled by default locally; enabling
+it requires a certificate-matching DNS host and enforces certificate verification.
+
 The optional `DB_READINESS_TIMEOUT_MS` and `DB_READINESS_CACHE_MS` settings both
 default to 1000 milliseconds. `DB_MIGRATION_CHECK_TIMEOUT_MS` defaults to 5000
 milliseconds and bounds migration inspection after TypeORM initialization. All
@@ -155,8 +178,22 @@ npm run migration:run
 npm run migration:validate
 ```
 
+`migration:generate` runs TypeORM and then fixes type-only imports and formatting
+in newly generated TypeScript migrations. TypeORM's default template imports
+interfaces as runtime values, which fails under this project's ESM and
+`verbatimModuleSyntax` settings. Historical migrations are left untouched.
+The generation command retains TypeORM's nonzero exit when no changes are found;
+use `migration:validate` for a successful no-drift check.
+
 `npm run migration:revert` reverts the most recently applied migration. All TypeORM commands use the
 same validated environment as the application, so select the intended database before running them.
+
+## Logging
+
+For NestJS-style console output, production JSON fields, severity filtering,
+and safe error logging, see [Logging](logging.md). `LOG_LEVEL=info` suppresses
+successful request logs; use `debug` to include them. No additional environment
+settings are required for production UTC timestamps or sensitive-field redaction.
 
 ## Readability conventions
 

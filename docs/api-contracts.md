@@ -36,13 +36,21 @@ closure; once the listener closes, connections are refused instead.
 
 ## Errors and HTTP policies
 
+Operational routes follow validated [exposure settings](development.md#operational-endpoint-exposure).
+Documentation, metrics, and runtime diagnostics default to disabled in production
+and enabled in development/test. Disabled routes return 404. Enabling a route does
+not authenticate callers; restrict metrics and diagnostics at the ingress and
+block direct public access to the API listener.
+
 The rolling-window limiter returns 429 for an exhausted client quota and 503 when
 an unseen client cannot be tracked because the store is full. Both include an
 integer `Retry-After` in seconds and the standard JSON error body. See
 [rate limiting](rate-limiting.md) for defaults, capacity policy, and retry timing.
 
-`/ready` uses bounded database connectivity checks and returns its existing
-readiness representation with 200 or 503. `/health` does not query MySQL.
+`/ready` uses bounded database connectivity checks and returns
+`{ ready, status, timestamp }` with 200 or 503. Dependency names and timings
+are internal; the former `checks` response field has been removed in every
+environment. `/health` does not query MySQL.
 See [database readiness and recovery](database-lifecycle.md) for caching, outage
 timing, migration checks, and connection cleanup. Business writes are not retried
 automatically after a database disconnection.

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 
 import { env } from '@/config/env.config';
 import entities from '@/database/entities';
+import { databaseTransportOptions } from '@/config/database-options.config';
 import {
   DatabaseReadiness,
   startDatabaseOperation,
@@ -12,6 +13,7 @@ import {
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export const AppDataSource = new DataSource({
+  ...databaseTransportOptions(env),
   type: 'mysql',
   host: env.DB_HOST,
   port: env.DB_PORT,
@@ -43,8 +45,11 @@ export async function initializeDatabase(
         ).getPendingMigrations();
 
         if (pending.length)
-          throw new Error(
-            'Database has pending migrations. Apply migrations before starting the API.',
+          throw Object.assign(
+            new Error(
+              'Database has pending migrations. Apply migrations before starting the API.',
+            ),
+            { code: 'APP_PENDING_MIGRATIONS' },
           );
       },
     );

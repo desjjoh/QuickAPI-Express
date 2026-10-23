@@ -79,7 +79,6 @@ describe('output DTO validation', () => {
       ready: true,
       status: 'ready',
       timestamp: '2026-01-01T00:00:00.000Z',
-      checks: [],
     });
     expect(toInfoDTO(info)).toEqual(info);
   });
@@ -120,14 +119,14 @@ describe('output DTO validation', () => {
         timestamp: '2026-08-31T12:00:00.000Z',
         checks: [up],
       }),
-    ).toMatchObject({ ready: true, status: 'ready', checks: [up] });
+    ).toMatchObject({ ready: true, status: 'ready' });
     expect(
       toReadyDTO({
         startupComplete: true,
         timestamp: '2026-08-31T12:00:00.000Z',
         checks: [down],
       }),
-    ).toMatchObject({ ready: false, status: 'not_ready', checks: [down] });
+    ).toMatchObject({ ready: false, status: 'not_ready' });
     expect(
       toReadyDTO({
         startupComplete: false,

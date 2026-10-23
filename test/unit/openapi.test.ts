@@ -61,8 +61,8 @@ describe('generated OpenAPI contract', () => {
       'uptime',
       'timestamp',
     ]);
-    expectRequired('DependencyCheck', ['name', 'status', 'response_time_ms']);
-    expectRequired('ReadyResponse', ['ready', 'status', 'timestamp', 'checks']);
+    expectRequired('ReadyResponse', ['ready', 'status', 'timestamp']);
+    expect(schemas.ReadyResponse.properties).not.toHaveProperty('checks');
     expectRequired('SystemInfoResponse', [
       'name',
       'version',
@@ -117,10 +117,6 @@ describe('generated OpenAPI contract', () => {
     });
     expect(schemas.ReadyResponse.properties).toMatchObject({
       status: { $ref: '#/components/schemas/ReadyStatus' },
-      checks: { items: { $ref: '#/components/schemas/DependencyCheck' } },
-    });
-    expect(schemas.DependencyCheck.properties.status).toEqual({
-      $ref: '#/components/schemas/CheckStatus',
     });
     expect(schemas.CpuDiagnostics.properties.load_average).toEqual({
       $ref: '#/components/schemas/CpuLoadAverage',
@@ -132,7 +128,6 @@ describe('generated OpenAPI contract', () => {
       os: { $ref: '#/components/schemas/OsDiagnostics' },
     });
     expect(schemas.HealthStatus.enum).toEqual(['healthy', 'unhealthy']);
-    expect(schemas.CheckStatus.enum).toEqual(['up', 'down']);
     expect(schemas.ReadyStatus.enum).toEqual(['ready', 'not_ready']);
     expect(schemas.SystemInfoResponse.properties.environment.enum).toEqual([
       'development',

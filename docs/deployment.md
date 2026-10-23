@@ -66,8 +66,63 @@ on readiness failure while leaving liveness independent. See the
 [database lifecycle](database-lifecycle.md) for detection timing, connection cleanup,
 pool exhaustion, startup failure, and recovery limits.
 
-Additional implemented endpoints are `/info`, `/system`, `/metrics`, `/docs`, `/docs-json`, and
-`/redoc`.
+The public `/ready` body contains only `ready`, `status`, and `timestamp`. Checks
+still run internally; dependency names and timings are not returned. Consumers
+that previously read `checks` must use readiness status instead.
+
+## Database capacity and TLS
+
+Database deployment settings are covered in [Database transport and capacity](database-settings.md).
+Size the per-instance pool against total server capacity, choose bounded queue/wait
+budgets, and explicitly enable TLS with a trusted CA and certificate-matching DNS
+host. Migration jobs need the same CA/settings. Acquisition deadlines do not cancel
+running SQL; the established HTTP drain-before-pool-close ordering remains intact.
+
+## Production logging
+
+Production logging writes timestamped JSON. Review [logging behavior](logging.md)
+when configuring collectors: successful requests are now `debug`, error records
+use safe diagnostics/fingerprints, and request paths are route templates. No
+migration or new environment variable is required; restart to deploy the change.
+
+Logs now distinguish completed and aborted responses. Monitoring can use
+`http_requests_aborted_total{method,route}` for interrupted responses; completed
+counter/histogram names, label names, units, and buckets are unchanged. Route label
+values now use full templates, and `<unmatched>` replaces `unknown_route`. Update
+dashboards/alerts selecting the old values. Aborted responses are excluded from
+completed-request counters and duration histograms, even if headers carried 200.
+See the [metrics contract](logging.md#metrics-contract) and its transport boundaries.
+
+## Operational endpoint access
+
+Production defaults disable `/docs`, `/docs-json`, `/redoc`, `/info`, `/system`,
+and `/metrics`. These validated flags enable their route groups:
+
+| Flag                  | Routes                          | Production default |
+| --------------------- | ------------------------------- | ------------------ |
+| `DOCS_ENABLED`        | `/docs`, `/docs-json`, `/redoc` | `false`            |
+| `DIAGNOSTICS_ENABLED` | `/info`, `/system`              | `false`            |
+| `METRICS_ENABLED`     | `/metrics`                      | `false`            |
+
+Omitted flags default to `true` in development/test. Explicit `true`/`false`
+overrides the environment default; restart to apply changes. Disabled endpoints
+and Swagger assets return 404. Liveness/readiness remain public and independent
+of these flags. No migration is required.
+
+For monitoring, configure the reverse proxy/ingress to deny public `/metrics`
+access and permit only the monitoring network or authenticated operations
+client. Block direct public access to the API port as well; otherwise callers
+can bypass ingress restrictions. Then set `METRICS_ENABLED=true` on the API.
+Keep `/info` and `/system` disabled unless an equivalent restriction is in place.
+Documentation may be deliberately enabled with `DOCS_ENABLED=true`.
+
+These flags control availability, not authentication: an enabled endpoint is
+accessible to every client that can reach the listener. CORS and `TRUST_PROXY`
+do not restrict operations access. Do not use caller-supplied forwarding headers
+as an authorization mechanism. Before release, verify public denial and an
+authorized scraper through the real ingress, including direct-port denial.
+Local tests establish enablement/disablement only; ingress enforcement remains
+deployment-owned.
 
 ## HTTP deadlines and shutdown
 

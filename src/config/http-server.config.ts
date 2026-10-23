@@ -26,6 +26,7 @@ import { createCorsMiddleware } from '@/common/middleware/cors.middleware';
 import { createRateLimitMiddleware } from '@/common/middleware/rate-limit.middleware';
 
 import { not_found } from '@/common/routes/not-found.route';
+import { logRoute } from '@/common/helpers/request-log.helper';
 
 let instance: HttpListener | null = null;
 let starting: Promise<void> | undefined;
@@ -48,6 +49,9 @@ type HttpPolicy = Pick<
   | 'RATE_LIMIT_WINDOW_MS'
   | 'RATE_LIMIT_MAX'
   | 'RATE_LIMIT_MAX_CLIENTS'
+  | 'DOCS_ENABLED'
+  | 'DIAGNOSTICS_ENABLED'
+  | 'METRICS_ENABLED'
 >;
 
 export function createApp(
@@ -132,11 +136,17 @@ export function createApp(
     if (canRespond(req, res)) next();
   });
 
+  // Gate every method and nested path before operational handlers can execute.
+  if (!policy.DIAGNOSTICS_ENABLED) app.use(['/info', '/system'], not_found);
+  if (!policy.METRICS_ENABLED) app.use('/metrics', not_found);
+
   app.use('/', api_routes);
 
-  app.use('/docs', ...swaggerDocs);
-  app.get('/docs-json', docsJson);
-  app.get('/redoc', redocDocs);
+  if (policy.DOCS_ENABLED) {
+    app.use('/docs', logRoute({ route: '/docs' }), ...swaggerDocs);
+    app.get('/docs-json', docsJson);
+    app.get('/redoc', redocDocs);
+  }
 
   app.use(not_found);
   app.use(errorHandler);
