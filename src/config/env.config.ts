@@ -85,6 +85,9 @@ export const EnvSchema = z
     REQUEST_TIMEOUT_MS: duration(10_000),
     HTTP_DRAIN_TIMEOUT_MS: duration(25_000),
     SHUTDOWN_TIMEOUT_MS: duration(30_000),
+    DB_READINESS_TIMEOUT_MS: duration(1_000),
+    DB_READINESS_CACHE_MS: duration(1_000),
+    DB_MIGRATION_CHECK_TIMEOUT_MS: duration(5_000),
 
     TRUST_PROXY: commaSeparated.pipe(z.array(trustedProxy)).default([]),
     CORS_ORIGINS: commaSeparated

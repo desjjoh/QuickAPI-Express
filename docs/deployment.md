@@ -46,12 +46,20 @@ trust boundary. No schema migration is required for this HTTP policy change.
 - `GET /health` is **process liveness**. It reports `alive`, uptime, and a timestamp; it does not query
   MySQL and should answer while the process is alive and not shutting down.
 - `GET /ready` is **traffic readiness**. It returns 200 only after lifecycle startup completes and
-  every registered service check passes (the TypeORM data source is initialized and the HTTP server
+  every registered service check passes (a bounded database connectivity probe succeeds and the HTTP server
   is actually listening). Otherwise the normal error path returns 503. Readiness becomes false as soon as
   graceful shutdown starts.
 
 Compose uses `/ready` for the API healthcheck. Startup resolves only after the
 listener binds; a bind failure unwinds already-started services, including MySQL.
+
+Before HTTP startup, the API verifies committed migration history and rejects
+unapplied migrations. It does not apply them. During runtime, readiness requests
+share one database probe and briefly cache its result; polling detects loss and
+recovery without restarting the API. Configure the deployment to withdraw traffic
+on readiness failure while leaving liveness independent. See the
+[database lifecycle](database-lifecycle.md) for detection timing, connection cleanup,
+pool exhaustion, startup failure, and recovery limits.
 
 Additional implemented endpoints are `/info`, `/system`, `/metrics`, `/docs`, `/docs-json`, and
 `/redoc`.

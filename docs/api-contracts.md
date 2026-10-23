@@ -36,6 +36,12 @@ closure; once the listener closes, connections are refused instead.
 
 ## Errors and HTTP policies
 
+`/ready` uses bounded database connectivity checks and returns its existing
+readiness representation with 200 or 503. `/health` does not query MySQL.
+See [database readiness and recovery](database-lifecycle.md) for caching, outage
+timing, migration checks, and connection cleanup. Business writes are not retried
+automatically after a database disconnection.
+
 Errors use `{ status, message, timestamp }`. Schema validation and malformed JSON return 400; missing items return 404. Unexpected failures return a generic 500 while internal details are logged. Body limits, content-type restrictions, header policies, and rate limiting apply before routes; see [middleware ordering](architecture.md#createapp-middleware-ordering).
 
 Swagger at `/docs`, JSON at `/docs-json`, and ReDoc at `/redoc` expose the generated schemas. CORS defaults to `http://localhost:3000` and is configurable through the validated [HTTP policy settings](development.md#proxy-and-cors-configuration). See [backlog](backlog.md) for remaining runtime gaps.

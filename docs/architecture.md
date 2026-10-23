@@ -43,7 +43,7 @@ multi-version application. Routes currently comprise the application/operational
 1. Importing configuration loads `.env` through `dotenv/config`, validates the complete environment,
    and stops immediately on invalid or missing values.
 2. `src/index.ts` registers the service graph with the lifecycle handler.
-3. Startup initializes MySQL/TypeORM first and then awaits the HTTP listening event.
+3. Startup initializes MySQL/TypeORM, verifies committed migration history, and then awaits the HTTP listening event.
    A database failure prevents the port from opening; a bind failure rejects startup.
    Concurrent startup calls share the pending operation.
 4. If a later service fails, already initialized services are stopped in reverse order. A bootstrap
@@ -51,6 +51,10 @@ multi-version application. Routes currently comprise the application/operational
 
 Startup deliberately does **not** synchronize the schema or run migrations
 (`synchronize: false`, `migrationsRun: false`). Migrations are a separate operator/deployment step.
+Unapplied migrations reject startup before the listener opens. Runtime database
+readiness uses a shared, bounded `SELECT 1` probe through the application pool.
+See the [database lifecycle](database-lifecycle.md) for acquisition ownership,
+timeouts, caching, recovery, and shutdown sequencing.
 
 ### Request path
 

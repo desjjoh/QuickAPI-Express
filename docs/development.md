@@ -107,6 +107,19 @@ Use the production `registerServer`/`HttpListener` wiring for transport deadline
 calling `createApp().listen()` directly only installs Express middleware policies.
 See [deployment shutdown behavior](deployment.md#http-deadlines-and-shutdown).
 
+### Database readiness configuration
+
+The optional `DB_READINESS_TIMEOUT_MS` and `DB_READINESS_CACHE_MS` settings both
+default to 1000 milliseconds. `DB_MIGRATION_CHECK_TIMEOUT_MS` defaults to 5000
+milliseconds and bounds migration inspection after TypeORM initialization. All
+three accept integer milliseconds from 1 through 2147483647; empty values fail
+validation. See the [complete database lifecycle](database-lifecycle.md) for pool
+ownership, cache behavior, timeout cleanup, recovery, and shutdown.
+
+Startup now refuses unapplied migrations. Run migrations explicitly before starting
+the API; readiness probes never apply them. Initial database connection/ORM setup
+retains its existing driver timeout behavior.
+
 ## Local MySQL, migrations, and development
 
 The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user
