@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
 import { OutputValidationError } from '@/common/exceptions/http.exception';
-import { EnvSchema } from '@/config/env.config';
+import { NodeEnvironmentSchema } from '@/config/env.config';
 
 extendZodWithOpenApi(z);
 
@@ -16,7 +16,7 @@ export const InfoResponseSchema = z
       description: 'The semantic version of the service.',
       example: '1.0.0',
     }),
-    environment: z.enum(EnvSchema.shape.NODE_ENV.options).openapi({
+    environment: z.enum(NodeEnvironmentSchema.options).openapi({
       description:
         'The current runtime environment (e.g., development, staging, production).',
       example: 'development',

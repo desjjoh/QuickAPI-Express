@@ -66,8 +66,40 @@ on readiness failure while leaving liveness independent. See the
 [database lifecycle](database-lifecycle.md) for detection timing, connection cleanup,
 pool exhaustion, startup failure, and recovery limits.
 
-Additional implemented endpoints are `/info`, `/system`, `/metrics`, `/docs`, `/docs-json`, and
-`/redoc`.
+The public `/ready` body contains only `ready`, `status`, and `timestamp`. Checks
+still run internally; dependency names and timings are not returned. Consumers
+that previously read `checks` must use readiness status instead.
+
+## Operational endpoint access
+
+Production defaults disable `/docs`, `/docs-json`, `/redoc`, `/info`, `/system`,
+and `/metrics`. These validated flags enable their route groups:
+
+| Flag                  | Routes                          | Production default |
+| --------------------- | ------------------------------- | ------------------ |
+| `DOCS_ENABLED`        | `/docs`, `/docs-json`, `/redoc` | `false`            |
+| `DIAGNOSTICS_ENABLED` | `/info`, `/system`              | `false`            |
+| `METRICS_ENABLED`     | `/metrics`                      | `false`            |
+
+Omitted flags default to `true` in development/test. Explicit `true`/`false`
+overrides the environment default; restart to apply changes. Disabled endpoints
+and Swagger assets return 404. Liveness/readiness remain public and independent
+of these flags. No migration is required.
+
+For monitoring, configure the reverse proxy/ingress to deny public `/metrics`
+access and permit only the monitoring network or authenticated operations
+client. Block direct public access to the API port as well; otherwise callers
+can bypass ingress restrictions. Then set `METRICS_ENABLED=true` on the API.
+Keep `/info` and `/system` disabled unless an equivalent restriction is in place.
+Documentation may be deliberately enabled with `DOCS_ENABLED=true`.
+
+These flags control availability, not authentication: an enabled endpoint is
+accessible to every client that can reach the listener. CORS and `TRUST_PROXY`
+do not restrict operations access. Do not use caller-supplied forwarding headers
+as an authorization mechanism. Before release, verify public denial and an
+authorized scraper through the real ingress, including direct-port denial.
+Local tests establish enablement/disablement only; ingress enforcement remains
+deployment-owned.
 
 ## HTTP deadlines and shutdown
 

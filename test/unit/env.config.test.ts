@@ -1,5 +1,13 @@
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { parseEnv } from '@/config/env.config';
+
+const packageMetadata = createRequire(import.meta.url)(
+  '../../package.json',
+) as {
+  name: string;
+  version: string;
+};
 
 const valid = {
   NODE_ENV: 'development',
@@ -13,6 +21,44 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it.each(['development', 'test', 'production'])(
+    'uses deliberate operational exposure defaults in %s',
+    (NODE_ENV) => {
+      const enabled = NODE_ENV !== 'production';
+
+      expect(parseEnv({ ...valid, NODE_ENV })).toMatchObject({
+        DOCS_ENABLED: enabled,
+        DIAGNOSTICS_ENABLED: enabled,
+        METRICS_ENABLED: enabled,
+      });
+      expect(
+        parseEnv({
+          ...valid,
+          NODE_ENV,
+          DOCS_ENABLED: 'false',
+          DIAGNOSTICS_ENABLED: 'true',
+          METRICS_ENABLED: 'false',
+        }),
+      ).toMatchObject({
+        DOCS_ENABLED: false,
+        DIAGNOSTICS_ENABLED: true,
+        METRICS_ENABLED: false,
+      });
+    },
+  );
+
+  it.each(['', 'yes', '1', 'TRUE', ' false '])(
+    'rejects ambiguous exposure flags %j',
+    (value) => {
+      for (const key of [
+        'DOCS_ENABLED',
+        'DIAGNOSTICS_ENABLED',
+        'METRICS_ENABLED',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+
   it('preserves the rate quota with bounded client capacity by default', () => {
     expect(parseEnv(valid)).toMatchObject({
       RATE_LIMIT_WINDOW_MS: 60_000,
@@ -174,8 +220,8 @@ describe('environment configuration', () => {
   it('uses package defaults and coerces numeric ports', () => {
     const result = parseEnv(valid);
     expect(result).toMatchObject({
-      APP_NAME: 'quickapi-express',
-      APP_VERSION: '1.0.0',
+      APP_NAME: packageMetadata.name,
+      APP_VERSION: packageMetadata.version,
       PORT: 3000,
       DB_PORT: 3306,
     });

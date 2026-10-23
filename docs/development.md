@@ -51,6 +51,24 @@ APP_VERSION=1.0.0
 Values are trimmed/coerced where the schema specifies it. Validation prints all Zod issues to
 stderr and throws before database or HTTP startup; there are no silent database defaults.
 
+### Operational endpoint exposure
+
+`DOCS_ENABLED` controls `/docs`, `/docs-json`, and `/redoc` together.
+`DIAGNOSTICS_ENABLED` controls `/info` and `/system`. `METRICS_ENABLED` controls
+`/metrics`. Each optional flag accepts exactly `true` or `false`; empty values,
+numeric values, and other spellings fail startup validation.
+
+When omitted, all three default to `true` in development/test and `false` in
+production. Explicit values override these defaults independently. Disabled
+endpoints return the standard 404 response, including HEAD and documentation
+asset requests. Restart the application after changing settings.
+
+`/health` and `/ready` remain public. Readiness still evaluates dependencies,
+but its public body contains only `ready`, `status`, and `timestamp`; dependency
+names and probe timings are no longer exposed, in any environment.
+See [deployment access restrictions](deployment.md#operational-endpoint-access)
+before enabling metrics or diagnostics outside development.
+
 ### Proxy and CORS configuration
 
 The HTTP policy keys use the same names as QuickAPI-NestJS. They are optional;
