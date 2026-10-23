@@ -19,7 +19,7 @@ export const PaginationQuerySchema = z
       .string()
       .optional()
       .default('1')
-      .transform(val => Number(val))
+      .transform((val) => Number(val))
       .pipe(z.number().int().positive())
       .openapi({
         description: 'Page number to retrieve. Must be a positive integer.',
@@ -30,7 +30,7 @@ export const PaginationQuerySchema = z
       .string()
       .optional()
       .default('25')
-      .transform(val => Number(val))
+      .transform((val) => Number(val))
       .pipe(z.number().int().positive().max(100))
       .openapi({
         description:
@@ -39,13 +39,14 @@ export const PaginationQuerySchema = z
       }),
 
     search: z.string().optional().openapi({
-      description: 'Optional search query used to filter items by a given term.',
+      description:
+        'Optional search query used to filter items by a given term.',
       example: 'sword',
     }),
 
     order: z
       .preprocess(
-        value => (typeof value === 'string' ? value.toUpperCase() : value),
+        (value) => (typeof value === 'string' ? value.toUpperCase() : value),
         z.enum(['ASC', 'DESC']).optional(),
       )
       .openapi({
@@ -54,10 +55,12 @@ export const PaginationQuerySchema = z
       }),
   })
   .openapi('ItemQuery', {
-    description: 'Query parameters used for pagination, filtering, and sorting item collections.',
+    description:
+      'Query parameters used for pagination, filtering, and sorting item collections.',
   });
 
-export type PaginationQuery = z.infer<typeof PaginationQuerySchema> & LocalParsedQs;
+export type PaginationQuery = z.infer<typeof PaginationQuerySchema> &
+  LocalParsedQs;
 
 export const PaginationMetaSchema = z.object({
   total: z.number().int().nonnegative().openapi({

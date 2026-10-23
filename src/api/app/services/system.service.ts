@@ -20,7 +20,14 @@ export interface SystemServiceDependencies {
   runtime?: SystemRuntimeSource;
   operatingSystem?: Pick<
     typeof os,
-    'cpus' | 'loadavg' | 'totalmem' | 'freemem' | 'type' | 'release' | 'uptime' | 'hostname'
+    | 'cpus'
+    | 'loadavg'
+    | 'totalmem'
+    | 'freemem'
+    | 'type'
+    | 'release'
+    | 'uptime'
+    | 'hostname'
   >;
   now?: () => number;
   timezone?: () => string;
@@ -30,7 +37,9 @@ export interface SystemServiceDependencies {
 
 export class SystemService {
   private readonly runtime: SystemRuntimeSource;
-  private readonly operatingSystem: NonNullable<SystemServiceDependencies['operatingSystem']>;
+  private readonly operatingSystem: NonNullable<
+    SystemServiceDependencies['operatingSystem']
+  >;
   private readonly now: () => number;
   private readonly timezone: () => string;
   private readonly eventLoopLag: () => Promise<number>;
@@ -55,7 +64,13 @@ export class SystemService {
   /** Collect application and runtime metadata for the information endpoint. */
   collectRuntimeInfo(): Pick<
     InfoResponse,
-    'hostname' | 'pid' | 'node_version' | 'platform' | 'architecture' | 'started_at' | 'timezone'
+    | 'hostname'
+    | 'pid'
+    | 'node_version'
+    | 'platform'
+    | 'architecture'
+    | 'started_at'
+    | 'timezone'
   > {
     return {
       hostname: this.operatingSystem.hostname(),
@@ -63,7 +78,9 @@ export class SystemService {
       node_version: this.runtime.version,
       platform: this.runtime.platform,
       architecture: this.runtime.arch,
-      started_at: new Date(this.now() - this.runtime.uptime() * 1000).toISOString(),
+      started_at: new Date(
+        this.now() - this.runtime.uptime() * 1000,
+      ).toISOString(),
       timezone: this.timezone(),
     };
   }
@@ -77,9 +94,13 @@ export class SystemService {
   }
 
   /** Build a diagnostics snapshot from explicit application state. */
-  collectSystemDiagnostics(eventLoopLag: number, databaseReady: boolean): SystemDiagnostics {
+  collectSystemDiagnostics(
+    eventLoopLag: number,
+    databaseReady: boolean,
+  ): SystemDiagnostics {
     const cpus = this.operatingSystem.cpus();
-    const [oneMinute, fiveMinutes, fifteenMinutes] = this.operatingSystem.loadavg();
+    const [oneMinute, fiveMinutes, fifteenMinutes] =
+      this.operatingSystem.loadavg();
     const totalBytes = this.operatingSystem.totalmem();
     const freeBytes = this.operatingSystem.freemem();
     const usedBytes = totalBytes - freeBytes;

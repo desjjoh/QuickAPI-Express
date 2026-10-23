@@ -59,20 +59,26 @@ export function sanitizeHeaders() {
       }
 
       if (seen.has(lower)) {
-        throw new BadRequestError(`Duplicate header '${lower}' is not permitted.`);
+        throw new BadRequestError(
+          `Duplicate header '${lower}' is not permitted.`,
+        );
       }
 
       seen.add(lower);
 
       if (!VALID_NAME_RE.test(lower)) {
-        throw new BadRequestError(`Header name '${lower}' contains invalid characters.`);
+        throw new BadRequestError(
+          `Header name '${lower}' contains invalid characters.`,
+        );
       }
 
       const val: string[] = Array.isArray(value) ? value : [value ?? ''];
 
       for (const v of val) {
-        if ([...INVALID_VALUE_CHARS].some(char => v.includes(char))) {
-          throw new BadRequestError('Header value contains prohibited control characters.');
+        if ([...INVALID_VALUE_CHARS].some((char) => v.includes(char))) {
+          throw new BadRequestError(
+            'Header value contains prohibited control characters.',
+          );
         }
       }
 

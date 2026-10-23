@@ -12,13 +12,18 @@ const INTERNAL_SERVER_ERROR = 'Internal Server Error';
 const MALFORMED_JSON_ERROR = 'Malformed JSON request body.';
 
 function isMalformedJsonError(error: unknown): boolean {
-  return error instanceof SyntaxError && 'type' in error && error.type === 'entity.parse.failed';
+  return (
+    error instanceof SyntaxError &&
+    'type' in error &&
+    error.type === 'entity.parse.failed'
+  );
 }
 
 function formatZodIssues(issues: z.core.$ZodIssue[]): string {
   return issues
-    .map(issue => {
+    .map((issue) => {
       const path: string = issue.path.join('.') || 'value';
+
       return `${path} → ${issue.message}`;
     })
     .join('; ');
@@ -49,7 +54,10 @@ export const errorHandler: ErrorRequestHandler = (
   }
 
   if (status < 500)
-    logger.warn({ status, code: err instanceof HttpError ? err.code : undefined }, message);
+    logger.warn(
+      { status, code: err instanceof HttpError ? err.code : undefined },
+      message,
+    );
   else {
     const error = err instanceof Error ? err : undefined;
 

@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/logger.config', () => ({
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() },
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
 
 async function freshLifecycle() {
@@ -18,7 +24,7 @@ describe('service lifecycle', () => {
     const LC = await freshLifecycle();
     const calls: string[] = [];
     LC.register(
-      ['one', 'two'].map(name => ({
+      ['one', 'two'].map((name) => ({
         name,
         start: () => {
           calls.push(`start:${name}`);
@@ -72,7 +78,13 @@ describe('service lifecycle', () => {
     expect(LC.isReady()).toBe(false);
     await LC.startup();
     expect(LC.isReady()).toBe(true);
-    expect(calls).toEqual(['start:one', 'start:two', 'stop:one', 'start:one', 'start:two']);
+    expect(calls).toEqual([
+      'start:one',
+      'start:two',
+      'stop:one',
+      'start:one',
+      'start:two',
+    ]);
     await LC.shutdown();
   });
 

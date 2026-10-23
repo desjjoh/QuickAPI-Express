@@ -6,7 +6,9 @@ interface Options {
 }
 
 export function methodWhitelist({ allowedMethods }: Options) {
-  const allowed: Set<string> = new Set([...allowedMethods].map(m => m.toUpperCase()));
+  const allowed: Set<string> = new Set(
+    [...allowedMethods].map((m) => m.toUpperCase()),
+  );
 
   return (req: Request, _res: Response, next: NextFunction) => {
     const method: string = req.method.toUpperCase();

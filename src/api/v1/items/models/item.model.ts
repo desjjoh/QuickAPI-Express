@@ -25,7 +25,8 @@ export const ItemSchema = BaseSchema.extend({
     example: 'A finely crafted steel blade.',
   }),
 }).openapi('Item', {
-  description: 'Represents a single item resource with metadata, pricing, and descriptive details.',
+  description:
+    'Represents a single item resource with metadata, pricing, and descriptive details.',
 });
 
 export const ItemResponseSchema = ItemSchema.openapi('ItemResponse', {
@@ -37,27 +38,37 @@ export type ItemResponse = z.infer<typeof ItemResponseSchema>;
 export function toItemDTO(entity: ItemEntity): ItemResponse {
   const { success, error, data } = ItemResponseSchema.safeParse(entity);
 
-  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+  if (!success)
+    throw new OutputValidationError(
+      'Failed to validate response DTO',
+      error.issues,
+    );
 
   return data;
 }
 
-export const ItemListResponseSchema = PaginatedResponseSchema(ItemResponseSchema).openapi(
-  'ItemListResponse',
-  {
-    description: 'Paginated list response containing item data and pagination metadata.',
-  },
-);
+export const ItemListResponseSchema = PaginatedResponseSchema(
+  ItemResponseSchema,
+).openapi('ItemListResponse', {
+  description:
+    'Paginated list response containing item data and pagination metadata.',
+});
 
 export type ItemListResponse = z.infer<typeof ItemListResponseSchema>;
 
-export function toItemListDTO(payload: ListDTOParams<ItemEntity>): ItemListResponse {
+export function toItemListDTO(
+  payload: ListDTOParams<ItemEntity>,
+): ItemListResponse {
   const { success, error, data } = ItemListResponseSchema.safeParse({
     ...payload,
     data: payload.items.map(toItemDTO),
   });
 
-  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+  if (!success)
+    throw new OutputValidationError(
+      'Failed to validate response DTO',
+      error.issues,
+    );
 
   return data;
 }

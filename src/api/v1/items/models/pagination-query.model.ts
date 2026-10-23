@@ -12,9 +12,11 @@ export const ItemPaginationQuerySchema = PaginationQuerySchema.extend({
   }),
 
   min_price: z
-    .preprocess(value => {
-      if (value === undefined || value === null || value === '') return undefined;
+    .preprocess((value) => {
+      if (value === undefined || value === null || value === '')
+        return undefined;
       const n = Number(value);
+
       return Number.isFinite(n) ? n : value;
     }, z.number().int().positive().optional())
     .openapi({
@@ -23,9 +25,11 @@ export const ItemPaginationQuerySchema = PaginationQuerySchema.extend({
     }),
 
   max_price: z
-    .preprocess(value => {
-      if (value === undefined || value === null || value === '') return undefined;
+    .preprocess((value) => {
+      if (value === undefined || value === null || value === '')
+        return undefined;
       const n = Number(value);
+
       return Number.isFinite(n) ? n : value;
     }, z.number().int().positive().optional())
     .openapi({

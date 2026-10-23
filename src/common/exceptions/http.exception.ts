@@ -32,7 +32,10 @@ export class NotFoundError extends HttpError {
 
 export class MethodNotAllowedError extends HttpError {
   constructor(method: string, message?: string) {
-    super(405, message ?? `HTTP method '${method}' is not allowed on this server.`);
+    super(
+      405,
+      message ?? `HTTP method '${method}' is not allowed on this server.`,
+    );
   }
 }
 
@@ -44,7 +47,10 @@ export class RequestTimeoutError extends HttpError {
 
 export class RequestBodyTooLargeError extends HttpError {
   constructor(limitBytes: number) {
-    super(413, `Request body exceeds maximum allowed size (limit = ${formatBytes(limitBytes)}).`);
+    super(
+      413,
+      `Request body exceeds maximum allowed size (limit = ${formatBytes(limitBytes)}).`,
+    );
   }
 }
 

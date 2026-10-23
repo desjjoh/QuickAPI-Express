@@ -5,10 +5,12 @@ import { OutputValidationError } from '@/common/exceptions/http.exception';
 
 extendZodWithOpenApi(z);
 
-export const HealthStatusSchema = z.enum(['healthy', 'unhealthy']).openapi('HealthStatus', {
-  description: 'Derived process liveness status.',
-  example: 'healthy',
-});
+export const HealthStatusSchema = z
+  .enum(['healthy', 'unhealthy'])
+  .openapi('HealthStatus', {
+    description: 'Derived process liveness status.',
+    example: 'healthy',
+  });
 
 export type HealthStatus = z.infer<typeof HealthStatusSchema>;
 
@@ -24,12 +26,14 @@ export const HealthResponseSchema = z
       example: 123.45,
     }),
     timestamp: z.iso.datetime().openapi({
-      description: 'ISO8601 timestamp representing when the health status was generated.',
+      description:
+        'ISO8601 timestamp representing when the health status was generated.',
       example: '2025-08-14T12:00:00Z',
     }),
   })
   .openapi('HealthResponse', {
-    description: 'Health check response indicating basic liveness information for the service.',
+    description:
+      'Health check response indicating basic liveness information for the service.',
   });
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
@@ -41,7 +45,11 @@ export function toHealthDTO(payload: HealthDTOInput): HealthResponse {
     status: payload.alive ? 'healthy' : 'unhealthy',
   });
 
-  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+  if (!success)
+    throw new OutputValidationError(
+      'Failed to validate response DTO',
+      error.issues,
+    );
 
   return data;
 }

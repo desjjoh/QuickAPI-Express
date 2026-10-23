@@ -9,7 +9,13 @@ const runtime = {
   arch: 'arm64',
   pid: 42,
   uptime: () => 12.5,
-  memoryUsage: () => ({ rss: 100, heapTotal: 80, heapUsed: 60, external: 20, arrayBuffers: 5 }),
+  memoryUsage: () => ({
+    rss: 100,
+    heapTotal: 80,
+    heapUsed: 60,
+    external: 20,
+    arrayBuffers: 5,
+  }),
   getActiveResourcesInfo: () => ['TCPServerWrap', 'Timeout'],
 };
 
@@ -57,9 +63,18 @@ describe('system diagnostics', () => {
       cpu: {
         logical_core_count: 2,
         model: 'Test CPU',
-        load_average: { one_minute: 1, five_minutes: 0.5, fifteen_minutes: 0.25 },
+        load_average: {
+          one_minute: 1,
+          five_minutes: 0.5,
+          fifteen_minutes: 0.25,
+        },
       },
-      memory: { total_bytes: 1000, free_bytes: 250, used_bytes: 750, used_percent: 75 },
+      memory: {
+        total_bytes: 1000,
+        free_bytes: 250,
+        used_bytes: 750,
+        used_percent: 75,
+      },
       process: {
         rss_bytes: 100,
         heap_total_bytes: 80,
@@ -76,7 +91,9 @@ describe('system diagnostics', () => {
   });
 
   it('counts active resources using the public runtime API', () => {
-    expect(new SystemService({ runtime, operatingSystem }).countActiveHandles()).toBe(2);
+    expect(
+      new SystemService({ runtime, operatingSystem }).countActiveHandles(),
+    ).toBe(2);
   });
 
   it('collects live state through injected service dependencies', async () => {

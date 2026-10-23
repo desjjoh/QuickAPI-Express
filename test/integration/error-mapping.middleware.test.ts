@@ -22,12 +22,17 @@ describe('error mapping', () => {
     const response = await request(app(error)).get('/');
     expect(response.status).toBe(409);
     expect(response.body).toMatchObject({ status: 409, message: 'conflict' });
-    expect(warn).toHaveBeenCalledWith({ status: 409, code: 'DUPLICATE' }, 'conflict');
+    expect(warn).toHaveBeenCalledWith(
+      { status: 409, code: 'DUPLICATE' },
+      'conflict',
+    );
     warn.mockRestore();
   });
   it('preserves an explicitly public server-side HttpError message', async () => {
     const log = vi.spyOn(logger, 'error').mockImplementation(() => logger);
-    const response = await request(app(new HttpError(503, 'temporarily unavailable'))).get('/');
+    const response = await request(
+      app(new HttpError(503, 'temporarily unavailable')),
+    ).get('/');
     expect(response.status).toBe(503);
     expect(response.body.message).toBe('temporarily unavailable');
     expect(log).toHaveBeenCalled();

@@ -52,17 +52,27 @@ describe('items API with real middleware, controller, DTOs, and repository', () 
       .type('json')
       .send({ name: 'Replacement Pack', price: 31 });
     expect(replaced.status).toBe(200);
-    expect(replaced.body).toMatchObject({ name: 'Replacement Pack', description: null, price: 31 });
+    expect(replaced.body).toMatchObject({
+      name: 'Replacement Pack',
+      description: null,
+      price: 31,
+    });
 
-    const listed = await request(app).get('/api/v1/items?page=1&limit=10&search=Replacement');
+    const listed = await request(app).get(
+      '/api/v1/items?page=1&limit=10&search=Replacement',
+    );
     expect(listed.status).toBe(200);
     expect(listed.body).toMatchObject({ total: 1, page: 1, limit: 10 });
     expect(listed.body.data).toEqual([replaced.body]);
 
-    const deleted = await request(app).delete(`/api/v1/items/${created.body.id}`);
+    const deleted = await request(app).delete(
+      `/api/v1/items/${created.body.id}`,
+    );
     expect(deleted.status).toBe(200);
     expect(deleted.body.id).toBe(created.body.id);
-    expect((await request(app).get(`/api/v1/items/${created.body.id}`)).status).toBe(404);
+    expect(
+      (await request(app).get(`/api/v1/items/${created.body.id}`)).status,
+    ).toBe(404);
   });
 
   it('proves validation executes before the controller and returns the stable error DTO', async () => {
@@ -107,7 +117,10 @@ describe('items API with real middleware, controller, DTOs, and repository', () 
   });
 
   it('keeps context before policy/body parsing and error handling last in the composed app', async () => {
-    const malformed = await request(app).post('/api/v1/items').type('json').send('{"broken":');
+    const malformed = await request(app)
+      .post('/api/v1/items')
+      .type('json')
+      .send('{"broken":');
 
     expect(malformed.status).toBe(400);
     expect(malformed.body.message).toBe('Malformed JSON request body.');

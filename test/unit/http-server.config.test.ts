@@ -17,7 +17,9 @@ describe('HTTP server configuration', () => {
     const response = await request(createApp()).get('/favicon.ico');
 
     expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toMatch(/^image\/(?:x-icon|vnd\.microsoft\.icon)\b/);
+    expect(response.headers['content-type']).toMatch(
+      /^image\/(?:x-icon|vnd\.microsoft\.icon)\b/,
+    );
     expect(Number(response.headers['content-length'])).toBeGreaterThan(0);
   });
 
@@ -32,7 +34,7 @@ describe('HTTP server configuration', () => {
   it('registers idempotently and closes the active server', async () => {
     expect(isServerRunning()).toBe(false);
     await registerServer();
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
     expect(isServerRunning()).toBe(true);
     await registerServer();
     expect(isServerRunning()).toBe(true);

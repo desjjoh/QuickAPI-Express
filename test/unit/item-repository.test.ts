@@ -52,11 +52,15 @@ describe('ItemRepository', () => {
     expect(await repository.create({ name: 'Potion', price: 4 })).toBe(item);
     expect(mocks.repo.save).toHaveBeenCalledWith(item);
     expect(await repository.get_all()).toEqual([item]);
-    expect(mocks.repo.find).toHaveBeenCalledWith({ order: { createdAt: 'DESC' } });
+    expect(mocks.repo.find).toHaveBeenCalledWith({
+      order: { createdAt: 'DESC' },
+    });
   });
 
   it('builds filtered, sorted pagination queries', async () => {
-    const items = [Object.assign(new ItemEntity(), { name: 'Potion', price: 4 })];
+    const items = [
+      Object.assign(new ItemEntity(), { name: 'Potion', price: 4 }),
+    ];
     mocks.query.getManyAndCount.mockResolvedValue([items, 1]);
 
     await expect(
@@ -84,17 +88,26 @@ describe('ItemRepository', () => {
   });
 
   it('reads, updates, and removes an item', async () => {
-    const item = Object.assign(new ItemEntity(), { id: 'item-id', name: 'Old', price: 1 });
+    const item = Object.assign(new ItemEntity(), {
+      id: 'item-id',
+      name: 'Old',
+      price: 1,
+    });
     const merged = Object.assign(item, { name: 'New' });
     mocks.repo.findOne.mockResolvedValue(item);
     mocks.repo.merge.mockReturnValue(merged);
     mocks.repo.findOneOrFail.mockResolvedValue(merged);
-    mocks.repo.create.mockImplementation(value => ({ ...value }));
+    mocks.repo.create.mockImplementation((value) => ({ ...value }));
 
     await expect(repository.get_by_id('item-id')).resolves.toBe(item);
-    await expect(repository.update(item, { name: 'New' })).resolves.toBe(merged);
+    await expect(repository.update(item, { name: 'New' })).resolves.toBe(
+      merged,
+    );
     expect(mocks.repo.save).toHaveBeenCalledWith(merged);
-    await expect(repository.remove(merged)).resolves.toMatchObject({ id: 'item-id', name: 'New' });
+    await expect(repository.remove(merged)).resolves.toMatchObject({
+      id: 'item-id',
+      name: 'New',
+    });
     expect(mocks.repo.remove).toHaveBeenCalledWith(merged);
   });
 });

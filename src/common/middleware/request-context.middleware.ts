@@ -10,7 +10,11 @@ interface Context {
   ip: string | undefined;
 }
 
-export function requestContextMiddleware(req: Request, res: Response, next: NextFunction) {
+export function requestContextMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const context: Context = {
     requestId: generateRequestId(),
     timestamp: Date.now(),

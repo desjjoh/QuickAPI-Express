@@ -24,10 +24,15 @@ const levelColors: Record<string, (_str: string) => string> = {
 
 function colorLevel(level: string): string {
   const color = levelColors[level] || gray;
+
   return color(`[${level.padEnd(5, ' ')}]`);
 }
 
-function formatLog(level: string, msg: string, context: Record<string, unknown>): string {
+function formatLog(
+  level: string,
+  msg: string,
+  context: Record<string, unknown>,
+): string {
   const timestamp = dim(green(formatTimestamp()));
   const levelLabel = colorLevel(level);
   const rid = context.requestId ? magenta(`[${context.requestId}]`) + ' ' : '';
@@ -49,6 +54,7 @@ const stream = {
     try {
       const log = JSON.parse(raw);
       const formatted = formatLog(log.levelLabel || log.level, log.msg, log);
+
       process.stdout.write(formatted + '\n');
     } catch {
       process.stdout.write(raw);
@@ -71,6 +77,7 @@ export const logger: Logger = pino(
     timestamp: false,
     mixin() {
       const ctx = RequestContext.get();
+
       if (!ctx) return {};
 
       return {

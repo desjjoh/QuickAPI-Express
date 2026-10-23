@@ -37,7 +37,10 @@ function expectDependencyChecks(response: Response): void {
   }
 }
 
-function expectSystemShape(response: Response, databaseStatus: 'connected' | 'disconnected'): void {
+function expectSystemShape(
+  response: Response,
+  databaseStatus: 'connected' | 'disconnected',
+): void {
   expect(response.body).toEqual({
     cpu: {
       logical_core_count: expect.any(Number),
@@ -61,7 +64,11 @@ function expectSystemShape(response: Response, databaseStatus: 'connected' | 'di
       external_bytes: expect.any(Number),
       active_handles: expect.any(Number),
     },
-    os: { type: expect.any(String), release: expect.any(String), uptime: expect.any(Number) },
+    os: {
+      type: expect.any(String),
+      release: expect.any(String),
+      uptime: expect.any(Number),
+    },
     uptime: expect.any(Number),
     timestamp: expect.any(Number),
     event_loop_lag: expect.any(Number),
@@ -77,7 +84,9 @@ function expectRequestHeaders(response: Response): void {
   expect(response.headers['x-powered-by']).toBeUndefined();
   expect(response.headers['x-content-type-options']).toBe('nosniff');
   expect(response.headers['x-frame-options']).toBe('DENY');
-  expect(response.headers['content-security-policy']).toContain("default-src 'self'");
+  expect(response.headers['content-security-policy']).toContain(
+    "default-src 'self'",
+  );
 }
 
 function expectJson(response: Response): void {
@@ -112,7 +121,8 @@ beforeAll(async () => {
     start: connectTestDatabase,
     stop: disconnectTestDatabase,
     check: async () => {
-      if (dependencyState === 'throw') throw new Error('deliberate readiness check failure');
+      if (dependencyState === 'throw')
+        throw new Error('deliberate readiness check failure');
       return dependencyState === 'healthy' && AppDataSource.isInitialized;
     },
   };
@@ -135,7 +145,7 @@ afterAll(async () => {
   await LC.shutdown();
   if (server?.listening) {
     await new Promise<void>((resolve, reject) =>
-      server.close(error => (error ? reject(error) : resolve())),
+      server.close((error) => (error ? reject(error) : resolve())),
     );
   }
 });
@@ -183,8 +193,16 @@ describe('real application probes', () => {
       status: 'ready',
       timestamp: expect.any(String),
       checks: [
-        { name: 'disposable migrated mysql', status: 'up', response_time_ms: expect.any(Number) },
-        { name: 'ephemeral express listener', status: 'up', response_time_ms: expect.any(Number) },
+        {
+          name: 'disposable migrated mysql',
+          status: 'up',
+          response_time_ms: expect.any(Number),
+        },
+        {
+          name: 'ephemeral express listener',
+          status: 'up',
+          response_time_ms: expect.any(Number),
+        },
       ],
     });
     expectIsoTimestamp(response.body.timestamp);
@@ -216,7 +234,7 @@ describe('real application probes', () => {
 
   it.each(['unhealthy', 'throw'] as const)(
     'reports not ready when a dependency is %s',
-    async state => {
+    async (state) => {
       dependencyState = state;
       const response = await request(server).get('/ready');
 
@@ -230,7 +248,10 @@ describe('real application probes', () => {
       expectDependencyChecks(response);
       expect(response.body.checks).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ name: 'disposable migrated mysql', status: 'down' }),
+          expect.objectContaining({
+            name: 'disposable migrated mysql',
+            status: 'down',
+          }),
         ]),
       );
       const health = await request(server).get('/health');
@@ -245,7 +266,11 @@ describe('real item API', () => {
     const created = await request(server)
       .post('/api/v1/items')
       .type('json')
-      .send({ name: 'Fixture Alpha', description: 'first fixture', price: 120 });
+      .send({
+        name: 'Fixture Alpha',
+        description: 'first fixture',
+        price: 120,
+      });
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({
       id: expect.stringMatching(/^[A-Za-z0-9]{16}$/),
@@ -258,7 +283,9 @@ describe('real item API', () => {
     expectJson(created);
     expectRequestHeaders(created);
 
-    const fetched = await request(server).get(`/api/v1/items/${created.body.id}`);
+    const fetched = await request(server).get(
+      `/api/v1/items/${created.body.id}`,
+    );
     expect(fetched.status).toBe(200);
     expect(fetched.body).toEqual(created.body);
 
@@ -284,39 +311,69 @@ describe('real item API', () => {
       '/api/v1/items?page=1&limit=5&search=Replacement&sort=price&order=ASC&min_price=100&max_price=150',
     );
     expect(listed.status).toBe(200);
-    expect(listed.body).toMatchObject({ total: 1, page: 1, limit: 5, data: [replaced.body] });
+    expect(listed.body).toMatchObject({
+      total: 1,
+      page: 1,
+      limit: 5,
+      data: [replaced.body],
+    });
 
-    const deleted = await request(server).delete(`/api/v1/items/${created.body.id}`);
+    const deleted = await request(server).delete(
+      `/api/v1/items/${created.body.id}`,
+    );
     expect(deleted.status).toBe(200);
     expect(deleted.body.id).toBe(created.body.id);
-    expectError(await request(server).get(`/api/v1/items/${created.body.id}`), 404);
+    expectError(
+      await request(server).get(`/api/v1/items/${created.body.id}`),
+      404,
+    );
   });
 
   it.each([
     [
       'invalid create body',
-      () => request(server).post('/api/v1/items').type('json').send({ name: '', price: -1 }),
+      () =>
+        request(server)
+          .post('/api/v1/items')
+          .type('json')
+          .send({ name: '', price: -1 }),
     ],
     [
       'invalid patch body',
-      () => request(server).patch('/api/v1/items/1234567890abcdef').type('json').send({}),
+      () =>
+        request(server)
+          .patch('/api/v1/items/1234567890abcdef')
+          .type('json')
+          .send({}),
     ],
     ['invalid id', () => request(server).get('/api/v1/items/not-an-id')],
     ['invalid page', () => request(server).get('/api/v1/items?page=0')],
-    ['invalid filter', () => request(server).get('/api/v1/items?min_price=20&max_price=10')],
+    [
+      'invalid filter',
+      () => request(server).get('/api/v1/items?min_price=20&max_price=10'),
+    ],
   ])('rejects %s', async (_name, send) => {
     expectError(await send(), 422);
   });
 
   it('returns the common error contract for missing resources and unknown routes', async () => {
-    expectError(await request(server).get('/api/v1/items/1234567890abcdef'), 404);
+    expectError(
+      await request(server).get('/api/v1/items/1234567890abcdef'),
+      404,
+    );
     const unknown = await request(server).get('/does-not-exist');
     expectError(unknown, 404);
     expect(unknown.body.message).toContain('GET /does-not-exist');
   });
 
   it('rejects malformed JSON, oversized bodies, content types, and methods', async () => {
-    expectError(await request(server).post('/api/v1/items').type('json').send('{"broken":'), 400);
+    expectError(
+      await request(server)
+        .post('/api/v1/items')
+        .type('json')
+        .send('{"broken":'),
+      400,
+    );
 
     const oversized = await request(server)
       .post('/api/v1/items')
@@ -325,7 +382,10 @@ describe('real item API', () => {
     expectError(oversized, 413);
     expect(oversized.headers['x-body-remaining-bytes']).toBe('0');
 
-    expectError(await request(server).post('/api/v1/items').type('text').send('not json'), 415);
+    expectError(
+      await request(server).post('/api/v1/items').type('text').send('not json'),
+      415,
+    );
     expectError(await request(server).trace('/api/v1/items'), 405);
   });
 
@@ -343,6 +403,8 @@ describe('real item API', () => {
 
     expectError(response!, 500);
     expect(response!.body.message).toBe('Internal Server Error');
-    expect(JSON.stringify(response!.body)).not.toMatch(/items|query|mysql|Will Fail/i);
+    expect(JSON.stringify(response!.body)).not.toMatch(
+      /items|query|mysql|Will Fail/i,
+    );
   });
 });

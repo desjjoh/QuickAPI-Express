@@ -3,7 +3,11 @@ import {
   destroyServer as destroyDatabase,
   isServerInitialized,
 } from '@/config/database.config';
-import { closeServer, isServerRunning, registerServer } from '@/config/http-server.config';
+import {
+  closeServer,
+  isServerRunning,
+  registerServer,
+} from '@/config/http-server.config';
 import type { LifecycleService } from '@/common/handlers/lifecycle.handler';
 
 /** The production service graph, kept separate from the process entrypoint for composition tests. */

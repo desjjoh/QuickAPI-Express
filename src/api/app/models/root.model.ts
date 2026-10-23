@@ -8,7 +8,8 @@ extendZodWithOpenApi(z);
 export const RootResponseSchema = z
   .object({
     message: z.string().openapi({
-      description: 'A welcome message returned by the application root endpoint.',
+      description:
+        'A welcome message returned by the application root endpoint.',
       example: 'Hello World! Welcome to Express.js',
     }),
   })
@@ -21,7 +22,11 @@ export type RootResponse = z.infer<typeof RootResponseSchema>;
 export function toRootDTO(payload: RootResponse): RootResponse {
   const { success, error, data } = RootResponseSchema.safeParse(payload);
 
-  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+  if (!success)
+    throw new OutputValidationError(
+      'Failed to validate response DTO',
+      error.issues,
+    );
 
   return data;
 }

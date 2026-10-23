@@ -25,6 +25,7 @@ export class ItemRepository {
   // CREATE
   public async create(data: Base<ItemEntity>): Promise<ItemEntity> {
     const item: ItemEntity = this.repo.create(data);
+
     await this.repo.save(item);
 
     return item;
@@ -37,7 +38,9 @@ export class ItemRepository {
     });
   }
 
-  async get_many(payload: ItemPaginationQuery): Promise<ListDTOParams<ItemEntity>> {
+  async get_many(
+    payload: ItemPaginationQuery,
+  ): Promise<ListDTOParams<ItemEntity>> {
     const page: number = payload.page;
     const limit: number = payload.limit;
 
@@ -51,12 +54,16 @@ export class ItemRepository {
       price: 'item.price',
     };
 
-    const query: SelectQueryBuilder<ItemEntity> = this.repo.createQueryBuilder('item').andWhere(
-      new Brackets(searchQuery => {
-        searchQuery.where('item.name LIKE :pattern').orWhere('item.description LIKE :pattern');
-      }),
-      { pattern: `%${search.trim()}%` },
-    );
+    const query: SelectQueryBuilder<ItemEntity> = this.repo
+      .createQueryBuilder('item')
+      .andWhere(
+        new Brackets((searchQuery) => {
+          searchQuery
+            .where('item.name LIKE :pattern')
+            .orWhere('item.description LIKE :pattern');
+        }),
+        { pattern: `%${search.trim()}%` },
+      );
 
     if (payload.min_price !== undefined) {
       query.andWhere('item.price >= :min', { min: payload.min_price });
@@ -82,8 +89,12 @@ export class ItemRepository {
   }
 
   // UPDATE
-  async update(obj: ItemEntity, data: Partial<Base<ItemEntity>>): Promise<ItemEntity> {
+  async update(
+    obj: ItemEntity,
+    data: Partial<Base<ItemEntity>>,
+  ): Promise<ItemEntity> {
     const merged: ItemEntity = this.repo.merge(obj, data);
+
     await this.repo.save(merged);
 
     return this.repo.findOneOrFail({ where: { id: obj.id } });
@@ -92,6 +103,7 @@ export class ItemRepository {
   // DELETE
   async remove(obj: ItemEntity): Promise<ItemEntity> {
     const removed: ItemEntity = this.repo.create({ ...obj });
+
     await this.repo.remove(obj);
 
     return removed;

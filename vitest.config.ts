@@ -85,11 +85,12 @@ export default defineConfig({
           lines: 35,
           statements: 35,
         },
-        'src/common/middleware/{error-handler,validate-request}.middleware.ts': {
-          lines: 40,
-          statements: 40,
-          branches: 25,
-        },
+        'src/common/middleware/{error-handler,validate-request}.middleware.ts':
+          {
+            lines: 40,
+            statements: 40,
+            branches: 25,
+          },
         'src/api/v1/items/models/*.ts': {
           lines: 40,
           statements: 40,

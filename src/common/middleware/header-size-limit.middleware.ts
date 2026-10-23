@@ -67,7 +67,9 @@ export function enforceHeaderLimits(limits: HeaderLimits = defaultLimits) {
     if (!limits.allowChunked && typeof transferEncoding === 'string') {
       if (transferEncoding.toLowerCase().includes('chunked')) {
         return next(
-          new UnsupportedTransferEncodingError('Chunked request bodies are not allowed.'),
+          new UnsupportedTransferEncodingError(
+            'Chunked request bodies are not allowed.',
+          ),
         );
       }
     }

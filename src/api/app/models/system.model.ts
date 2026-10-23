@@ -10,7 +10,10 @@ const bytes = z.number().int().nonnegative();
 export const CpuDiagnosticsSchema = z
   .object({
     logical_core_count: z.number().int().positive().openapi({ example: 8 }),
-    model: z.string().min(1).openapi({ example: 'Intel(R) Core(TM) i7-1185G7' }),
+    model: z
+      .string()
+      .min(1)
+      .openapi({ example: 'Intel(R) Core(TM) i7-1185G7' }),
     load_average: z
       .object({
         one_minute: z.number().nonnegative().openapi({ example: 0.42 }),
@@ -72,7 +75,8 @@ export const SystemDiagnosticsSchema = z
     }),
   })
   .openapi('SystemDiagnostics', {
-    description: 'Low-level system diagnostics useful for monitoring and health dashboards.',
+    description:
+      'Low-level system diagnostics useful for monitoring and health dashboards.',
   });
 
 export type CpuDiagnostics = z.infer<typeof CpuDiagnosticsSchema>;
@@ -81,10 +85,16 @@ export type ProcessDiagnostics = z.infer<typeof ProcessDiagnosticsSchema>;
 export type OsDiagnostics = z.infer<typeof OsDiagnosticsSchema>;
 export type SystemDiagnostics = z.infer<typeof SystemDiagnosticsSchema>;
 
-export function toSystemDiagnosticsDTO(payload: SystemDiagnostics): SystemDiagnostics {
+export function toSystemDiagnosticsDTO(
+  payload: SystemDiagnostics,
+): SystemDiagnostics {
   const { success, error, data } = SystemDiagnosticsSchema.safeParse(payload);
 
-  if (!success) throw new OutputValidationError('Failed to validate response DTO', error.issues);
+  if (!success)
+    throw new OutputValidationError(
+      'Failed to validate response DTO',
+      error.issues,
+    );
 
   return data;
 }

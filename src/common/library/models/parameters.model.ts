@@ -7,7 +7,8 @@ export const IdSchema = z
   .string()
   .regex(/^[A-Za-z0-9]{16}$/, 'Invalid ID format')
   .openapi({
-    description: 'A 16-character alphanumeric identifier used to uniquely reference a resource.',
+    description:
+      'A 16-character alphanumeric identifier used to uniquely reference a resource.',
     example: 'A1b2C3d4E5f6G7h8',
   });
 

@@ -10,14 +10,18 @@ export interface RateLimitOptions {
 export function createRateLimitMiddleware(options: RateLimitOptions) {
   const store: Map<string, number[]> = new Map();
 
-  return function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
+  return function rateLimitMiddleware(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void {
     const now: number = Date.now();
     const key: string = options.keyGenerator?.(req) ?? req.ip ?? 'unknown';
 
     const windowStart: number = now - options.windowMs;
 
     const timestamps: number[] = store.get(key) ?? [];
-    const recent: number[] = timestamps.filter(ts => ts > windowStart);
+    const recent: number[] = timestamps.filter((ts) => ts > windowStart);
 
     recent.push(now);
     store.set(key, recent);

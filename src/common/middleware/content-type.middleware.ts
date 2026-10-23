@@ -11,10 +11,16 @@ interface Options {
   routeOverrides?: RouteOverride[];
 }
 
-const NO_BODY_METHODS: Set<string> = new Set(['GET', 'DELETE', 'HEAD', 'OPTIONS']);
+const NO_BODY_METHODS: Set<string> = new Set([
+  'GET',
+  'DELETE',
+  'HEAD',
+  'OPTIONS',
+]);
 
 export function enforceContentType(options: Options = {}) {
-  const defaultAllowed: Set<string> = options.defaultAllowed ?? new Set(['application/json']);
+  const defaultAllowed: Set<string> =
+    options.defaultAllowed ?? new Set(['application/json']);
   const routeOverrides: RouteOverride[] = options.routeOverrides ?? [];
 
   function allowedForPath(path: string): Set<string> {
@@ -41,12 +47,14 @@ export function enforceContentType(options: Options = {}) {
     if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
       const allowed: Set<string> = allowedForPath(req.path);
 
-      if (!contentType) throw new UnsupportedMediaTypeError('Missing Content-Type header.');
+      if (!contentType)
+        throw new UnsupportedMediaTypeError('Missing Content-Type header.');
 
       const normalized: string = contentType.split(';')[0].trim().toLowerCase();
 
       if (!allowed.has(normalized)) {
         const expected: string[] = Array.from(allowed).sort();
+
         throw new UnsupportedMediaTypeError(
           `Content-Type '${contentType}' is not allowed on this endpoint. Expected one of: ${expected}.`,
         );

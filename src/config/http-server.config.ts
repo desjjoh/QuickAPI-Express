@@ -50,7 +50,7 @@ export function createApp(): express.Express {
     createRateLimitMiddleware({
       windowMs: 60_000,
       max: 200,
-      keyGenerator: req => req.ip ?? 'unknown',
+      keyGenerator: (req) => req.ip ?? 'unknown',
     }),
   );
 
@@ -74,7 +74,15 @@ export function createApp(): express.Express {
 
   app.use(
     methodWhitelist({
-      allowedMethods: new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']),
+      allowedMethods: new Set([
+        'GET',
+        'POST',
+        'PUT',
+        'PATCH',
+        'DELETE',
+        'HEAD',
+        'OPTIONS',
+      ]),
     }),
   );
 
@@ -123,7 +131,7 @@ export const closeServer = async (): Promise<void> => {
   const server = instance;
 
   await new Promise<void>((resolve, reject) => {
-    server.close(err => {
+    server.close((err) => {
       if (instance === server) instance = null;
       if (err) reject(err);
       else resolve();
