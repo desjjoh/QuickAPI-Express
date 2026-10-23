@@ -84,6 +84,13 @@ Coverage thresholds and exclusions are defined in [vitest.config.ts](../vitest.c
 
 ## HTTP lifecycle evidence
 
+The milestone-one completion review adds focused regression cases for credentialed
+CORS and exact origins, controller lookups that outlive a response deadline, a real
+MySQL update blocked until after HTTP timeout, probe acquisition after shutdown,
+and concurrent rate-limit bursts. `unit/request-timeout.test.ts` distinguishes
+`writableEnded` from `writableFinished` and checks timer/listener cleanup directly,
+so this state transition does not depend on operating-system socket buffer sizes.
+
 `integration/database-readiness.test.ts` exercises real disposable MySQL behind a
 controllable TCP proxy. It verifies connectivity loss and recovery on the same
 application, silent query stalls, occupied-pool acquisition, released connections,

@@ -24,6 +24,21 @@ function fixture() {
 }
 
 describe('database probe resource ownership', () => {
+  it('releases a connection acquired after shutdown without running SQL or restoring readiness', async () => {
+    vi.useFakeTimers();
+    const { connection, runner, readiness } = fixture();
+    const acquired = deferred<typeof connection>();
+    runner.connect.mockReturnValueOnce(acquired.promise);
+    const result = readiness.check();
+    readiness.stop();
+    expect(await result).toBe(false);
+    acquired.resolve(connection);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(runner.query).not.toHaveBeenCalled();
+    expect(runner.release).toHaveBeenCalledTimes(1);
+    expect(await readiness.check()).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it('shares a timed-out acquisition until its late connection is released without SQL', async () => {
     vi.useFakeTimers();
     const { runner, source, readiness } = fixture();

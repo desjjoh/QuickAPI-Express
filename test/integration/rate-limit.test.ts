@@ -8,6 +8,30 @@ afterEach(() => vi.restoreAllMocks());
 const trustedProxy = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
 
 describe('configured HTTP rate limiting', () => {
+  it('enforces one quota under a concurrent burst while leaving another trusted client independent', async () => {
+    const app = createApp({
+      ...env,
+      TRUST_PROXY: trustedProxy,
+      RATE_LIMIT_MAX: 5,
+    });
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        request(app).get('/').set('X-Forwarded-For', '198.51.100.1'),
+      ),
+    );
+    expect(
+      responses.filter((response) => response.status === 200),
+    ).toHaveLength(5);
+    const rejected = responses.filter((response) => response.status === 429);
+    expect(rejected).toHaveLength(15);
+    expect(
+      rejected.every((response) => Number(response.headers['retry-after']) > 0),
+    ).toBe(true);
+    expect(
+      (await request(app).get('/').set('X-Forwarded-For', '198.51.100.2'))
+        .status,
+    ).toBe(200);
+  });
   it('reports the remaining rolling-window delay, not the whole window', async () => {
     let now = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => now);

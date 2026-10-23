@@ -2,7 +2,7 @@
 
 [Documentation index](../README.md#documentation)
 
-This is the agreed hardening roadmap for bringing QuickAPI-Express up to the engineering safeguards used in QuickAPI-NestJS, scaled to this application's existing scope. Entries distinguish remaining work from local implementation progress; local checks are not completed deployment evidence.
+This is the agreed hardening roadmap for bringing QuickAPI-Express up to the engineering safeguards used in QuickAPI-NestJS, scaled to this application's existing scope. Entries distinguish completed engineering work from remaining backlog items and deployment-owned verification.
 
 The initial source review was against Express commit `6947b772cde9d445f5a02d8a5c282e65a7c959bf`. Recheck the implementation before starting each item. The existing CI gate remains useful evidence, but does not establish that these failure paths are protected.
 
@@ -18,15 +18,37 @@ The initial source review was against Express commit `6947b772cde9d445f5a02d8a5c
 
 Deliver the milestones in order, with focused regression tests alongside each change rather than postponing tests until the final milestone.
 
-## Milestone 1: Runtime and deployment reliability
+## Milestone 1: Runtime and deployment reliability — completed
 
-| Area                      | Current gap                                                                                                                                                                                                             | Follow-up and completion criteria                                                                                                                                                                                                                                                                                                                                          |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Proxy and header handling | Implemented locally: validated proxy/CORS configuration, no proxy trust by default, trusted-peer forwarding, preflight validation, and cache variation.                                                                 | Regression evidence is in `test/integration/http-policy.test.ts` and the environment/policy suites. The full integration and E2E suites pass against disposable MySQL. Real ingress/client-IP and browser checks remain deployment-owned. Idempotency semantics remain in milestone 2; its header can be configured when implemented.                                      |
-| Request deadlines         | Implemented locally: validated server receive deadlines and a separate response deadline, with cleanup on completion/disconnect and partial-response termination.                                                       | Regression evidence: slow headers/body, delayed and late-failing handlers, client disconnect, and reuse of one keep-alive socket. A response deadline does not cancel database mutations. See HTTP lifecycle tests and the deadline configuration guides.                                                                                                                  |
-| Startup and shutdown      | Implemented locally: awaited binding, actual listener readiness, shared startup/shutdown operations, immediate admission withdrawal, tracked handler draining before database cleanup, and finite drain/exit deadlines. | Evidence: occupied ports, partial-startup cleanup, pending-start shutdown, process cleanup ordering, stuck work/forced exit, real MySQL after client disconnect, and production SIGTERM smoke. Deployment termination grace must exceed the overall shutdown deadline.                                                                                                     |
-| Rate limiting             | Implemented locally: exact rolling-window quotas, bounded client buffers and total allocation, admission-ordered expiry, and no timestamp growth from rejections.                                                       | Regression evidence covers window boundaries, sustained rejection, distinct clients, expiry/capacity recovery, configuration limits, 429/503 retry timing, and trusted/untrusted forwarding. Enforcement remains process-local; see [rate limiting](rate-limiting.md) for deployment boundaries.                                                                           |
-| Database readiness        | Implemented locally: startup migration-history verification and shared, bounded runtime connectivity checks through the application pool, with brief result caching and owned connection cleanup.                       | Evidence in `test/integration/database-readiness.test.ts` and the probe unit suite covers transport loss, query stalls, pool exhaustion, late acquisition, recovery on the same application, independent liveness, and unapplied/absent migration history. See [database lifecycle](database-lifecycle.md); real deployment routing and failover remain environment-owned. |
+All four agreed implementation steps are complete on dev. The merged baseline is
+`bb2b8633bfe3afdde7c3b34c73b7c82917be5d86` (reviewed 2026-10-23).
+Its [CI run](https://github.com/desjjoh/QuickAPI-Express/actions/runs/39973533209)
+passed all eight jobs: formatting/lint, type/build, unit coverage, integration,
+E2E, migration validation, production image smoke, and the deployment gate.
+
+| Step                               | Status    | Completed behavior and evidence                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Proxy, headers, and CORS        | Completed | Validated proxy/CORS configuration; no proxy trust by default; trusted forwarding; explicit origins; preserved/validated preflight headers; correct cache variation. HTTP policy tests cover direct, trusted, spoofed, credentialed, and rejected-origin requests. See [deployment policy](deployment.md#proxy-and-browser-access).                                                                                                                              |
+| 2. HTTP lifecycle and deadlines    | Completed | Awaited binding and failed-start cleanup; actual listener readiness; server receive deadlines; response deadlines through write completion; cleaned timers/listeners; tracked async work; immediate admission/readiness withdrawal; finite drain and shutdown before database teardown. Tests cover occupied ports, partial startup, slow input, late handlers, disconnect/keep-alive, incomplete writes, real MySQL mutation draining, SIGTERM, and stuck work. |
+| 3. Database readiness and recovery | Completed | Startup migration verification; shared bounded connectivity probes; brief result caching; owned connection cleanup; one pending acquisition under pool exhaustion; runtime outage/recovery without restart; independent liveness. Real MySQL tests cover lost/stalled transport, pool exhaustion, connection release, unapplied/absent history, and recovery. See [database lifecycle](database-lifecycle.md).                                                   |
+| 4. Bounded rate limiting           | Completed | Exact rolling windows; capped per-client and total storage; no rejection history growth; inactive-client expiry; explicit 429/503 capacity behavior and retry timing; validated limits. Tests cover boundaries, sustained rejection, distinct clients, capacity recovery, concurrent bursts, and forwarding identity. Enforcement remains process-local; see [rate limiting](rate-limiting.md).                                                                  |
+
+### Completion review and remaining boundaries
+
+The post-merge review found and corrected one response-deadline edge case:
+`res.end()` must not disable the deadline while the final write is still pending.
+Focused regressions also cover credentials on CORS preflight/actual responses,
+late controller lookups before mutations, a real blocked MySQL write completing
+after an HTTP timeout, a late probe acquisition after shutdown, and concurrent
+limiter requests. Follow-up review changes need their own CI run when committed;
+the linked CI evidence applies to the merged baseline above.
+
+Remaining deployment verification is explicit: test the real ingress trust boundary
+and client IPs, browser CORS behavior through that ingress, orchestrator traffic
+withdrawal and termination grace, and environment-specific database failover/TLS.
+These checks are not represented as completed production evidence by loopback,
+controlled fault, or disposable-container tests. Shared rate limiting remains a
+separate deployment decision. A response timeout does not cancel a database write.
 
 ## Milestone 2: Item mutation safety
 
