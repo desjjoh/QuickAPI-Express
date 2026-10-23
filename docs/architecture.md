@@ -116,12 +116,16 @@ order and unwinds wrappers after downstream processing completes, so preserve th
    including policy rejections, controller responses, 404s, and errors. Moving them after a rejecting
    policy would make those rejected requests invisible, while putting request-context creation after
    logging could deprive logs and error reporting of correlation data.
-3. **Proxy trust precedes IP-based rate limiting.** `trust proxy` must be set before the limiter is
+3. **Proxy trust precedes identity capture and IP-based rate limiting.** `trust proxy` is configured
+   from validated `TRUST_PROXY` addresses/CIDRs immediately after app creation, before request-context
+   and logging middleware. It defaults to false. It must be set before the limiter is
    registered and handles requests because the limiter keys on `req.ip`. Reversing that dependency
    can group clients under the proxy address or derive identities from the wrong hop, weakening or
    misapplying throttling. The configured trust boundary must not be broadened casually either,
    because trusting unvalidated forwarding data can allow clients to spoof the identity used by the
-   limiter.
+   limiter. Sanitization retains Express forwarding headers only from a trusted transport peer;
+   untrusted forwarding metadata is stripped. CORS preflight headers and configured allowed
+   request headers survive sanitization, subject to blocked-header and proxy-trust rules.
 4. **Cheap request policies reject before expensive request work.** Security headers, rate limiting,
    header sanitization and limits, timeouts, content-type enforcement, the method allowlist, and CORS
    all run before body parsing and controllers. Moving parsing or route dispatch ahead of them would

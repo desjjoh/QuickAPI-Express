@@ -10,13 +10,12 @@ const BLOCKLIST: Set<string> = new Set([
   'transfer-encoding',
   'upgrade',
   'proxy-connection',
+]);
+
+const FORWARDING_HEADERS = new Set([
   'x-forwarded-for',
   'x-forwarded-host',
   'x-forwarded-proto',
-  'forwarded',
-  'via',
-  'client-ip',
-  'true-client-ip',
 ]);
 
 const ALLOWLIST: Set<string> = new Set([
@@ -30,6 +29,8 @@ const ALLOWLIST: Set<string> = new Set([
   'user-agent',
   'referer',
   'origin',
+  'access-control-request-method',
+  'access-control-request-headers',
   'cookie',
   'sec-fetch-site',
   'sec-fetch-mode',
@@ -46,10 +47,22 @@ const ALLOWLIST: Set<string> = new Set([
 const VALID_NAME_RE: RegExp = /^[A-Za-z0-9-]+$/;
 const INVALID_VALUE_CHARS: Set<string> = new Set(['\r', '\n']);
 
-export function sanitizeHeaders() {
+export function sanitizeHeaders(additionalHeaders: readonly string[] = []) {
+  const allowedHeaders = new Set([
+    ...ALLOWLIST,
+    ...additionalHeaders.map((header) => header.toLowerCase()),
+  ]);
+
   return (req: Request, _res: Response, next: NextFunction) => {
     const seen: Set<string> = new Set<string>();
     const cleaned: Record<string, string | string[]> = {};
+    const trust = req.app.get('trust proxy fn') as (
+      address: string,
+      hop: number,
+    ) => boolean;
+    const trustedPeer =
+      req.socket.remoteAddress !== undefined &&
+      trust(req.socket.remoteAddress, 0);
 
     for (const [name, value] of Object.entries(req.headers)) {
       const lower: string = name.toLowerCase();
@@ -82,7 +95,10 @@ export function sanitizeHeaders() {
         }
       }
 
-      if (ALLOWLIST.has(lower)) {
+      // Only Express's trusted transport peer may supply forwarding metadata.
+      if (
+        FORWARDING_HEADERS.has(lower) ? trustedPeer : allowedHeaders.has(lower)
+      ) {
         cleaned[lower] = value ?? '';
       }
     }

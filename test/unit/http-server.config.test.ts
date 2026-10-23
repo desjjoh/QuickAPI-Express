@@ -26,7 +26,7 @@ describe('HTTP server configuration', () => {
   it('constructs the complete Express middleware stack', () => {
     const app = createApp();
 
-    expect(app.get('trust proxy')).toBe(1);
+    expect(app.get('trust proxy')).toBe(false);
     expect(app.get('x-powered-by')).toBe(false);
     expect(app.router.stack.length).toBeGreaterThan(10);
   });
