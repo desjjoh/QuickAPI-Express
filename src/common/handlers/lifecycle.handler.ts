@@ -19,6 +19,7 @@ export type DependencyCheckResult = {
 
 class LifecycleHandler {
   private static readonly dependencyCheckTimeoutMs: number = 5_000;
+
   private static startupServices: LifecycleService[] = [];
   private static initializedServices: LifecycleService[] = [];
 
@@ -49,6 +50,7 @@ class LifecycleHandler {
     const boundedTimeoutMs: number = Number.isFinite(timeoutMs)
       ? Math.min(this.dependencyCheckTimeoutMs, Math.max(0, timeoutMs))
       : this.dependencyCheckTimeoutMs;
+
     const requiredServices: (LifecycleService &
       Required<Pick<LifecycleService, 'check'>>)[] =
       this.startupServices.filter(
@@ -111,11 +113,13 @@ class LifecycleHandler {
     }
 
     if (this.handlersRegistered) return;
+
     this.handlersRegistered = true;
 
     ['SIGINT', 'SIGTERM'].forEach((sig: string) => {
       process.once(sig, () => {
         logger.warn(`${sig} received — initiating shutdown`);
+
         void this.shutdown();
       });
     });
@@ -139,6 +143,7 @@ class LifecycleHandler {
       logger.fatal(
         'Fatal error caused by uncaught exception — initiating shutdown',
       );
+
       void this.shutdown(1);
     });
 
@@ -148,6 +153,7 @@ class LifecycleHandler {
       logger.fatal(
         'Fatal error handling promise rejection — initiating shutdown',
       );
+
       void this.shutdown(1);
     });
 
@@ -159,13 +165,18 @@ class LifecycleHandler {
   public static startup = (): Promise<void> => {
     if (this.shutdownStarted)
       return Promise.reject(new Error('Startup interrupted by shutdown.'));
+
     if (this.startupPromise) return this.startupPromise;
+
     if (this.startupCompleted) return Promise.resolve();
+
     this.startupPromise = (async () => {
       try {
         for (const service of this.startupServices) {
           if (this.shutdownStarted) break;
+
           if (!service.start) continue;
+
           await service.start();
           this.initializedServices.push(service);
           logger.debug(`Service started → ${service.name}`);
@@ -197,6 +208,7 @@ class LifecycleHandler {
         logger.debug(`Service stopped ← ${service.name}`);
       } catch (err: unknown) {
         cleanupFailed = true;
+
         const error: Error =
           err instanceof Error ? err : new Error(String(err));
 
@@ -212,14 +224,19 @@ class LifecycleHandler {
     const current = Number(process.exitCode ?? 0);
 
     process.exitCode = Math.max(current, exitCode);
+
     if (this.shutdownPromise) return this.shutdownPromise;
+
     this.shutdownStarted = true;
     this.startupCompleted = false;
+
     let cleanupFailed = false;
+
     const watchdog = setTimeout(() => {
       logger.fatal(
         'Shutdown deadline exceeded; forcing exit. Unfinished work may have an unknown outcome.',
       );
+
       process.exit(1);
     }, env.SHUTDOWN_TIMEOUT_MS);
 
@@ -236,6 +253,7 @@ class LifecycleHandler {
     this.shutdownPromise = (async () => {
       // A service completing startup after the signal still belongs to reverse cleanup.
       await this.startupPromise?.catch(() => undefined);
+
       if (await this.stopInitializedServices()) {
         cleanupFailed = true;
         process.exitCode = 1;

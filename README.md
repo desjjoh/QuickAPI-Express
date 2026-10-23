@@ -27,6 +27,8 @@ The local API is at `http://localhost:3000`. Swagger is served at `/docs`, OpenA
 
 ## Documentation
 
+See [Database readiness and recovery](docs/database-lifecycle.md) for startup migration checks, runtime probes, and outage/shutdown behavior.
+
 | Guide                                           | Contents                                                                |
 | ----------------------------------------------- | ----------------------------------------------------------------------- |
 | [Development](docs/development.md)              | Setup, configuration, migrations, commands, and readability conventions |

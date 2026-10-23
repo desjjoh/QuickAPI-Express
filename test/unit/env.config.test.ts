@@ -20,6 +20,9 @@ describe('environment configuration', () => {
       REQUEST_TIMEOUT_MS: 10_000,
       HTTP_DRAIN_TIMEOUT_MS: 25_000,
       SHUTDOWN_TIMEOUT_MS: 30_000,
+      DB_READINESS_TIMEOUT_MS: 1_000,
+      DB_READINESS_CACHE_MS: 1_000,
+      DB_MIGRATION_CHECK_TIMEOUT_MS: 5_000,
     });
   });
 
@@ -32,6 +35,9 @@ describe('environment configuration', () => {
         'REQUEST_TIMEOUT_MS',
         'HTTP_DRAIN_TIMEOUT_MS',
         'SHUTDOWN_TIMEOUT_MS',
+        'DB_READINESS_TIMEOUT_MS',
+        'DB_READINESS_CACHE_MS',
+        'DB_MIGRATION_CHECK_TIMEOUT_MS',
       ]) {
         expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
       }

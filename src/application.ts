@@ -1,7 +1,7 @@
 import {
   connectDatabase,
   destroyServer as destroyDatabase,
-  isServerInitialized,
+  databaseReadiness,
 } from '@/config/database.config';
 import {
   closeServer,
@@ -18,7 +18,7 @@ export function createApplicationServices(): LifecycleService[] {
       name: 'database (typeorm)',
       start: connectDatabase,
       stop: destroyDatabase,
-      check: isServerInitialized,
+      check: () => databaseReadiness.check(),
     },
     {
       name: 'http server (express)',

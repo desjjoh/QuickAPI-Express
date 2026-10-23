@@ -12,6 +12,7 @@ export type ListenerPolicy = Pick<
 /** Owns transport deadlines, successful binding, and draining beyond response completion. */
 export class HttpListener {
   public readonly server: Server;
+
   private starting: Promise<void> | undefined;
   private closing: Promise<void> | undefined;
   private stopped = false;
@@ -41,7 +42,9 @@ export class HttpListener {
   public start(port: number, host = '0.0.0.0'): Promise<void> {
     if (this.stopped)
       return Promise.reject(new Error('HTTP startup interrupted by shutdown.'));
+
     if (this.starting) return this.starting;
+
     this.starting = new Promise<void>((resolve, reject) => {
       const failed = (error: Error) => {
         this.server.off('listening', listening);
@@ -50,6 +53,7 @@ export class HttpListener {
 
       const listening = () => {
         this.server.off('error', failed);
+
         if (this.stopped) {
           this.server.close(() =>
             reject(new Error('HTTP startup interrupted by shutdown.')),
@@ -78,10 +82,14 @@ export class HttpListener {
 
   public close(): Promise<void> {
     this.quiesce();
+
     if (this.closing) return this.closing;
+
     let timer: NodeJS.Timeout;
+
     const graceful = async () => {
       await this.starting?.catch(() => undefined);
+
       if (this.server.listening) {
         await new Promise<void>((resolve, reject) => {
           this.server.close((error) => (error ? reject(error) : resolve()));

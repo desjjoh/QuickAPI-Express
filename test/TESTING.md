@@ -17,7 +17,7 @@ npm run test:integration
 npm run test:e2e
 ```
 
-The disposable service binds only to `127.0.0.1:3308` and stores MySQL data in `tmpfs`. Destructive
+The disposable service binds only to `127.0.0.1:3318` and stores MySQL data in `tmpfs`. Destructive
 infrastructure commands first require all of the following:
 
 - `NODE_ENV` is exactly `test`;
@@ -25,8 +25,13 @@ infrastructure commands first require all of the following:
 - `DB_HOST` is a recognized local/CI host, or is explicitly included in the comma-separated
   `TEST_DB_ALLOWED_HOSTS` allowlist.
 
-Set a safe test environment before using local infrastructure commands; for example,
-`DB_DATABASE=quickapi_disposable_test` with `DB_HOST=localhost`. `npm run test:infra:down` removes
+The checked-in `.env.test` matches the disposable Compose service: host `127.0.0.1`,
+port `3318`, database `quickapi_disposable_test`, user `quickapi_test_user`, and
+password `quickapi_test_password`. Existing process environment values override
+the file. The shared database test helper validates the target before connecting
+or deleting item fixtures, including when Vitest runs directly.
+
+`npm run test:infra:down` removes
 containers, anonymous resources, orphans, and volumes. Do not point these commands at development,
 staging, or production data.
 
@@ -63,9 +68,29 @@ its original labels and event types.
 
 `npm run test` starts Vitest in watch mode. `test:integration:run` and `test:e2e:run` run their projects directly against already prepared infrastructure, as CI does. `test:coverage` runs all projects with coverage and likewise requires database preparation.
 
+For unit-only watch mode, use `npm test -- --project unit`. For database-backed
+watch mode, first run `npm run test:infra:up` and `npm run test:infra:prepare`, then
+start `npm test`. Stop watch mode before running `npm run test:infra:down`.
+Vitest does not start MySQL or apply migrations automatically. A pending-migration
+failure means the selected disposable database needs preparation; do not disable
+the guard or run migrations against a generic `test` schema to bypass it.
+
+Port `3318` keeps this repository separate from the existing QuickAPI test MySQL
+service on `3308`. If database startup fails because its port is occupied, stop
+there: do not continue to migrations or tests against the service on that port.
+Update both the Compose mapping and `DB_PORT` together when selecting another port.
+
 Coverage thresholds and exclusions are defined in [vitest.config.ts](../vitest.config.ts). CI gates coverage from the unit project; integration and E2E run as separate jobs. Passing that gate does not imply combined-suite coverage or complete runtime protection.
 
 ## HTTP lifecycle evidence
+
+`integration/database-readiness.test.ts` exercises real disposable MySQL behind a
+controllable TCP proxy. It verifies connectivity loss and recovery on the same
+application, silent query stalls, occupied-pool acquisition, released connections,
+unapplied migrations, and absent migration history. The migration table is renamed
+only inside the safety-guarded disposable schema and restored in `finally`.
+`unit/database-readiness.test.ts` checks shared ownership, late acquisitions,
+cache lifetime, and cancellation. See the [database lifecycle](../docs/database-lifecycle.md).
 
 `integration/http-lifecycle.test.ts` uses real listeners and raw sockets for bind
 failure, slow headers/body, delayed responses, disconnects, partial responses,

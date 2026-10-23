@@ -3,11 +3,13 @@ import { HttpError } from '@/common/exceptions/http.exception';
 import { logger } from '@/config/logger.config';
 
 type RequestState = { tracker: RequestWorkTracker; abandoned: boolean };
+
 const requests = new WeakMap<object, RequestState>();
 
 /** Tracks handler promises independently of whether their HTTP connection is still open. */
 export class RequestWorkTracker {
   public accepting = true;
+
   private readonly pending = new Set<Promise<unknown>>();
 
   public readonly admit: RequestHandler = (req, res, next) => {
@@ -21,8 +23,10 @@ export class RequestWorkTracker {
     const state = { tracker: this, abandoned: false };
 
     requests.set(req, state);
+
     const cleanup = () => {
       if (!res.writableFinished) state.abandoned = true;
+
       req.off('aborted', cleanup);
       res.off('finish', cleanup);
       res.off('close', cleanup);
@@ -68,6 +72,7 @@ export function trackHandler<R extends object, S extends Response>(
 ): RequestHandler {
   return async (req, res, next) => {
     if (!canRespond(req, res)) return;
+
     const work = async () => {
       if (!canRespond(req, res)) return;
 

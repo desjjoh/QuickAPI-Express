@@ -1,6 +1,6 @@
 import { connect, type Socket } from 'node:net';
 import type { AddressInfo } from 'node:net';
-import type { Server } from 'node:http';
+import type { Server } from 'node:net';
 
 export function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
