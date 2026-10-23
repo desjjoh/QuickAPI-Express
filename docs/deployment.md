@@ -2,6 +2,45 @@
 
 [Documentation index](../README.md#documentation)
 
+## Proxy and browser access
+
+`TRUST_PROXY` now defaults to empty (no proxy trust), replacing the old hardcoded
+one-hop trust. Deployments behind an ingress must explicitly configure its actual
+IP addresses/CIDRs before relying on forwarded client addresses, protocol, or host.
+Use the same policy on every API instance and restart after changing environment
+values. For example, if the ingress really connects from `10.20.0.10`:
+
+```dotenv
+TRUST_PROXY=10.20.0.10
+CORS_ORIGINS=https://web.example.com,https://admin.example.com
+```
+
+Use this address only as an example, not a production default. Do not trust an
+entire container/private network if untrusted workloads can connect from it.
+The ingress must strip or overwrite client-supplied `X-Forwarded-For`,
+`X-Forwarded-Host`, and `X-Forwarded-Proto`, and supply authoritative values.
+Express resolves the client address from the socket through trusted hops to the
+nearest untrusted address; see [Express proxy guidance](https://expressjs.com/en/guide/behind-proxies/).
+
+Forwarding headers from untrusted transport peers are ignored and stripped,
+rather than rejecting otherwise valid requests. Trusted peers retain the three
+Express forwarding headers so rate limiting, request-context logs, and route
+handlers use the same identity. Other forwarding formats such as `Forwarded`
+and `Via` are not interpreted as identity and are removed by default. Protocol
+and host trust depend on the ingress overwriting their headers correctly.
+
+Set `CORS_ORIGINS` to the exact browser origins that should read API responses.
+The other [CORS settings](development.md#proxy-and-cors-configuration) control
+methods, request/response headers, credentials, and preflight caching. Caches
+must honor the emitted `Vary` headers, including Origin and the preflight request
+method/header fields. CORS is a browser response-access policy, not authentication
+or authorization for this public item API.
+
+Before release, verify real ingress requests and browser preflights, the logged
+client IP, and that direct/untrusted forwarding cannot change the rate-limit
+identity. Automated loopback/allowlist tests do not establish the real network
+trust boundary. No schema migration is required for this HTTP policy change.
+
 ## Liveness, readiness, and operations
 
 - `GET /health` is **process liveness**. It reports `alive`, uptime, and a timestamp; it does not query

@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import type { Server } from 'node:http';
 
-import { env } from '@/config/env.config';
+import { env, type Env } from '@/config/env.config';
 import { docsJson, redocDocs, swaggerDocs } from '@/config/docs.config';
 
 import api_routes from '@/api/api.routes';
@@ -28,8 +28,25 @@ let instance: Server | null = null;
 const publicDirectory = path.resolve(process.cwd(), 'public');
 const faviconPath = path.join(publicDirectory, 'favicon.ico');
 
-export function createApp(): express.Express {
+type HttpPolicy = Pick<
+  Env,
+  | 'TRUST_PROXY'
+  | 'CORS_ORIGINS'
+  | 'CORS_METHODS'
+  | 'CORS_ALLOWED_HEADERS'
+  | 'CORS_EXPOSED_HEADERS'
+  | 'CORS_CREDENTIALS'
+  | 'CORS_MAX_AGE_SECONDS'
+>;
+
+export function createApp(policy: HttpPolicy = env): express.Express {
   const app = express();
+
+  app.set(
+    'trust proxy',
+    policy.TRUST_PROXY.length ? policy.TRUST_PROXY : false,
+  );
+  app.disable('x-powered-by');
 
   app.get('/favicon.ico', (_req, res) => {
     res.sendFile(faviconPath);
@@ -41,9 +58,6 @@ export function createApp(): express.Express {
   app.use(requestContextMiddleware);
   app.use(httpLogger);
 
-  app.set('trust proxy', 1);
-  app.disable('x-powered-by');
-
   app.use(securityHeaders);
 
   app.use(
@@ -54,7 +68,7 @@ export function createApp(): express.Express {
     }),
   );
 
-  app.use(sanitizeHeaders());
+  app.use(sanitizeHeaders(policy.CORS_ALLOWED_HEADERS));
   app.use(enforceHeaderLimits());
 
   app.use(
@@ -88,12 +102,12 @@ export function createApp(): express.Express {
 
   app.use(
     createCorsMiddleware({
-      origin: ['http://localhost:3000'],
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['content-type', 'authorization', 'x-requested-with'],
-      exposedHeaders: ['authorization', 'set-cookie'],
-      credentials: true,
-      maxAge: 86_400,
+      origin: policy.CORS_ORIGINS,
+      methods: policy.CORS_METHODS,
+      allowedHeaders: policy.CORS_ALLOWED_HEADERS,
+      exposedHeaders: policy.CORS_EXPOSED_HEADERS,
+      credentials: policy.CORS_CREDENTIALS,
+      maxAge: policy.CORS_MAX_AGE_SECONDS,
     }),
   );
 

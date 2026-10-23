@@ -51,6 +51,40 @@ APP_VERSION=1.0.0
 Values are trimmed/coerced where the schema specifies it. Validation prints all Zod issues to
 stderr and throws before database or HTTP startup; there are no silent database defaults.
 
+### Proxy and CORS configuration
+
+The HTTP policy keys use the same names as QuickAPI-NestJS. They are optional;
+omitting them keeps the existing localhost CORS defaults, while proxy trust is
+now disabled by default. Existing `.env` files are not updated automatically.
+
+| Variable               | Default                                       | Validation and meaning                                                                                                                                                                               |
+| ---------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TRUST_PROXY`          | Empty                                         | Comma-separated IPv4/IPv6 addresses or CIDRs for trusted transport proxies. Empty trusts none. Hostnames, named subnets, hop counts, booleans, and `/0` ranges are rejected.                         |
+| `CORS_ORIGINS`         | `http://localhost:3000`                       | Nonempty comma-separated exact HTTP(S) origins: scheme, host, and optional port. No paths, trailing slashes, credentials, queries, fragments, wildcard, or `null` origin. Use canonical URL origins. |
+| `CORS_METHODS`         | `GET,POST,PUT,DELETE,PATCH,OPTIONS`           | Nonempty comma-separated uppercase methods from GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. This controls CORS, not route availability.                                                            |
+| `CORS_ALLOWED_HEADERS` | `content-type,authorization,x-requested-with` | Comma-separated request header names; empty permits no non-safelisted preflight request headers. Configured names also survive sanitization, subject to blocked-header and proxy-trust rules.        |
+| `CORS_EXPOSED_HEADERS` | `authorization,set-cookie`                    | Comma-separated response header names; empty exposes no additional headers. Browsers still prohibit JavaScript from reading `Set-Cookie`.                                                            |
+| `CORS_CREDENTIALS`     | `true`                                        | Exactly `true` or `false`. The existing credential policy is preserved by default; origins always remain explicit.                                                                                   |
+| `CORS_MAX_AGE_SECONDS` | `86400`                                       | Integer from 0 through 86400, advertising preflight cache duration. Zero disables that cache.                                                                                                        |
+
+Lists trim whitespace around entries; empty entries inside nonempty lists are
+invalid. Header names contain letters, digits, and hyphens. Preflight header
+matching is case-insensitive. Actual supported routes and HTTP method/body
+policies continue to apply independently of CORS.
+
+OPTIONS requests carrying an Origin and Access-Control-Request-Method are checked
+against configured methods and requested headers. Unsupported preflights and
+unlisted origins return 403. Requests without an Origin remain supported for
+server-to-server clients and probes. Responses reaching CORS include `Vary: Origin`,
+including rejected and no-origin responses; OPTIONS also varies on
+`Access-Control-Request-Method` and `Access-Control-Request-Headers`.
+
+Custom allowed request headers survive sanitization, but adding a name does not
+implement its application semantics. In particular, `Idempotency-Key` can be
+configured later when item idempotency is implemented; this change adds no replay
+behavior. See [deployment proxy requirements](deployment.md#proxy-and-browser-access)
+before trusting any ingress.
+
 ## Local MySQL, migrations, and development
 
 The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user

@@ -32,7 +32,14 @@ staging, or production data.
 
 ## Continuous integration and deployment gate
 
-`.github/workflows/ci.yml` runs on every push and pull request with Node 24.11.1 and locked installs:
+`.github/workflows/ci.yml` is named `CI`, matching the other QuickAPI apps. It runs
+for pull requests targeting `main`, `staging`, or `dev`, and for pushes to those
+branches. Feature-branch pushes do not start an additional push run alongside the
+PR run. Merge queue (`merge_group`), manual (`workflow_dispatch`), and reusable
+(`workflow_call`) invocations are also supported. New runs cancel superseded runs
+for the same workflow/ref; PR refs are separate from branch refs.
+
+Validation uses Node 24.11.1 and locked installs:
 
 1. formatting and linting (`check:format-lint`);
 2. type-check and production build (`check:type-build`);
@@ -41,6 +48,11 @@ staging, or production data.
 5. end-to-end tests with the same isolated preparation;
 6. migration drift validation against its own disposable schema; and
 7. digest validation plus the production image smoke test.
+
+The required `Deployment gate` job retains its name and requires every validation
+job to succeed. Naming the workflow changes the displayed prefix from its file
+path to `CI`; it does not rename the required job. Existing run history retains
+its original labels and event types.
 
 ## Test categories and coverage
 

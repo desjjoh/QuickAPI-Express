@@ -1,4 +1,3 @@
-// src/middleware/cors.middleware.ts
 import { ForbiddenError } from '@/common/exceptions/http.exception';
 import type { Request, Response, NextFunction } from 'express';
 
@@ -19,6 +18,14 @@ export function createCorsMiddleware(opts: CorsOptions) {
   ): void {
     const origin: string | null = req.headers.origin ?? null;
 
+    // Include absent/disallowed origins too, so caches cannot reuse another origin's response.
+    res.vary('Origin');
+
+    if (req.method === 'OPTIONS') {
+      res.vary('Access-Control-Request-Method');
+      res.vary('Access-Control-Request-Headers');
+    }
+
     // Check if origin is allowed
     if (!isAllowedOrigin(opts, origin)) {
       throw new ForbiddenError(`CORS origin '${origin}' not allowed.`);
@@ -27,11 +34,32 @@ export function createCorsMiddleware(opts: CorsOptions) {
     // CORS header: Access-Control-Allow-Origin
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (
-      opts.origin === '*' ||
-      (Array.isArray(opts.origin) && opts.origin.includes('*'))
+    }
+
+    if (
+      origin &&
+      req.method === 'OPTIONS' &&
+      req.headers['access-control-request-method']
     ) {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      const method = req.headers['access-control-request-method'];
+      const headers = req.headers['access-control-request-headers'];
+      const allowed = new Set(
+        opts.allowedHeaders.map((header) => header.toLowerCase()),
+      );
+
+      if (
+        typeof method !== 'string' ||
+        !opts.methods.includes(method) ||
+        (headers !== undefined &&
+          (typeof headers !== 'string' ||
+            headers
+              .split(',')
+              .some((header) => !allowed.has(header.trim().toLowerCase()))))
+      ) {
+        throw new ForbiddenError(
+          'CORS preflight method or headers not allowed.',
+        );
+      }
     }
 
     // Static CORS headers
@@ -65,10 +93,6 @@ function isAllowedOrigin(opts: CorsOptions, origin: string | null): boolean {
   if (!origin) return true;
 
   const allowed: string | string[] = opts.origin;
-
-  if (allowed === '*' || (Array.isArray(allowed) && allowed.includes('*'))) {
-    return true;
-  }
 
   if (Array.isArray(allowed)) {
     return allowed.includes(origin);

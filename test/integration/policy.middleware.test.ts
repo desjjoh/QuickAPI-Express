@@ -77,20 +77,18 @@ describe('security and policy middleware', () => {
       expect(next.mock.calls[0]?.[0]).toBeInstanceOf(Error);
     }
   });
-  it('removes unrecognized headers and rejects forwarding headers', async () => {
+  it('removes unrecognized and untrusted forwarding headers', async () => {
     const ok = await request(mount(sanitizeHeaders()))
       .get('/test')
       .set('X-Untrusted', 'gone')
       .set('X-Request-Id', 'kept');
     expect(ok.body.headers).not.toHaveProperty('x-untrusted');
     expect(ok.body.headers['x-request-id']).toBe('kept');
-    expect(
-      (
-        await request(mount(sanitizeHeaders()))
-          .get('/test')
-          .set('X-Forwarded-Host', 'evil')
-      ).status,
-    ).toBe(400);
+    const forwarded = await request(mount(sanitizeHeaders()))
+      .get('/test')
+      .set('X-Forwarded-Host', 'evil');
+    expect(forwarded.status).toBe(200);
+    expect(forwarded.body.headers).not.toHaveProperty('x-forwarded-host');
   });
   it('applies route-specific body limits at the byte boundary', async () => {
     const app = mount(
@@ -127,6 +125,26 @@ describe('security and policy middleware', () => {
           .set('Origin', 'https://evil.test')
       ).status,
     ).toBe(403);
+  });
+  it('appends Origin variation without replacing existing cache variation', async () => {
+    const app = express();
+    app.use((_req, res, next) => {
+      res.vary('Accept-Encoding');
+      next();
+    });
+    app.use(
+      createCorsMiddleware({
+        origin: ['https://good.test'],
+        methods: ['GET'],
+        allowedHeaders: [],
+        exposedHeaders: [],
+      }),
+    );
+    app.get('/test', (_req, res) => res.send('ok'));
+    const response = await request(app)
+      .get('/test')
+      .set('Origin', 'https://good.test');
+    expect(response.headers.vary).toBe('Accept-Encoding, Origin');
   });
   it('creates a request ID and rate limits independently by key', async () => {
     const context = await request(mount(requestContextMiddleware)).get('/test');

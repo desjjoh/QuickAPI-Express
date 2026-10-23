@@ -13,6 +13,81 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it('defaults to direct access and the existing localhost CORS policy', () => {
+    expect(parseEnv(valid)).toMatchObject({
+      TRUST_PROXY: [],
+      CORS_ORIGINS: ['http://localhost:3000'],
+      CORS_METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      CORS_ALLOWED_HEADERS: [
+        'content-type',
+        'authorization',
+        'x-requested-with',
+      ],
+      CORS_EXPOSED_HEADERS: ['authorization', 'set-cookie'],
+      CORS_CREDENTIALS: true,
+      CORS_MAX_AGE_SECONDS: 86_400,
+    });
+  });
+
+  it('parses explicit proxy addresses and configurable CORS policy', () => {
+    expect(
+      parseEnv({
+        ...valid,
+        TRUST_PROXY: ' 192.0.2.10, 10.20.0.0/16, ::1, fd00::/64 ',
+        CORS_ORIGINS: 'https://web.example, https://admin.example:8443',
+        CORS_METHODS: 'GET, POST',
+        CORS_ALLOWED_HEADERS: 'Content-Type, X-Trace-Client',
+        CORS_EXPOSED_HEADERS: '',
+        CORS_CREDENTIALS: 'false',
+        CORS_MAX_AGE_SECONDS: '0',
+      }),
+    ).toMatchObject({
+      TRUST_PROXY: ['192.0.2.10', '10.20.0.0/16', '::1', 'fd00::/64'],
+      CORS_ORIGINS: ['https://web.example', 'https://admin.example:8443'],
+      CORS_METHODS: ['GET', 'POST'],
+      CORS_ALLOWED_HEADERS: ['Content-Type', 'X-Trace-Client'],
+      CORS_EXPOSED_HEADERS: [],
+      CORS_CREDENTIALS: false,
+      CORS_MAX_AGE_SECONDS: 0,
+    });
+  });
+
+  it('allows explicitly empty proxy trust', () => {
+    expect(parseEnv({ ...valid, TRUST_PROXY: '  ' }).TRUST_PROXY).toEqual([]);
+  });
+
+  it.each([
+    ['TRUST_PROXY', 'true'],
+    ['TRUST_PROXY', '1'],
+    ['TRUST_PROXY', '0.0.0.0/0'],
+    ['TRUST_PROXY', '::/0'],
+    ['TRUST_PROXY', '10.0.0.1/33'],
+    ['TRUST_PROXY', '::1/129'],
+    ['TRUST_PROXY', '10.0.0.1/-1'],
+    ['TRUST_PROXY', '127.0.0.1,'],
+    ['TRUST_PROXY', 'proxy.example'],
+    ['TRUST_PROXY', '127.0.0.1/8/8'],
+    ['CORS_ORIGINS', '*'],
+    ['CORS_ORIGINS', 'null'],
+    ['CORS_ORIGINS', ''],
+    ['CORS_ORIGINS', 'https://web.example/path'],
+    ['CORS_ORIGINS', 'https://user:secret@web.example'],
+    ['CORS_ORIGINS', 'https://web.example?query'],
+    ['CORS_METHODS', ''],
+    ['CORS_METHODS', 'GET,BOGUS'],
+    ['CORS_ALLOWED_HEADERS', 'content-type,'],
+    ['CORS_ALLOWED_HEADERS', 'bad header'],
+    ['CORS_EXPOSED_HEADERS', 'bad\r\nheader'],
+    ['CORS_CREDENTIALS', 'yes'],
+    ['CORS_CREDENTIALS', ''],
+    ['CORS_MAX_AGE_SECONDS', ''],
+    ['CORS_MAX_AGE_SECONDS', '-1'],
+    ['CORS_MAX_AGE_SECONDS', '1.5'],
+    ['CORS_MAX_AGE_SECONDS', '86401'],
+  ])('rejects invalid HTTP policy %s=%j', (key, value) => {
+    expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+  });
+
   it('uses package defaults and coerces numeric ports', () => {
     const result = parseEnv(valid);
     expect(result).toMatchObject({

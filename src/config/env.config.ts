@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { z, ZodError } from 'zod';
 import { createRequire } from 'module';
 import path from 'path';
+import { isIP } from 'node:net';
 import { yellow, red, green, dim, bold } from 'colorette';
 
 import { rootPath } from '@/common/helpers/path.helpers';
@@ -21,6 +22,35 @@ const tcpPort = numericPort.refine(
   'Port must be between 1 and 65535',
 );
 const requiredDatabaseValue = z.string().trim().min(1);
+
+const commaSeparated = z
+  .string()
+  .transform((value) =>
+    value.trim() === '' ? [] : value.split(',').map((entry) => entry.trim()),
+  );
+const headerName = z.string().regex(/^[A-Za-z0-9-]+$/);
+const corsOrigin = z.string().refine((value) => {
+  try {
+    const url = new URL(value);
+
+    return ['http:', 'https:'].includes(url.protocol) && url.origin === value;
+  } catch {
+    return false;
+  }
+}, 'Use an exact HTTP(S) origin without a path, credentials, query, or fragment');
+const trustedProxy = z.string().refine((value) => {
+  const [address, prefix, ...extra] = value.split('/');
+  const family = isIP(address);
+
+  if (!family || address.includes('%') || extra.length > 0) return false;
+  if (prefix === undefined) return true;
+
+  return (
+    /^\d+$/.test(prefix) &&
+    Number(prefix) > 0 &&
+    Number(prefix) <= (family === 4 ? 32 : 128)
+  );
+}, 'Use an IP address or CIDR with a nonzero prefix; blanket trust and hop counts are not supported');
 
 export const EnvSchema = z
   .object({
@@ -43,6 +73,43 @@ export const EnvSchema = z
       'trace',
       'silent',
     ]),
+
+    TRUST_PROXY: commaSeparated.pipe(z.array(trustedProxy)).default([]),
+    CORS_ORIGINS: commaSeparated
+      .pipe(z.array(corsOrigin).min(1))
+      .default(['http://localhost:3000']),
+    CORS_METHODS: commaSeparated
+      .pipe(
+        z
+          .array(
+            z.enum([
+              'GET',
+              'POST',
+              'PUT',
+              'DELETE',
+              'PATCH',
+              'HEAD',
+              'OPTIONS',
+            ]),
+          )
+          .min(1),
+      )
+      .default(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']),
+    CORS_ALLOWED_HEADERS: commaSeparated
+      .pipe(z.array(headerName))
+      .default(['content-type', 'authorization', 'x-requested-with']),
+    CORS_EXPOSED_HEADERS: commaSeparated
+      .pipe(z.array(headerName))
+      .default(['authorization', 'set-cookie']),
+    CORS_CREDENTIALS: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    CORS_MAX_AGE_SECONDS: z.preprocess(
+      (value) =>
+        typeof value === 'string' && value.trim() === '' ? Number.NaN : value,
+      z.coerce.number().int().min(0).max(86_400).default(86_400),
+    ),
 
     DB_HOST: requiredDatabaseValue,
     DB_PORT: tcpPort,
