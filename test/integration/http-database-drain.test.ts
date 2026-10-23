@@ -31,6 +31,7 @@ it('keeps real MySQL available until disconnected handler work settles', async (
   );
   const release = deferred();
   const started = deferred();
+  const serverDisconnected = deferred();
   const calls: string[] = [];
   const app = express();
   const work = new RequestWorkTracker();
@@ -40,6 +41,7 @@ it('keeps real MySQL available until disconnected handler work settles', async (
   app.get(
     '/',
     trackHandler(async (req: express.Request, res: express.Response) => {
+      res.once('close', () => serverDisconnected.resolve());
       started.resolve();
       await release.promise;
       const result = await AppDataSource.query('SELECT 1 AS healthy');
@@ -74,7 +76,7 @@ it('keeps real MySQL available until disconnected handler work settles', async (
       client.once('close', resolve),
     );
     client.destroy();
-    await disconnected;
+    await Promise.all([disconnected, serverDisconnected.promise]);
     const shutdown = LC.shutdown();
     expect(LC.isReady()).toBe(false);
     await nextTurn();

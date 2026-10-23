@@ -231,32 +231,45 @@ describe('HTTP listener and response lifecycle', () => {
     const { app, listener } = fixture();
     const started = deferred();
     const release = deferred();
-    const finished = deferred();
+    const serverDisconnected = deferred();
+    let finished = false;
+    let responseSuppressed = false;
     app.get(
       '/',
       trackHandler(async (req: express.Request, res: express.Response) => {
+        res.once('close', () => serverDisconnected.resolve());
         started.resolve();
         await release.promise;
-        expect(canRespond(req, res)).toBe(false);
-        finished.resolve();
+        responseSuppressed = !canRespond(req, res);
+        finished = true;
       }),
     );
     await listener.start(0, '127.0.0.1');
     const client = get({ host: '127.0.0.1', port: portOf(listener.server) });
     client.on('error', () => undefined);
-    await started.promise;
-    const disconnected = new Promise<void>((resolve) =>
-      client.once('close', resolve),
-    );
-    client.destroy();
-    await disconnected;
-    let closed = false;
-    const closing = listener.close().then(() => {
-      closed = true;
-    });
-    await nextTurn();
-    expect(closed).toBe(false);
-    release.resolve();
-    await Promise.all([closing, finished.promise]);
+    try {
+      await started.promise;
+      const disconnected = new Promise<void>((resolve) =>
+        client.once('close', resolve),
+      );
+      client.destroy();
+      // The client's close event can precede the server observing the disconnect.
+      await Promise.all([disconnected, serverDisconnected.promise]);
+      let closed = false;
+      const closing = listener.close().then(() => {
+        closed = true;
+      });
+      await nextTurn();
+      expect(closed).toBe(false);
+      expect(finished).toBe(false);
+      release.resolve();
+      await closing;
+      // Keep assertions outside trackHandler, which intentionally handles late errors.
+      expect(finished).toBe(true);
+      expect(responseSuppressed).toBe(true);
+    } finally {
+      release.resolve();
+      client.destroy();
+    }
   });
 });
