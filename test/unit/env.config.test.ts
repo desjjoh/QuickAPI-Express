@@ -21,6 +21,52 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it('defaults to bounded database capacity, separate deadlines, and local non-TLS operation', () => {
+    expect(parseEnv(valid)).toMatchObject({
+      DB_POOL_CONNECTION_LIMIT: 10,
+      DB_POOL_QUEUE_LIMIT: 50,
+      DB_POOL_ACQUIRE_TIMEOUT_MS: 1000,
+      DB_CONNECT_TIMEOUT_MS: 10000,
+      DB_SSL: false,
+    });
+    expect(
+      parseEnv({ ...valid, DB_POOL_QUEUE_LIMIT: '0' }).DB_POOL_QUEUE_LIMIT,
+    ).toBe(0);
+  });
+
+  it.each(['', '-1', '1.5', 'NaN', 'Infinity'])(
+    'rejects invalid database resource values %j',
+    (value) => {
+      for (const key of [
+        'DB_POOL_CONNECTION_LIMIT',
+        'DB_POOL_QUEUE_LIMIT',
+        'DB_POOL_ACQUIRE_TIMEOUT_MS',
+        'DB_CONNECT_TIMEOUT_MS',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+
+  it('rejects unbounded/excessive database resources and invalid TLS combinations', () => {
+    for (const [key, value] of [
+      ['DB_POOL_CONNECTION_LIMIT', '0'],
+      ['DB_POOL_CONNECTION_LIMIT', '1001'],
+      ['DB_POOL_QUEUE_LIMIT', '10001'],
+      ['DB_POOL_ACQUIRE_TIMEOUT_MS', '0'],
+      ['DB_CONNECT_TIMEOUT_MS', '0'],
+      ['DB_SSL', 'yes'],
+      ['DB_SSL_CA_FILE', ''],
+      ['DB_SSL_CA_FILE', 'ca.pem'],
+    ])
+      expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    expect(() =>
+      parseEnv({ ...valid, DB_SSL: 'true', DB_HOST: '127.0.0.1' }),
+    ).toThrow();
+    expect(
+      parseEnv({ ...valid, DB_SSL: 'true', DB_SSL_CA_FILE: 'ca.pem' }),
+    ).toMatchObject({ DB_SSL: true, DB_SSL_CA_FILE: 'ca.pem' });
+  });
+
   it.each(['development', 'test', 'production'])(
     'uses deliberate operational exposure defaults in %s',
     (NODE_ENV) => {

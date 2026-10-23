@@ -135,6 +135,11 @@ retry timing, memory bounds, and the process-local enforcement boundary.
 
 ### Database readiness configuration
 
+For pool capacity, queue bounds, acquisition/connection deadlines, and TLS, see
+[Database transport and capacity](database-settings.md). All six optional settings
+are listed in the environment files. TLS is disabled by default locally; enabling
+it requires a certificate-matching DNS host and enforces certificate verification.
+
 The optional `DB_READINESS_TIMEOUT_MS` and `DB_READINESS_CACHE_MS` settings both
 default to 1000 milliseconds. `DB_MIGRATION_CHECK_TIMEOUT_MS` defaults to 5000
 milliseconds and bounds migration inspection after TypeORM initialization. All

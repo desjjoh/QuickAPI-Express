@@ -158,6 +158,19 @@ export const EnvSchema = z
     DB_USER: requiredDatabaseValue,
     DB_PASSWORD: requiredDatabaseValue,
     DB_DATABASE: requiredDatabaseValue,
+    DB_POOL_CONNECTION_LIMIT: duration(10).pipe(z.number().max(1000)),
+    DB_POOL_QUEUE_LIMIT: z.preprocess(
+      (value) =>
+        typeof value === 'string' && value.trim() === '' ? Number.NaN : value,
+      z.coerce.number().int().min(0).max(10_000).default(50),
+    ),
+    DB_POOL_ACQUIRE_TIMEOUT_MS: duration(1_000),
+    DB_CONNECT_TIMEOUT_MS: duration(10_000),
+    DB_SSL: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    DB_SSL_CA_FILE: z.string().trim().min(1).optional(),
   })
   .transform((value) => ({
     ...value,
@@ -166,6 +179,15 @@ export const EnvSchema = z
       value.DIAGNOSTICS_ENABLED ?? value.NODE_ENV !== 'production',
     METRICS_ENABLED: value.METRICS_ENABLED ?? value.NODE_ENV !== 'production',
   }))
+  .refine((value) => value.DB_SSL || value.DB_SSL_CA_FILE === undefined, {
+    message: 'DB_SSL_CA_FILE requires DB_SSL=true',
+    path: ['DB_SSL_CA_FILE'],
+  })
+  .refine((value) => !value.DB_SSL || !isIP(value.DB_HOST), {
+    message:
+      'TLS requires a DNS DB_HOST matching the server certificate; IP hosts are not supported by this driver policy',
+    path: ['DB_HOST'],
+  })
   .refine(
     (value) =>
       value.RATE_LIMIT_MAX * value.RATE_LIMIT_MAX_CLIENTS <=

@@ -70,6 +70,14 @@ The public `/ready` body contains only `ready`, `status`, and `timestamp`. Check
 still run internally; dependency names and timings are not returned. Consumers
 that previously read `checks` must use readiness status instead.
 
+## Database capacity and TLS
+
+Database deployment settings are covered in [Database transport and capacity](database-settings.md).
+Size the per-instance pool against total server capacity, choose bounded queue/wait
+budgets, and explicitly enable TLS with a trusted CA and certificate-matching DNS
+host. Migration jobs need the same CA/settings. Acquisition deadlines do not cancel
+running SQL; the established HTTP drain-before-pool-close ordering remains intact.
+
 ## Production logging
 
 Production logging writes timestamped JSON. Review [logging behavior](logging.md)

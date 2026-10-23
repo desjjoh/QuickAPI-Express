@@ -66,6 +66,14 @@ its original labels and event types.
 - `test/e2e` exercises the listening application with disposable MySQL.
 - `test/helpers/database` owns infrastructure orchestration and target safety checks.
 
+`npm run test:database:tls` is an additional Docker Compose check, run by CI's
+integration job. It starts a separate disposable MySQL service on a dynamically
+published loopback port, verifies encrypted connections and certificate rejection,
+then tears down only its own project. It does not use or reset `.env.test`'s database.
+The standard unit/integration/E2E commands do not invoke this extra Docker check,
+so native-MySQL workflows remain supported. See [database settings](../docs/database-settings.md)
+for pool, deadline, TLS evidence, and fixture details.
+
 `npm run test` starts Vitest in watch mode. `test:integration:run` and `test:e2e:run` run their projects directly against already prepared infrastructure, as CI does. `test:coverage` runs all projects with coverage and likewise requires database preparation.
 
 For unit-only watch mode, use `npm test -- --project unit`. For database-backed

@@ -1,0 +1,35 @@
+services:
+  mysql-tls:
+    image: mysql:8.4.6
+    environment:
+      MYSQL_DATABASE: quickapi_tls_disposable_test
+      MYSQL_USER: quickapi_test_user
+      MYSQL_PASSWORD: quickapi_test_password
+      MYSQL_ROOT_PASSWORD: quickapi_test_root_password
+    ports:
+      - '127.0.0.1::3306'
+    volumes:
+      - ./test/helpers/certs:/fixtures:ro
+    tmpfs:
+      - /var/lib/mysql
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /tmp/quickapi-tls
+        cp /fixtures/ca.pem /tmp/quickapi-tls/ca.pem
+        cp /fixtures/server-cert.pem /tmp/quickapi-tls/server-cert.pem
+        cp /fixtures/server-key.pem /tmp/quickapi-tls/server-key.pem
+        chown -R mysql:mysql /tmp/quickapi-tls
+        chmod 600 /tmp/quickapi-tls/server-key.pem
+        exec /usr/local/bin/docker-entrypoint.sh mysqld --ssl-ca=/tmp/quickapi-tls/ca.pem --ssl-cert=/tmp/quickapi-tls/server-cert.pem --ssl-key=/tmp/quickapi-tls/server-key.pem
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent',
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
