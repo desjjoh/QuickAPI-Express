@@ -36,6 +36,11 @@ closure; once the listener closes, connections are refused instead.
 
 ## Errors and HTTP policies
 
+The rolling-window limiter returns 429 for an exhausted client quota and 503 when
+an unseen client cannot be tracked because the store is full. Both include an
+integer `Retry-After` in seconds and the standard JSON error body. See
+[rate limiting](rate-limiting.md) for defaults, capacity policy, and retry timing.
+
 `/ready` uses bounded database connectivity checks and returns its existing
 readiness representation with 200 or 503. `/health` does not query MySQL.
 See [database readiness and recovery](database-lifecycle.md) for caching, outage

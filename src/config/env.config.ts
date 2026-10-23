@@ -7,6 +7,11 @@ import { isIP } from 'node:net';
 import { yellow, red, green, dim, bold } from 'colorette';
 
 import { rootPath } from '@/common/helpers/path.helpers';
+import {
+  RateLimitPolicySchema,
+  defaultRateLimitPolicy,
+  MAX_RATE_LIMIT_TIMESTAMP_SLOTS,
+} from '@/common/library/models/rate-limit-policy.model';
 
 const require = createRequire(import.meta.url);
 const pkgPath = path.join(rootPath, 'package.json');
@@ -88,6 +93,15 @@ export const EnvSchema = z
     DB_READINESS_TIMEOUT_MS: duration(1_000),
     DB_READINESS_CACHE_MS: duration(1_000),
     DB_MIGRATION_CHECK_TIMEOUT_MS: duration(5_000),
+    RATE_LIMIT_WINDOW_MS: duration(defaultRateLimitPolicy.windowMs).pipe(
+      RateLimitPolicySchema.shape.windowMs.unwrap(),
+    ),
+    RATE_LIMIT_MAX: duration(defaultRateLimitPolicy.max).pipe(
+      RateLimitPolicySchema.shape.max.unwrap(),
+    ),
+    RATE_LIMIT_MAX_CLIENTS: duration(defaultRateLimitPolicy.maxClients).pipe(
+      RateLimitPolicySchema.shape.maxClients.unwrap(),
+    ),
 
     TRUST_PROXY: commaSeparated.pipe(z.array(trustedProxy)).default([]),
     CORS_ORIGINS: commaSeparated
@@ -132,6 +146,15 @@ export const EnvSchema = z
     DB_PASSWORD: requiredDatabaseValue,
     DB_DATABASE: requiredDatabaseValue,
   })
+  .refine(
+    (value) =>
+      value.RATE_LIMIT_MAX * value.RATE_LIMIT_MAX_CLIENTS <=
+      MAX_RATE_LIMIT_TIMESTAMP_SLOTS,
+    {
+      message: `Rate limiter storage must not exceed ${MAX_RATE_LIMIT_TIMESTAMP_SLOTS} timestamp slots`,
+      path: ['RATE_LIMIT_MAX_CLIENTS'],
+    },
+  )
   .refine(({ NODE_ENV, PORT }) => NODE_ENV === 'test' || PORT !== 0, {
     message: 'PORT must be between 1 and 65535 outside the test environment',
     path: ['PORT'],

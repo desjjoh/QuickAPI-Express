@@ -13,6 +13,49 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it('preserves the rate quota with bounded client capacity by default', () => {
+    expect(parseEnv(valid)).toMatchObject({
+      RATE_LIMIT_WINDOW_MS: 60_000,
+      RATE_LIMIT_MAX: 200,
+      RATE_LIMIT_MAX_CLIENTS: 10_000,
+    });
+  });
+
+  it.each(['', '0', '-1', '1.5', 'NaN', 'Infinity'])(
+    'rejects invalid rate limiter values %j',
+    (value) => {
+      for (const key of [
+        'RATE_LIMIT_WINDOW_MS',
+        'RATE_LIMIT_MAX',
+        'RATE_LIMIT_MAX_CLIENTS',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+
+  it('rejects excessive individual limits and combined timestamp allocation', () => {
+    expect(() =>
+      parseEnv({ ...valid, RATE_LIMIT_WINDOW_MS: '86400001' }),
+    ).toThrow();
+    expect(() => parseEnv({ ...valid, RATE_LIMIT_MAX: '10001' })).toThrow();
+    expect(() =>
+      parseEnv({ ...valid, RATE_LIMIT_MAX_CLIENTS: '100001' }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...valid,
+        RATE_LIMIT_MAX: '201',
+        RATE_LIMIT_MAX_CLIENTS: '10000',
+      }),
+    ).toThrow();
+    expect(
+      parseEnv({
+        ...valid,
+        RATE_LIMIT_MAX: '10000',
+        RATE_LIMIT_MAX_CLIENTS: '200',
+      }).RATE_LIMIT_MAX,
+    ).toBe(10_000);
+  });
   it('defaults to finite transport, response, drain, and shutdown deadlines', () => {
     expect(parseEnv(valid)).toMatchObject({
       HTTP_HEADERS_TIMEOUT_MS: 5_000,

@@ -43,6 +43,11 @@ trust boundary. No schema migration is required for this HTTP policy change.
 
 ## Liveness, readiness, and operations
 
+Rate limits are enforced independently by each API process. Configure bounded
+client capacity and account for 503 responses when new identities cannot be
+tracked. A cross-replica quota needs separate gateway/shared enforcement; this
+milestone adds no Redis dependency. See the [rate limiting lifecycle](rate-limiting.md).
+
 - `GET /health` is **process liveness**. It reports `alive`, uptime, and a timestamp; it does not query
   MySQL and should answer while the process is alive and not shutting down.
 - `GET /ready` is **traffic readiness**. It returns 200 only after lifecycle startup completes and

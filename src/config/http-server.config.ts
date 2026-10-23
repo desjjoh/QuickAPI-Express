@@ -45,6 +45,9 @@ type HttpPolicy = Pick<
   | 'CORS_CREDENTIALS'
   | 'CORS_MAX_AGE_SECONDS'
   | 'REQUEST_TIMEOUT_MS'
+  | 'RATE_LIMIT_WINDOW_MS'
+  | 'RATE_LIMIT_MAX'
+  | 'RATE_LIMIT_MAX_CLIENTS'
 >;
 
 export function createApp(
@@ -74,8 +77,9 @@ export function createApp(
 
   app.use(
     createRateLimitMiddleware({
-      windowMs: 60_000,
-      max: 200,
+      windowMs: policy.RATE_LIMIT_WINDOW_MS,
+      max: policy.RATE_LIMIT_MAX,
+      maxClients: policy.RATE_LIMIT_MAX_CLIENTS,
       keyGenerator: (req) => req.ip ?? 'unknown',
     }),
   );
