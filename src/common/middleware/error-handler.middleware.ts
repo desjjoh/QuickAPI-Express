@@ -37,7 +37,12 @@ export const errorHandler: ErrorRequestHandler = (
 ) => {
   if (res.destroyed || res.writableEnded) return;
   if (res.headersSent) {
-    next(err);
+    logger.error({ error: err }, 'Response failed after headers were sent.');
+    const failure = new Error('Response failed after headers were sent.');
+
+    // Express's final handler can print the error; never forward provider data.
+    failure.stack = undefined;
+    next(failure);
 
     return;
   }
@@ -58,23 +63,15 @@ export const errorHandler: ErrorRequestHandler = (
     message = `Validation failed — ${formatZodIssues(err.issues)}`;
   }
 
-  if (status < 500)
-    logger.warn(
-      { status, code: err instanceof HttpError ? err.code : undefined },
-      message,
-    );
+  if (status < 500) logger.warn({ status }, 'HTTP request rejected.');
   else {
-    const error = err instanceof Error ? err : undefined;
-
     logger.error(
       {
-        errorType: error?.constructor.name ?? typeof err,
-        stack: error?.stack,
+        error: err,
         status,
-        code: err instanceof HttpError ? err.code : undefined,
         requestId: RequestContext.getId(),
       },
-      error?.message ?? 'Unexpected non-error value thrown',
+      'HTTP request failed.',
     );
 
     if (!isPublicError) message = INTERNAL_SERVER_ERROR;

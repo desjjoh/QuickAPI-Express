@@ -1,17 +1,47 @@
 import moment from 'moment';
-import pino, { type Logger } from 'pino';
+import pino, {
+  type Logger,
+  type DestinationStream,
+  type LevelWithSilent,
+} from 'pino';
 import { gray, cyan, yellow, red, green, magenta, dim } from 'colorette';
 import os from 'node:os';
 
 import { env } from '@/config/env.config';
 import { RequestContext } from '@/common/store/request-context.store';
+import { errorDiagnostics } from '@/common/helpers/error-diagnostics.helper';
 
-const defaultLevel = env.LOG_LEVEL || 'info';
-const isDev = env.NODE_ENV !== 'production';
-
-function formatTimestamp(): string {
-  return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
-}
+// Request/provider payloads are excluded entirely. Redaction is defense in depth;
+// callers must still use fixed messages and the error diagnostics serializer.
+const excludedFields = [
+  'req',
+  'res',
+  'request',
+  'response',
+  'body',
+  'query',
+  'params',
+  'headers',
+  'cookies',
+  'cookie',
+  'authorization',
+  'password',
+  'token',
+  'accessToken',
+  'access_token',
+  'refreshToken',
+  'refresh_token',
+  'secret',
+  'apiKey',
+  'api_key',
+  'client_secret',
+  'idempotencyKey',
+  'replay',
+  'payload',
+  'stack',
+  'sql',
+  'sqlMessage',
+];
 
 const levelColors: Record<string, (_str: string) => string> = {
   trace: gray,
@@ -33,63 +63,79 @@ function formatLog(
   msg: string,
   context: Record<string, unknown>,
 ): string {
-  const timestamp = dim(green(formatTimestamp()));
+  const timestamp = dim(
+    green(moment(context.time as string).format('YYYY-MM-DD HH:mm:ss.SSS')),
+  );
   const levelLabel = colorLevel(level);
   const rid = context.requestId ? magenta(`[${context.requestId}]`) + ' ' : '';
   const pid = context.pid ? cyan(`[${context.pid}]`) + ' ' : '';
 
-  const line = `${timestamp} ${pid}${levelLabel} ${rid}${msg}`;
+  const diagnostics = ['error', 'err', 'reason']
+    .filter(
+      (field) => typeof context[field] === 'object' && context[field] !== null,
+    )
+    .map((field) => `\n  ${field}: ${JSON.stringify(context[field])}`)
+    .join('');
 
-  const meta = { ...context };
-
-  delete meta.msg;
-  delete meta.level;
-  delete meta.levelLabel;
-
-  return line;
+  return `${timestamp} ${pid}${levelLabel} ${rid}${msg}${diagnostics}`;
 }
 
-const stream = {
-  write(raw: string) {
-    try {
-      const log = JSON.parse(raw);
-      const formatted = formatLog(log.levelLabel || log.level, log.msg, log);
-
-      process.stdout.write(formatted + '\n');
-    } catch {
-      process.stdout.write(raw);
-    }
-  },
-};
-
-export const logger: Logger = pino(
+export function createLogger(
   {
-    level: defaultLevel,
-    formatters: {
-      level(label) {
-        return { levelLabel: label };
+    level = env.LOG_LEVEL,
+    production = env.NODE_ENV === 'production',
+  }: {
+    level?: LevelWithSilent;
+    production?: boolean;
+  } = {},
+  destination: DestinationStream = process.stdout,
+): Logger {
+  const stream: DestinationStream = production
+    ? destination
+    : {
+        write(raw: string) {
+          const log = JSON.parse(raw);
+
+          destination.write(formatLog(log.levelLabel, log.msg, log) + '\n');
+        },
+      };
+
+  return pino(
+    {
+      level,
+      formatters: {
+        level(label) {
+          return { levelLabel: label };
+        },
+      },
+      base: {
+        pid: process.pid,
+        hostname: os.hostname(),
+      },
+      timestamp: pino.stdTimeFunctions.isoTime,
+      redact: {
+        paths: excludedFields.flatMap((field) => [field, `*.${field}`]),
+        remove: true,
+      },
+      mixin() {
+        const ctx = RequestContext.get();
+
+        if (!ctx) return {};
+
+        return {
+          requestId: ctx.requestId,
+          method: ctx.method,
+          ip: ctx.ip,
+        };
+      },
+      serializers: {
+        error: errorDiagnostics,
+        err: errorDiagnostics,
+        reason: errorDiagnostics,
       },
     },
-    base: {
-      pid: process.pid,
-      hostname: os.hostname(),
-    },
-    timestamp: false,
-    mixin() {
-      const ctx = RequestContext.get();
+    stream,
+  );
+}
 
-      if (!ctx) return {};
-
-      return {
-        requestId: ctx.requestId,
-        method: ctx.method,
-        path: ctx.path,
-        ip: ctx.ip,
-      };
-    },
-    serializers: {
-      error: pino.stdSerializers.err,
-    },
-  },
-  isDev ? stream : undefined,
-);
+export const logger: Logger = createLogger();

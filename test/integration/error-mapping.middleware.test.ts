@@ -16,15 +16,15 @@ function app(error: unknown) {
 }
 
 describe('error mapping', () => {
-  it('preserves public HttpError status/message/code and uses warning severity', async () => {
+  it('preserves public HttpError status/message and uses safe warning messages', async () => {
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
     const error = new HttpError(409, 'conflict', 'DUPLICATE');
     const response = await request(app(error)).get('/');
     expect(response.status).toBe(409);
     expect(response.body).toMatchObject({ status: 409, message: 'conflict' });
     expect(warn).toHaveBeenCalledWith(
-      { status: 409, code: 'DUPLICATE' },
-      'conflict',
+      { status: 409 },
+      'HTTP request rejected.',
     );
     warn.mockRestore();
   });

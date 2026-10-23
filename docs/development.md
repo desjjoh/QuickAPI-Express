@@ -173,8 +173,22 @@ npm run migration:run
 npm run migration:validate
 ```
 
+`migration:generate` runs TypeORM and then fixes type-only imports and formatting
+in newly generated TypeScript migrations. TypeORM's default template imports
+interfaces as runtime values, which fails under this project's ESM and
+`verbatimModuleSyntax` settings. Historical migrations are left untouched.
+The generation command retains TypeORM's nonzero exit when no changes are found;
+use `migration:validate` for a successful no-drift check.
+
 `npm run migration:revert` reverts the most recently applied migration. All TypeORM commands use the
 same validated environment as the application, so select the intended database before running them.
+
+## Logging
+
+For NestJS-style console output, production JSON fields, severity filtering,
+and safe error logging, see [Logging](logging.md). `LOG_LEVEL=info` suppresses
+successful request logs; use `debug` to include them. No additional environment
+settings are required for production UTC timestamps or sensitive-field redaction.
 
 ## Readability conventions
 

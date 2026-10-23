@@ -21,9 +21,7 @@ async function bootstrap(): Promise<void> {
 }
 
 void bootstrap().catch(async (err: unknown) => {
-  const error = err instanceof Error ? err : new Error(String(err));
-
-  logger.error({ stack: error.stack }, `Error — ${error.message}`);
+  logger.error({ error: err }, 'Application bootstrap failed.');
 
   logger.fatal(
     'Fatal error during application bootstrap — initiating shutdown',

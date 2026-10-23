@@ -70,6 +70,21 @@ The public `/ready` body contains only `ready`, `status`, and `timestamp`. Check
 still run internally; dependency names and timings are not returned. Consumers
 that previously read `checks` must use readiness status instead.
 
+## Production logging
+
+Production logging writes timestamped JSON. Review [logging behavior](logging.md)
+when configuring collectors: successful requests are now `debug`, error records
+use safe diagnostics/fingerprints, and request paths are route templates. No
+migration or new environment variable is required; restart to deploy the change.
+
+Logs now distinguish completed and aborted responses. Monitoring can use
+`http_requests_aborted_total{method,route}` for interrupted responses; completed
+counter/histogram names, label names, units, and buckets are unchanged. Route label
+values now use full templates, and `<unmatched>` replaces `unknown_route`. Update
+dashboards/alerts selecting the old values. Aborted responses are excluded from
+completed-request counters and duration histograms, even if headers carried 200.
+See the [metrics contract](logging.md#metrics-contract) and its transport boundaries.
+
 ## Operational endpoint access
 
 Production defaults disable `/docs`, `/docs-json`, `/redoc`, `/info`, `/system`,

@@ -43,8 +43,11 @@ export async function initializeDatabase(
         ).getPendingMigrations();
 
         if (pending.length)
-          throw new Error(
-            'Database has pending migrations. Apply migrations before starting the API.',
+          throw Object.assign(
+            new Error(
+              'Database has pending migrations. Apply migrations before starting the API.',
+            ),
+            { code: 'APP_PENDING_MIGRATIONS' },
           );
       },
     );
