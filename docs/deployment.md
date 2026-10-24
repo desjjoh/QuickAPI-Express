@@ -4,8 +4,9 @@
 
 ## Runtime packaging and smoke verification
 
-The runtime image includes compiled code, production dependencies, package
-metadata, and `public/`, owned by the non-root `node` user. Static assets retain
+The minimal Alpine runtime includes Node, compiled code, production dependencies,
+package metadata, and `public/`, owned by the non-root `node` user. npm, npx, Yarn,
+Corepack, and their download caches stay in build stages. Static assets retain
 their existing middleware ordering; this packaging change does not move them
 through API logging or policy middleware.
 
@@ -177,10 +178,25 @@ orchestrator or ingress drain policy. No schema migration is required.
 
 ## Production image and smoke validation
 
-`Dockerfile` uses three stages: a full locked install compiles TypeScript; a second locked install
-retains production dependencies only; and the final Node 24.11.1 Alpine image receives `dist`, package
-metadata, and production `node_modules`. The runtime includes `curl`, exposes port 3000, runs as the
-non-root `node` user, and starts with `npm run start:compiled`.
+`Dockerfile` uses three stages: a locked development install compiles TypeScript;
+a second locked install retains production dependencies; and a digest-pinned
+Alpine 3.24 runtime receives Node 24.22.1, `dist`, package metadata, `public/`,
+and production `node_modules`. Node build stages and the runtime use the same
+Alpine/musl release. Runtime OS packages are refreshed during the build.
+
+The runtime installs `libstdc++` and `curl`, exposes port 3000, preserves the
+non-root `node` user at UID/GID 1000, and starts with `node dist/index.js`.
+Production and development Compose use that compiled entry point. npm, npx,
+Yarn, Corepack, and build caches are not shipped; host npm commands remain
+available. Container migration overrides must invoke the TypeORM CLI with Node
+as the smoke topology does, rather than invoking npm or rebuilding in the runtime.
+The curl readiness healthcheck is unchanged.
+
+Smoke validation checks the real Node binary/libraries and default non-root user,
+then inspects the image as root solely to verify build-tool/cache absence,
+including root-owned cache paths. The API itself runs as the non-root user. It
+then exercises compiled migrations, assets, API behavior, and real SIGTERM before
+the same immutable image is scanned.
 
 Build the image:
 

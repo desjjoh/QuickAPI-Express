@@ -17,7 +17,8 @@ Development-only dependency findings are reported separately and are nonblocking
    Only package findings whose full set of paths is marked `dev` in the lockfile
    enter the development-only summary. Mixed-scope packages are not relabeled.
 3. `Production image smoke test` builds the runtime image once and resolves its
-   immutable Docker image ID. Both migration and API containers use that ID.
+   immutable Docker image ID. Both migration and API containers use that ID. Smoke also verifies the runtime
+   is non-root and excludes bundled package managers and Corepack caches.
 4. After smoke succeeds, `release-check.cjs image` exports that same ID, binds the
    archive to its runtime config, and invokes Trivy for OS and Node packages.
    The scanner container reads the archive; it has no Docker socket mount.

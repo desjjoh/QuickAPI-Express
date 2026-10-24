@@ -46,7 +46,7 @@ PR run. Merge queue (`merge_group`), manual (`workflow_dispatch`), and reusable
 (`workflow_call`) invocations are also supported. New runs cancel superseded runs
 for the same workflow/ref; PR refs are separate from branch refs.
 
-Validation uses Node 24.11.1 and locked installs:
+Validation uses Node 24.22.1 and locked installs:
 
 1. dependency/image gate regression tests and real production dependency audit;
 2. formatting and linting (`check:format-lint`);
@@ -200,7 +200,8 @@ fake application to any schema. See [development](../docs/development.md#local-m
 
 Production smoke builds the runtime image and compares its HTTP favicon response
 byte-for-byte with `public/favicon.ico`, checks its content type, and exercises
-the existing API, migration, readiness, and real SIGTERM contracts. From PowerShell
+the existing API, migration, readiness, and real SIGTERM contracts. It also checks
+the default non-root Node runtime and absence of bundled package managers/caches. From PowerShell
 with Git installed at its default location:
 
 ```powershell

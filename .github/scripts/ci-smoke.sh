@@ -103,6 +103,12 @@ node -e "require('node:fs').writeFileSync(process.argv[1], JSON.stringify({image
   "$ROOT_DIR/.release-check/smoke-image.json" "$SMOKE_IMAGE"
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then printf 'image=%s\n' "$SMOKE_IMAGE" >> "$GITHUB_OUTPUT"; fi
 
+# Exercise the actual binary/libraries and prevent bundled build tooling returning.
+docker run --rm --entrypoint node "$SMOKE_IMAGE" -e \
+  "if (process.versions.node.split('.')[0] !== '24' || process.getuid() === 0) throw Error('Unexpected Node runtime/user'); console.log('Minimal runtime verified: Node '+process.versions.node+', uid '+process.getuid());"
+docker run --rm --user 0 --entrypoint node "$SMOKE_IMAGE" -e \
+  "const fs=require('node:fs'); for (const file of ['/usr/local/bin/npm','/usr/local/bin/npx','/usr/local/bin/corepack','/usr/local/bin/yarn','/usr/local/bin/yarnpkg','/usr/local/lib/node_modules/npm','/usr/local/lib/node_modules/corepack','/opt/yarn','/root/.cache/node/corepack']) { try { fs.lstatSync(file); } catch (error) { if (error.code === 'ENOENT') continue; throw error; } throw Error('Build tooling shipped in runtime: '+file); }"
+
 compose up --detach mysql
 retry 45 2 'MySQL readiness' bash -c \
   '[[ "$(docker inspect --format={{.State.Health.Status}} "$1" 2>/dev/null)" == healthy ]]' _ \

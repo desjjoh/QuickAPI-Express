@@ -4,7 +4,7 @@
 
 ## Runtime requirements
 
-- **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.11.1`).
+- **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.22.1`).
 - **Package manager:** `npm@11.4.2`, as declared by `packageManager` in `package.json`.
 - Use `npm ci` with the committed `package-lock.json`; do not substitute another package manager.
 - Docker with the Compose plugin is required for MySQL-backed tests and container validation.
