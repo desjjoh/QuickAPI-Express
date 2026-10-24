@@ -208,3 +208,21 @@ with Git installed at its default location:
 & 'C:\Program Files\Git\bin\bash.exe' .github/scripts/ci-smoke.sh
 if ($LASTEXITCODE -ne 0) { throw 'Production smoke failed' }
 ```
+
+## Release candidate verification
+
+`npm run test:release` runs infrastructure-free OCI identity, attestation, smoke
+record, scanner-failure, tampering, and publication regressions. Base CI includes
+these checks in its required dependency-security job.
+
+The separate release workflow builds once and runs the real production smoke and
+image scan against that candidate. It also tests publication in an internal,
+disposable registry before authenticating to the configured release registry.
+`npm run test:release:registry` is opt-in: set `RELEASE_REGISTRY_TEST=true`,
+`RELEASE_TEST_ARCHIVE` to the verified OCI archive, and `RELEASE_TEST_EVIDENCE` to
+its evidence directory. Otherwise the infrastructure test explicitly skips.
+It uses a separate evidence copy, network, and registry container, publishes no
+host port, and removes its resources afterward.
+
+See [immutable releases](../docs/releases.md) for candidate commands, platform
+requirements, release permissions, retained evidence, and rollback boundaries.

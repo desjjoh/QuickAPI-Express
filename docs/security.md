@@ -66,7 +66,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Image security blocked or unavailable' }
 
 Always select the image produced by the successful smoke run. Merely having a
 local record does not prove that a subsequent smoke attempt succeeded. For a
-future release candidate, smoke can accept `SMOKE_IMAGE=sha256:...` and use that
+release candidate, smoke can accept `SMOKE_IMAGE=sha256:...` and use that
 existing image without rebuilding. Mutable tags are rejected for this override.
 
 Trivy defaults to `aquasec/trivy:latest`, matching Nest's scanner-update approach.
@@ -94,8 +94,9 @@ High/lower findings still require triage. Excepted critical findings stay visibl
 updates and remediation are preferable to risk acceptance. Scan results are
 time-specific and do not establish application exploitability.
 
-These checks approve the PR/branch candidate only. The future release workflow
-must build its candidate once, attach SBOM/provenance, repeat smoke/scanning on
-that artifact, and publish/promote its verified digest without rebuilding. PR
-success does not automatically approve a later release image. See the remaining
-[backlog](backlog.md).
+These base-CI checks approve the PR/branch candidate only. The [release workflow](releases.md)
+builds a separate candidate once, attaches SBOM/provenance, repeats smoke/scanning
+on that artifact, and publishes/promotes its verified digest without rebuilding.
+PR success does not automatically approve a later release image. Release-time
+verification reuses the same critical-only vulnerability evaluator and exception
+register, including fresh validation before publication.
