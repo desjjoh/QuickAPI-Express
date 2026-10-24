@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 const protectedDatabaseNames = new Set([
   'test',
   'dev',
@@ -62,7 +65,7 @@ export function assertSafeTestDatabase(
 
 if (
   process.argv[1] &&
-  import.meta.url === new URL(process.argv[1], 'file:').href
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   assertSafeTestDatabase();
   process.stdout.write('Test database safety checks passed.\n');

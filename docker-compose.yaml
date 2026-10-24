@@ -24,7 +24,7 @@ services:
       retries: 3
       start_period: 10s
     restart: unless-stopped
-    command: ['npm', 'start']
+    command: ['node', 'dist/index.js']
     depends_on:
       mysql:
         condition: service_healthy

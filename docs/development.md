@@ -4,7 +4,7 @@
 
 ## Runtime requirements
 
-- **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.11.1`).
+- **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.22.1`).
 - **Package manager:** `npm@11.4.2`, as declared by `packageManager` in `package.json`.
 - Use `npm ci` with the committed `package-lock.json`; do not substitute another package manager.
 - Docker with the Compose plugin is required for MySQL-backed tests and container validation.
@@ -187,6 +187,26 @@ use `migration:validate` for a successful no-drift check.
 
 `npm run migration:revert` reverts the most recently applied migration. All TypeORM commands use the
 same validated environment as the application, so select the intended database before running them.
+
+Migration run/revert/validation scripts invoke TypeORM directly. In Bash, append
+options after `--`; in PowerShell use the native `npm.cmd` launcher so `npm.ps1`
+does not consume that separator. These examples inspect help without connecting:
+
+```bash
+npm run migration:run -- --fake --help
+```
+
+```powershell
+npm.cmd run migration:run -- --fake --help
+```
+
+Do not use `--fake` as a general migration repair: it records history without
+executing SQL and requires prior verification that the migration's effects exist.
+Preserve shared/applied migration files and add new migrations for subsequent
+changes. Stop the watch server before switching branches with different schemas.
+
+`npm run clean` removes only the repository's `dist/` directory using Node's built-in
+filesystem API, then rebuilds it. No global or transitive cleanup package is required.
 
 ## Logging
 

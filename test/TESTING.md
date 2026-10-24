@@ -6,15 +6,17 @@
 
 Unit tests need no container. Integration and end-to-end wrappers validate the target,
 start `docker-compose.test.yml`, wait for disposable MySQL, apply migrations, and
-execute teardown from an `EXIT` trap even when startup or tests fail. The wrappers
-currently run their selected project twice; migration dispatch also needs correction
-as described below. Use the explicit PowerShell sequence or CI's direct commands
-when you need one test run per prepared database:
+run the selected suite exactly once, and execute teardown from an `EXIT` trap
+even when startup, preparation, or tests fail. Initial safety rejection happens
+before installing teardown. The original failure status survives a cleanup
+failure; cleanup failure also fails an otherwise successful run:
 
 ```bash
 npm run test:unit
+npm run test:security
 npm run test:integration
 npm run test:e2e
+npm run test:migration
 ```
 
 The disposable service binds only to `127.0.0.1:3318` and stores MySQL data in `tmpfs`. Destructive
@@ -44,20 +46,31 @@ PR run. Merge queue (`merge_group`), manual (`workflow_dispatch`), and reusable
 (`workflow_call`) invocations are also supported. New runs cancel superseded runs
 for the same workflow/ref; PR refs are separate from branch refs.
 
-Validation uses Node 24.11.1 and locked installs:
+Validation uses Node 24.22.1 and locked installs:
 
-1. formatting and linting (`check:format-lint`);
-2. type-check and production build (`check:type-build`);
-3. unit tests with coverage and uploaded reports;
-4. integration tests against a MySQL service after the safety check and migrations;
-5. end-to-end tests with the same isolated preparation;
-6. migration drift validation against its own disposable schema; and
-7. digest validation plus the production image smoke test.
+1. dependency/image gate regression tests and real production dependency audit;
+2. formatting and linting (`check:format-lint`);
+3. type-check and production build (`check:type-build`);
+4. unit tests with coverage and uploaded reports;
+5. integration tests against a MySQL service after the safety check and migrations;
+6. end-to-end tests with the same isolated preparation;
+7. migration drift validation against its own disposable schema; and
+8. digest validation, production image smoke, and an OS/Node vulnerability scan of
+   that same immutable runtime image.
 
 The required `Deployment gate` job retains its name and requires every validation
 job to succeed. Naming the workflow changes the displayed prefix from its file
 path to `CI`; it does not rename the required job. Existing run history retains
 its original labels and event types.
+
+`npm run test:security` runs the Node gate regressions independently of Vitest,
+using synthetic reports and fake command runners. It covers critical-only
+blocking, exact/expired/invalid exceptions, incomplete evidence, command failures,
+and image/archive/config identity. It needs no Docker, database, or registry.
+`npm run check` includes it. Real `security:audit` and `security:image` invocations
+require network access; image scanning also requires Docker. Raw reports and
+decisions are retained on CI failure. See [security lifecycle](../docs/security.md)
+for development-only reporting, exception policies, commands, and release limits.
 
 ## Test categories and coverage
 
@@ -75,6 +88,17 @@ so native-MySQL workflows remain supported. See [database settings](../docs/data
 for pool, deadline, TLS evidence, and fixture details.
 
 `npm run test` starts Vitest in watch mode. `test:integration:run` and `test:e2e:run` run their projects directly against already prepared infrastructure, as CI does. `test:coverage` runs all projects with coverage and likewise requires database preparation.
+
+`test:migration` prepares disposable MySQL and invokes `test:migration:run` once;
+there is no Vitest migration project. The direct command checks target safety and
+loads `.env.test` before running TypeORM's no-drift check. In contrast,
+`migration:validate` uses the application's `.env` for intentional development
+schema validation. Do not substitute it for the disposable test command.
+
+Wrapper options are forwarded with their argument boundaries intact, for example
+`npm run test:integration -- test/integration/items-api.test.ts`. Shell-script
+regressions in the unit suite require Bash (Git Bash on Windows); they use a fake
+npm executable and never start containers or access a database.
 
 For unit-only watch mode, use `npm test -- --project unit`. For database-backed
 watch mode, first run `npm run test:infra:up` and `npm run test:infra:prepare`, then
@@ -139,25 +163,48 @@ route label values, transport boundaries, and deployment implications.
 
 ## PowerShell
 
-Database wrapper and production smoke scripts require Bash as well as Docker. Use a Bash environment with access to the same Node and Docker installation, or prepare infrastructure explicitly in PowerShell and run the direct project commands:
+Database wrappers and production smoke require Bash as well as Docker. On Windows,
+use Git Bash with the same Node and Docker installation; the `bash` supplied by
+WSL is a separate environment. Shell scripts are checked out with LF endings.
+Alternatively, prepare infrastructure directly in PowerShell:
 
 ```powershell
-npm run test:db:safety
+npm.cmd run test:db:safety
 if ($LASTEXITCODE -ne 0) { throw 'Database safety check failed' }
 try {
-  npm run test:infra:up
+  npm.cmd run test:infra:up
   if ($LASTEXITCODE -ne 0) { throw 'Infrastructure startup failed' }
-  npm run test:infra:prepare
+  npm.cmd run test:infra:prepare
   if ($LASTEXITCODE -ne 0) { throw 'Database preparation failed' }
-  npm run test:integration:run
+  npm.cmd run test:integration:run
   if ($LASTEXITCODE -ne 0) { throw 'Integration tests failed' }
-  npm run test:e2e:run
+  npm.cmd run test:e2e:run
   if ($LASTEXITCODE -ne 0) { throw 'E2E tests failed' }
+  npm.cmd run test:migration:run
+  if ($LASTEXITCODE -ne 0) { throw 'Migration validation failed' }
 } finally {
-  npm run test:infra:down
+  npm.cmd run test:infra:down
+  $cleanupExitCode = $LASTEXITCODE
+  if ($cleanupExitCode -ne 0) { Write-Warning 'Disposable database cleanup failed' }
 }
+if ($cleanupExitCode -ne 0) { throw 'Disposable database cleanup failed' }
 ```
 
 Commands load [.env.test](../.env.test); existing process environment values take precedence. Keep the selected database disposable and retain teardown on failure.
 
-The Bash wrapper currently has a duplicate Vitest invocation and attempts to select a nonexistent `migration` project; see [backlog](../docs/backlog.md). For migration validation, prepare disposable infrastructure explicitly, run `npm run migration:validate`, and tear it down in `finally`.
+Use `npm.cmd` in PowerShell when forwarding options: its native launcher preserves
+the `--` separator, whereas `npm.ps1` can consume it before npm receives it.
+For example, `npm.cmd run migration:run -- --fake --help` displays TypeORM help
+without accessing a database. This verifies forwarding; it does not authorize
+fake application to any schema. See [development](../docs/development.md#local-mysql-migrations-and-development).
+
+Production smoke builds the runtime image and compares its HTTP favicon response
+byte-for-byte with `public/favicon.ico`, checks its content type, and exercises
+the existing API, migration, readiness, and real SIGTERM contracts. It also checks
+the default non-root Node runtime and absence of bundled package managers/caches. From PowerShell
+with Git installed at its default location:
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' .github/scripts/ci-smoke.sh
+if ($LASTEXITCODE -ne 0) { throw 'Production smoke failed' }
+```

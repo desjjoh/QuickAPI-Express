@@ -3,3 +3,6 @@ dist/
 coverage/
 reports/
 src/database/migrations/
+
+# Local security reports, scanner cache, and temporary image archives.
+.release-check/

@@ -34,3 +34,5 @@ tsconfig*.tsbuildinfo
 .npm
 .yarn
 *.tgz
+# Local security reports, scanner cache, and temporary image archives.
+.release-check/
