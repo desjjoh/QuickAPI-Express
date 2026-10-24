@@ -2,6 +2,20 @@
 
 [Documentation index](../README.md#documentation)
 
+## Runtime packaging and smoke verification
+
+The runtime image includes compiled code, production dependencies, package
+metadata, and `public/`, owned by the non-root `node` user. Static assets retain
+their existing middleware ordering; this packaging change does not move them
+through API logging or policy middleware.
+
+`npm run smoke:production` builds the actual runtime image and verifies its
+favicon response against the source bytes and expected image content type,
+alongside compiled migrations, API behavior, readiness, and real SIGTERM shutdown.
+See [Testing](../test/TESTING.md#powershell) for Git Bash/PowerShell instructions.
+This smoke test does not establish vulnerability scanning or immutable promotion;
+those remain in the [backlog](backlog.md).
+
 ## Proxy and browser access
 
 `TRUST_PROXY` now defaults to empty (no proxy trust), replacing the old hardcoded

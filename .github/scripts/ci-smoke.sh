@@ -98,7 +98,7 @@ echo 'Applying database migrations as a one-shot deployment step'
 compose up --no-deps --abort-on-container-exit --exit-code-from migrate migrate
 
 compose up --detach --no-deps api
-retry 45 1 'API readiness' curl --fail --silent --output /dev/null \
+retry 45 1 'API readiness' curl --fail --silent --output "$TMP_DIR/readiness" \
   "http://127.0.0.1:${SMOKE_PORT}/ready"
 
 # Liveness and readiness contracts.
@@ -114,6 +114,13 @@ grep -Eiq '^x-frame-options: DENY' "$TMP_DIR/headers"
 grep -Eiq '^x-content-type-options: nosniff' "$TMP_DIR/headers"
 grep -Eiq "^content-security-policy: .*default-src 'self'" "$TMP_DIR/headers"
 ! grep -Eiq '^x-powered-by:' "$TMP_DIR/headers"
+
+# Verify the asset served by the production image, not merely the build context.
+status="$(request GET /favicon.ico "$TMP_DIR/favicon.ico" "$TMP_DIR/headers")"
+[[ "$status" == 200 ]]
+grep -Eiq '^content-type: image/(x-icon|vnd.microsoft.icon)(;|[[:space:]]|$)' "$TMP_DIR/headers"
+node -e "const fs=require('node:fs'); const expected=fs.readFileSync(process.argv[1]); const actual=fs.readFileSync(process.argv[2]); if (!expected.length || !expected.equals(actual)) { console.error('Production favicon differs from public/favicon.ico'); process.exit(1) }" \
+  "$ROOT_DIR/public/favicon.ico" "$TMP_DIR/favicon.ico"
 
 # Principal create, read, update, list, and delete flow.
 status="$(request POST /api/v1/items "$TMP_DIR/body" "$TMP_DIR/headers" \
@@ -149,11 +156,11 @@ expect_error 404 GET /this-route-does-not-exist
 API_ID="$(compose ps --quiet api)"
 docker kill --signal SIGTERM "$API_ID" >/dev/null
 retry 20 0.25 'readiness to drop' bash -c \
-  '! curl --fail --silent --max-time 1 --output /dev/null "$1/ready"' _ \
-  "http://127.0.0.1:${SMOKE_PORT}"
+  '! curl --fail --silent --max-time 1 --output "$2" "$1/ready"' _ \
+  "http://127.0.0.1:${SMOKE_PORT}" "$TMP_DIR/shutdown-ready"
 retry 20 0.25 'HTTP listener to drain' bash -c \
-  '! curl --silent --max-time 1 --output /dev/null "$1/health"' _ \
-  "http://127.0.0.1:${SMOKE_PORT}"
+  '! curl --silent --max-time 1 --output "$2" "$1/health"' _ \
+  "http://127.0.0.1:${SMOKE_PORT}" "$TMP_DIR/shutdown-health"
 retry 40 0.25 'API container exit' bash -c \
   '[[ "$(docker inspect --format={{.State.Running}} "$1")" == false ]]' _ "$API_ID"
 [[ "$(docker inspect --format='{{.State.ExitCode}}' "$API_ID")" == 0 ]]
