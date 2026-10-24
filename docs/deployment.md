@@ -13,8 +13,12 @@ through API logging or policy middleware.
 favicon response against the source bytes and expected image content type,
 alongside compiled migrations, API behavior, readiness, and real SIGTERM shutdown.
 See [Testing](../test/TESTING.md#powershell) for Git Bash/PowerShell instructions.
-This smoke test does not establish vulnerability scanning or immutable promotion;
-those remain in the [backlog](backlog.md).
+Base CI then scans the same immutable image for OS and Node vulnerabilities.
+Unexcepted critical findings and invalid/missing evidence block the deployment
+gate; all lower severities remain reported. The production dependency audit is
+an independent base-CI gate. See [security lifecycle](security.md) for exact
+exception rules, retained evidence, and local commands. Release-time revalidation,
+SBOM/provenance, and immutable promotion remain in the [backlog](backlog.md).
 
 ## Proxy and browser access
 

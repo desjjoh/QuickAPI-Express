@@ -12,7 +12,13 @@ const __dirname = dirname(__filename);
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'reports/**'],
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'coverage/**',
+      'reports/**',
+      '.release-check/**',
+    ],
   },
   { ...js.configs.recommended, files: ['**/*.{js,cjs,mjs,ts}'] },
   ...tseslint.configs.recommended.map((config) => ({

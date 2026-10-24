@@ -9,7 +9,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/.github/compose.ci-smoke.yml"
 COMMIT="${GITHUB_SHA:-$(git -C "$ROOT_DIR" rev-parse HEAD)}"
 COMMIT="$(printf '%s' "$COMMIT" | tr -cd '[:alnum:]' | cut -c1-12)"
-export SMOKE_IMAGE="quickapi-express:ci-${COMMIT}"
+BUILD_IMAGE=true
+if [[ -n "${SMOKE_IMAGE:-}" ]]; then
+  [[ "$SMOKE_IMAGE" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo 'SMOKE_IMAGE must be an immutable image ID.' >&2; exit 2; }
+  BUILD_IMAGE=false
+else
+  export SMOKE_IMAGE="quickapi-express:ci-${COMMIT}"
+fi
 export SMOKE_PORT="${SMOKE_PORT:-33000}"
 export COMPOSE_PROJECT_NAME="quickapi-smoke-${COMMIT,,}"
 
@@ -86,8 +92,16 @@ TMP_DIR="$(mktemp -d)"
 # Fail before building anything if the isolated topology is not valid.
 compose config --quiet
 
-echo "Building production image once as ${SMOKE_IMAGE}"
-docker build --tag "$SMOKE_IMAGE" "$ROOT_DIR"
+if [[ "$BUILD_IMAGE" == true ]]; then
+  echo "Building production image once as ${SMOKE_IMAGE}"
+  docker build --tag "$SMOKE_IMAGE" "$ROOT_DIR"
+fi
+export SMOKE_IMAGE="$(docker image inspect --format='{{.Id}}' "$SMOKE_IMAGE")"
+[[ "$SMOKE_IMAGE" =~ ^sha256:[a-f0-9]{64}$ ]]
+mkdir -p "$ROOT_DIR/.release-check"
+node -e "require('node:fs').writeFileSync(process.argv[1], JSON.stringify({imageId:process.argv[2]}, null, 2)+'\\n')" \
+  "$ROOT_DIR/.release-check/smoke-image.json" "$SMOKE_IMAGE"
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then printf 'image=%s\n' "$SMOKE_IMAGE" >> "$GITHUB_OUTPUT"; fi
 
 compose up --detach mysql
 retry 45 2 'MySQL readiness' bash -c \

@@ -13,6 +13,7 @@ failure; cleanup failure also fails an otherwise successful run:
 
 ```bash
 npm run test:unit
+npm run test:security
 npm run test:integration
 npm run test:e2e
 npm run test:migration
@@ -47,18 +48,29 @@ for the same workflow/ref; PR refs are separate from branch refs.
 
 Validation uses Node 24.11.1 and locked installs:
 
-1. formatting and linting (`check:format-lint`);
-2. type-check and production build (`check:type-build`);
-3. unit tests with coverage and uploaded reports;
-4. integration tests against a MySQL service after the safety check and migrations;
-5. end-to-end tests with the same isolated preparation;
-6. migration drift validation against its own disposable schema; and
-7. digest validation plus the production image smoke test.
+1. dependency/image gate regression tests and real production dependency audit;
+2. formatting and linting (`check:format-lint`);
+3. type-check and production build (`check:type-build`);
+4. unit tests with coverage and uploaded reports;
+5. integration tests against a MySQL service after the safety check and migrations;
+6. end-to-end tests with the same isolated preparation;
+7. migration drift validation against its own disposable schema; and
+8. digest validation, production image smoke, and an OS/Node vulnerability scan of
+   that same immutable runtime image.
 
 The required `Deployment gate` job retains its name and requires every validation
 job to succeed. Naming the workflow changes the displayed prefix from its file
 path to `CI`; it does not rename the required job. Existing run history retains
 its original labels and event types.
+
+`npm run test:security` runs the Node gate regressions independently of Vitest,
+using synthetic reports and fake command runners. It covers critical-only
+blocking, exact/expired/invalid exceptions, incomplete evidence, command failures,
+and image/archive/config identity. It needs no Docker, database, or registry.
+`npm run check` includes it. Real `security:audit` and `security:image` invocations
+require network access; image scanning also requires Docker. Raw reports and
+decisions are retained on CI failure. See [security lifecycle](../docs/security.md)
+for development-only reporting, exception policies, commands, and release limits.
 
 ## Test categories and coverage
 

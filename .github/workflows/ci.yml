@@ -28,6 +28,32 @@ env:
   TEST_DB_ALLOWED_HOSTS: 127.0.0.1
 
 jobs:
+  dependency-security:
+    name: Dependency security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --no-audit
+      - run: npm run test:security
+      - name: Audit production dependencies and report development-only findings
+        run: npm run security:audit
+      - name: Retain dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: dependency-audit-${{ github.run_attempt }}
+          path: |
+            .release-check/dependency-audit/
+            security/dependency-audit-exceptions.json
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: error
+
   format-lint:
     name: Formatting and linting
     runs-on: ubuntu-latest
@@ -203,7 +229,7 @@ jobs:
   production-smoke:
     name: Production image smoke test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -212,11 +238,28 @@ jobs:
       - name: Validate digest-pinned container images
         run: bash .github/scripts/validate-image-digests.sh
       - name: Exercise the production container topology
+        id: smoke
         run: npm run smoke:production
+      - name: Scan the exact runtime image used by smoke testing
+        run: node .github/scripts/release-check.cjs image '${{ steps.smoke.outputs.image }}' .release-check/image-security
+      - name: Retain runtime image scan evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: runtime-image-security-${{ github.run_attempt }}
+          path: |
+            .release-check/smoke-image.json
+            .release-check/image-security/*.json
+            .release-check/image-security/*.md
+            security/container-vulnerability-exceptions.json
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: error
   deployment-gate:
     name: Deployment gate
     if: always()
     needs:
+      - dependency-security
       - format-lint
       - type-build
       - unit-coverage
@@ -229,6 +272,7 @@ jobs:
     steps:
       - name: Require all validation jobs to succeed
         env:
+          DEPENDENCY_SECURITY_RESULT: ${{ needs.dependency-security.result }}
           FORMAT_LINT_RESULT: ${{ needs.format-lint.result }}
           TYPE_BUILD_RESULT: ${{ needs.type-build.result }}
           UNIT_COVERAGE_RESULT: ${{ needs.unit-coverage.result }}
@@ -238,6 +282,7 @@ jobs:
           PRODUCTION_SMOKE_RESULT: ${{ needs.production-smoke.result }}
         run: |
           for result in \
+            "$DEPENDENCY_SECURITY_RESULT" \
             "$FORMAT_LINT_RESULT" \
             "$TYPE_BUILD_RESULT" \
             "$UNIT_COVERAGE_RESULT" \
