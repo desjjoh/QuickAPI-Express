@@ -14,7 +14,10 @@ const router: Router = Router();
 router.post(
   '/',
   validateRequest({ body: CreateItemSchema }),
-  jsonHandler(itemService.create, toItemDTO, { status: 201 }),
+  jsonHandler(itemService.create, toItemDTO, {
+    status: 201,
+    transaction: true,
+  }),
 );
 
 // GET /items
@@ -35,21 +38,21 @@ router.get(
 router.patch(
   '/:id',
   validateRequest({ params: IdParams, body: UpdateItemSchema }),
-  jsonHandler(itemService.update, toItemDTO),
+  jsonHandler(itemService.update, toItemDTO, { transaction: true }),
 );
 
 // PUT /items/:id
 router.put(
   '/:id',
   validateRequest({ params: IdParams, body: CreateItemSchema }),
-  jsonHandler(itemService.replace, toItemDTO),
+  jsonHandler(itemService.replace, toItemDTO, { transaction: true }),
 );
 
 // DELETE /items/:id
 router.delete(
   '/:id',
   validateRequest({ params: IdParams }),
-  jsonHandler(itemService.remove, toItemDTO),
+  jsonHandler(itemService.remove, toItemDTO, { transaction: true }),
 );
 
 export default router;

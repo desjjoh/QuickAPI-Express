@@ -92,7 +92,21 @@ Express request or response, and use arrow methods so direct references retain
 their repository binding. The adapter checks response availability before DTO
 mapping and serialization.
 
-Item mutations use the shared transaction boundary:
+Item mutation controllers opt into response preparation inside the transaction:
+
+```ts
+jsonHandler(itemService.update, toItemDTO, { transaction: true });
+```
+
+The handler opens one outer transaction, calls the service, maps/validates the DTO,
+resolves its HTTP status, and prepares the JSON string before the final deadline
+check and commit. It sends those prepared bytes only after commit succeeds. JSON
+preparation honors Express's `json replacer`, `json spaces`, and `json escape`
+settings, and happens once. Invalid output, serialization failure, invalid status,
+or a propagated business/persistence failure rolls back the entire transaction.
+
+Service transaction wrappers remain in place. They join the outer transaction
+through the shared helper, or open their own transaction for standalone calls:
 
 ```ts
 update = ({ params, body }: { params: IdRouteParams; body: UpdateItemInput }) =>
@@ -104,8 +118,18 @@ update = ({ params, body }: { params: IdRouteParams; body: UpdateItemInput }) =>
 
 Every lookup and write in the workflow must receive that manager to use the same
 connection and transaction. Create wraps its insert; update/replace/delete wrap
-both lookup and mutation. Get/list remain ordinary reads. The wrapper does not
-add locking, optimistic concurrency, or idempotency guarantees.
+both lookup and mutation. Get/list remain ordinary reads.
+
+Multiple service/repository wrappers on the same data source reuse the same manager
+and have one outer commit. They must propagate failures and use the supplied
+manager for every participating operation. Independently committed transactions,
+other databases, and external side effects are outside that boundary. The wrapper
+does not add locking, optimistic concurrency, or idempotency guarantees.
+
+Only POST/PATCH/PUT/DELETE item routes opt in; reads and system endpoints retain
+their ordinary adapters. Do not enable handler transactions for streaming or
+unbounded work. Response preparation holds database connections/locks until it
+finishes. Successful preparation and commit cannot guarantee network delivery.
 
 System controllers use the same direct-method pattern. `SystemService` collects
 the root, health, readiness, information, diagnostics, and metrics results;
