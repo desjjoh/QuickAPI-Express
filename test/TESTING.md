@@ -226,3 +226,49 @@ host port, and removes its resources afterward.
 
 See [immutable releases](../docs/releases.md) for candidate commands, platform
 requirements, release permissions, retained evidence, and rollback boundaries.
+
+## Item failures and migration-history evidence
+
+The integration suite includes `item-database-faults.test.ts` and
+`migration-history.test.ts`. The former uses the real application and repository
+behind a packet-aware MySQL fault proxy, with independent SQL assertions. It
+checks offline CRUD/recovery, dropped writes before execution, committed writes
+with lost acknowledgements, delayed lookups beyond HTTP deadlines, and repeated
+single-slot pool recovery. The latter reproduces a replaced-baseline history
+mismatch, checks failed startup/migration preservation, and verifies an explicitly
+reviewed equivalent-baseline fake application in its disposable fixture only.
+
+```bash
+npm run test:integration -- test/integration/item-database-faults.test.ts test/integration/migration-history.test.ts
+```
+
+No fixture resets a development database, rewrites a committed migration, or
+changes the application's retry/error behavior. The query proxy is intended for
+unencrypted, default-attribute MySQL test connections; TLS has its own suite.
+See [persistence evidence](../docs/persistence-evidence.md) for outcomes,
+reconciliation prerequisites, rollback limits, and future upgrade/concurrency
+evidence. New migrations still need representative-data upgrade tests when
+their schema and backfill contracts are implemented.
+
+## Controller and operation boundaries
+
+`http-response.handler.test.ts` verifies shared JSON/text response mapping,
+status/content types, error forwarding, late-result suppression, operation abort
+on timeout/disconnect, and continued work tracking. Expected cooperative stops
+are distinguished from genuinely failed late work. The adapter suite also passes
+a bound service method directly and verifies that parsed query values reach the
+repository, with unknown input fields removed. `items.service.test.ts` checks
+missing-item behavior, PATCH/PUT semantics, and use of the supplied manager for
+transactional lookups and writes. `transaction.helper.test.ts` checks ambient
+request isolation, non-HTTP work, nested manager reuse, clock expiry, abandonment
+before acquisition, expiry during acquisition, rollback, and cleanup only after
+work settles. These unit tests need no MySQL.
+
+The integration/E2E suites exercise the adapters and services through the same
+HTTP routes/status/DTO contracts. Real-MySQL tests hold lookup and mutation results
+past deadlines, or disconnect clients during mutations, then establish rollback
+and unchanged rows through an independent connection. They also retain lost-COMMIT
+acknowledgement evidence: an already-started commit can succeed without a response.
+Cancellation does not interrupt SQL or undo external side effects. Custom streaming
+handlers retain the lower-level tracked-handler boundary rather than using a
+JSON/text adapter.

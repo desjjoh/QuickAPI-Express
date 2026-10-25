@@ -1,4 +1,6 @@
 import request from 'supertest';
+import { runInTransaction } from '@/common/helpers/transaction.helper';
+import type { EntityManager } from 'typeorm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '@/config/http-server.config';
 import { env } from '@/config/env.config';
@@ -8,15 +10,39 @@ import { RequestWorkTracker } from '@/common/handlers/request-lifecycle.handler'
 import { deferred } from '../helpers/http';
 
 vi.mock('@/database/repositories/item.repo', () => ({
-  itemRepository: { get_by_id: vi.fn(), update: vi.fn(), remove: vi.fn() },
+  itemRepository: {
+    transaction: vi.fn(),
+    get_by_id: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  },
 }));
 
 afterEach(() => vi.clearAllMocks());
 
 describe('item mutations after a response deadline', () => {
   it.each(['patch', 'put', 'delete'] as const)(
-    'does not start %s after a delayed lookup outlives its request',
+    'rolls back %s after a delayed lookup outlives its request',
     async (method) => {
+      const commit = vi.fn();
+      const rollback = vi.fn();
+      const manager = {
+        transaction: async (
+          work: (manager: EntityManager) => Promise<unknown>,
+        ) => {
+          try {
+            const value = await work(manager as unknown as EntityManager);
+            commit();
+            return value;
+          } catch (error) {
+            rollback();
+            throw error;
+          }
+        },
+      } as unknown as EntityManager;
+      vi.mocked(itemRepository.transaction).mockImplementation((work) =>
+        runInTransaction(manager, work),
+      );
       const lookup = deferred<ItemEntity>();
       vi.mocked(itemRepository.get_by_id).mockReturnValue(lookup.promise);
       const work = new RequestWorkTracker();
@@ -30,8 +56,11 @@ describe('item mutations after a response deadline', () => {
         lookup.resolve({ id: 'abcdefghijklmnop' } as ItemEntity);
         await work.drain();
       }
-      expect(itemRepository.update).not.toHaveBeenCalled();
-      expect(itemRepository.remove).not.toHaveBeenCalled();
+      expect(commit).not.toHaveBeenCalled();
+      expect(rollback).toHaveBeenCalledTimes(1);
+      expect(
+        method === 'delete' ? itemRepository.remove : itemRepository.update,
+      ).toHaveBeenCalledTimes(1);
     },
   );
 });

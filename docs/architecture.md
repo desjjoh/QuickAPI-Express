@@ -11,7 +11,7 @@ src/
 ├── index.ts                         process entry point
 ├── api/
 │   ├── app/                         root and operational endpoints
-│   └── v1/items/                    item routes, controller, request models, and OpenAPI definitions
+│   └── v1/items/                    item routes, controller, application service, request models, and OpenAPI definitions
 ├── application.ts                   lifecycle service graph
 ├── config/                          environment, HTTP, database, logging, metrics, docs, routes
 ├── common/
@@ -69,7 +69,50 @@ See [operational exposure](development.md#operational-endpoint-exposure) for
 environment defaults and the external access-control boundary. Unknown routes
 become a typed 404.
 
-Controllers validate inputs with Zod models and call the domain repository, which uses TypeORM.
+Controllers validate inputs with Zod models and delegate item operations to `ItemService`.
+The service owns lookup/not-found handling, PATCH/PUT semantics, and mutation sequencing;
+the repository owns TypeORM persistence. Controllers configure DTO mapping and status
+through the shared `jsonHandler`/`textHandler` HTTP adapters. Those adapters check
+response availability before mapping/serialization, so controllers never repeat
+`canRespond` checks or handle Express response state themselves.
+Item controllers pass bound service methods directly:
+
+```ts
+router.get(
+  '/:id',
+  validateRequest({ params: IdParams }),
+  jsonHandler(itemService.get, toItemDTO),
+);
+```
+
+`jsonHandler` passes the parsed `{ params, query, body }` values to the service.
+Unvalidated locations remain `null`; routes without validation receive all three
+locations as `null`. Services declare only the locations they need, receive no
+Express request or response, and use arrow methods so direct references retain
+their repository binding. The adapter checks response availability before DTO
+mapping and serialization.
+
+Item mutations use the shared transaction boundary:
+
+```ts
+update = ({ params, body }: { params: IdRouteParams; body: UpdateItemInput }) =>
+  this.repo.transaction(async (manager) => {
+    const item = await this.repo.get_by_id(params.id, manager);
+    return this.repo.update(this.requireItem(item), body, manager);
+  });
+```
+
+Every lookup and write in the workflow must receive that manager to use the same
+connection and transaction. Create wraps its insert; update/replace/delete wrap
+both lookup and mutation. Get/list remain ordinary reads. The wrapper does not
+add locking, optimistic concurrency, or idempotency guarantees.
+
+System controllers use the same direct-method pattern. `SystemService` collects
+the root, health, readiness, information, diagnostics, and metrics results;
+controllers retain DTO mapping, readiness HTTP status, and metrics content type.
+Health does not probe the database, while readiness still checks lifecycle
+dependencies on each request.
+
 Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON error responses.
 Unexpected failures are logged with request context and returned as a generic 500 so internal error
 details are not disclosed. The error envelope contains `status`, `message`, and `timestamp`.
@@ -88,12 +131,14 @@ flowchart LR
     Client[Client request] --> Policy[Policy middleware<br/>src/common/middleware]
     Policy --> Validation[validateRequest + Zod<br/>src/api/v1/items/models]
     Validation --> Controller[Route/controller<br/>src/api]
-    Controller --> Repository[ItemRepository<br/>item.repo.ts]
+    Controller --> Service[ItemService<br/>items.service.ts]
+    Service --> Repository[ItemRepository<br/>item.repo.ts]
     Repository --> ORM[TypeORM + entity mapping<br/>src/database/entities]
     ORM --> MySQL[(MySQL)]
     MySQL --> ORM
     ORM --> Repository
-    Repository --> Mapping[Response DTO mapping<br/>item models]
+    Repository --> Service
+    Service --> Mapping[Shared HTTP response adapter<br/>DTO mapping and serialization]
     Mapping --> Client
     Policy -. failure .-> Errors[Centralized error handler<br/>src/common/middleware]
     Validation -. failure .-> Errors
@@ -103,8 +148,8 @@ flowchart LR
     Errors --> Client
 ```
 
-Controllers translate validated HTTP input into repository calls and map returned entities into
-response DTOs. The repository/transport separation prevents TypeORM and MySQL details from leaking
+Controllers connect validated HTTP input to service operations and configure response DTO mapping.
+Services orchestrate repository calls. The repository/transport separation prevents TypeORM and MySQL details from leaking
 into routing code, and prevents HTTP status, envelope, and response-mapping mechanics from becoming
 coupled to persistence. Lifecycle and configuration code compose these layers without assigning
 request or storage responsibilities to the process bootstrap.
@@ -175,10 +220,28 @@ HTTP readiness checks the actual listening state. Shutdown quiesces services
 synchronously before awaiting pending startup or reverse cleanup, so late startup
 cannot restore readiness or admit new work.
 
-Async controllers use `trackHandler` to retain their promises beyond response
-completion or disconnect. They check `canRespond` after awaits, before writes or
-starting another mutation. New async routes must follow this boundary and await
-their work; detached tasks are outside the drain contract. A response deadline
+JSON/text controllers use shared response adapters backed by `trackHandler` to
+retain promises beyond response completion or disconnect. Lifecycle owns a
+`RequestContext` per admitted request and carries it through asynchronous work
+using `AsyncLocalStorage`. The timeout middleware sets its absolute deadline;
+timeout/disconnect marks it abandoned. Services receive no lifecycle object and
+contain no deadline checks. The adapter skips late DTO mapping and response writes.
+
+`runInTransaction` checks the ambient request before acquisition, after acquisition,
+and after the entire callback settles, immediately before TypeORM commits. Expiry
+or a business error rejects the callback so TypeORM rolls back and releases the
+connection. Running SQL is never interrupted or released early. Nested application
+transactions reuse the active manager from the same data source; unmanaged active
+transactions are rejected. Non-HTTP callers have no HTTP deadline and still receive
+normal transaction commit/rollback behavior. Expected request abandonment is not
+logged as a late application failure; genuine late failures remain observed/logged.
+A disconnect/expiry racing the final check or an already-started COMMIT can still
+leave a committed mutation without a successful response. External side effects
+are not undone by database rollback; keep them outside this guarantee.
+Already accepted work remains tracked through transaction cleanup.
+New routes must await their work; detached tasks are outside the drain contract.
+Use the lower-level `trackHandler` only for custom transport handling, such as
+streaming, where the handler must own its response semantics. A response deadline
 does not cancel an already-running database operation. Database cleanup begins
 after handler work settles, or after a failed finite HTTP drain. A failed drain
 keeps exit status nonzero and retains the overall watchdog for live stuck work.

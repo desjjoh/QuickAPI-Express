@@ -31,18 +31,19 @@ See [Bounded rate limiting](docs/rate-limiting.md) for rolling-window quotas, ca
 
 See [Database readiness and recovery](docs/database-lifecycle.md) for startup migration checks, runtime probes, and outage/shutdown behavior.
 
-| Guide                                             | Contents                                                                    |
-| ------------------------------------------------- | --------------------------------------------------------------------------- |
-| [Development](docs/development.md)                | Setup, configuration, migrations, commands, and readability conventions     |
-| [Architecture](docs/architecture.md)              | Layer boundaries, middleware ordering, startup, and shutdown                |
-| [API contracts](docs/api-contracts.md)            | Item routes, validation, pagination, and errors                             |
-| [Testing](test/TESTING.md)                        | Test categories, database safety, PowerShell commands, coverage, and CI     |
-| [Deployment and operations](docs/deployment.md)   | Production image, operational endpoints, and container smoke validation     |
-| [Logging and metrics](docs/logging.md)            | NestJS-style output, privacy, request outcomes, and metric contracts        |
-| [Database settings](docs/database-settings.md)    | Pool bounds, connection deadlines, TLS, and lifecycle guarantees            |
-| [Dependency and image security](docs/security.md) | Critical-only gates, exact exceptions, reports, and release boundaries      |
-| [Immutable releases](docs/releases.md)            | Candidate verification, registry permissions, evidence, and digest rollback |
-| [Technical backlog](docs/backlog.md)              | Verified gaps and follow-up work                                            |
+| Guide                                                | Contents                                                                    |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| [Development](docs/development.md)                   | Setup, configuration, migrations, commands, and readability conventions     |
+| [Architecture](docs/architecture.md)                 | Layer boundaries, middleware ordering, startup, and shutdown                |
+| [API contracts](docs/api-contracts.md)               | Item routes, validation, pagination, and errors                             |
+| [Testing](test/TESTING.md)                           | Test categories, database safety, PowerShell commands, coverage, and CI     |
+| [Deployment and operations](docs/deployment.md)      | Production image, operational endpoints, and container smoke validation     |
+| [Logging and metrics](docs/logging.md)               | NestJS-style output, privacy, request outcomes, and metric contracts        |
+| [Database settings](docs/database-settings.md)       | Pool bounds, connection deadlines, TLS, and lifecycle guarantees            |
+| [Dependency and image security](docs/security.md)    | Critical-only gates, exact exceptions, reports, and release boundaries      |
+| [Immutable releases](docs/releases.md)               | Candidate verification, registry permissions, evidence, and digest rollback |
+| [Persistence evidence](docs/persistence-evidence.md) | Database failure outcomes, migration history, and rollback boundaries       |
+| [Technical backlog](docs/backlog.md)                 | Verified gaps and follow-up work                                            |
 
 Configuration is defined by [.env.example](.env.example) and [environment validation](src/config/env.config.ts). Commands are defined in [package.json](package.json).
 

@@ -1,10 +1,15 @@
 import type { Request, Response, NextFunction } from 'express';
 import { RequestTimeoutError } from '@/common/exceptions/http.exception';
-import { abandonRequest } from '@/common/handlers/request-lifecycle.handler';
+import {
+  abandonRequest,
+  setRequestDeadline,
+} from '@/common/handlers/request-lifecycle.handler';
 
 /** A response deadline, not cancellation of handler promises or database mutations. */
 export function requestTimeout(timeoutMs: number = 10_000) {
   return (req: Request, res: Response, next: NextFunction) => {
+    setRequestDeadline(req, timeoutMs);
+
     const cleanup = () => {
       clearTimeout(timer);
       req.off('aborted', disconnected);

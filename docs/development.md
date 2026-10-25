@@ -204,6 +204,9 @@ Do not use `--fake` as a general migration repair: it records history without
 executing SQL and requires prior verification that the migration's effects exist.
 Preserve shared/applied migration files and add new migrations for subsequent
 changes. Stop the watch server before switching branches with different schemas.
+See [migration-history reconciliation](persistence-evidence.md#verified-history-reconciliation)
+for the old-baseline mismatch, required schema/data verification, and safe branch
+switching. A failed CREATE TABLE is not proof that a migration is applied.
 
 `npm run clean` removes only the repository's `dist/` directory using Node's built-in
 filesystem API, then rebuilds it. No global or transitive cleanup package is required.
