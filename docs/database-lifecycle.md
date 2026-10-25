@@ -148,6 +148,11 @@ pool usability. Startup tests verify unapplied migrations and absent history wit
 applying migrations or creating history tables. Unit tests cover late acquisition,
 shared results, caching, deadline cleanup, and stopping an active check.
 
+The [persistence evidence guide](persistence-evidence.md) adds real item endpoint
+faults, mutation outcomes before execution/after commit, repeated failure cleanup,
+and migration-history mismatch/reconciliation fixtures. HTTP failure does not
+establish rollback; a lost COMMIT acknowledgement can follow a committed write.
+
 These tests establish application behavior under controlled transport faults. They
 do not establish production DNS, TLS, failover, backup recovery, or orchestrator
 routing behavior; those remain deployment-owned checks.

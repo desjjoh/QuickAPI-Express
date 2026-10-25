@@ -226,3 +226,26 @@ host port, and removes its resources afterward.
 
 See [immutable releases](../docs/releases.md) for candidate commands, platform
 requirements, release permissions, retained evidence, and rollback boundaries.
+
+## Item failures and migration-history evidence
+
+The integration suite includes `item-database-faults.test.ts` and
+`migration-history.test.ts`. The former uses the real application and repository
+behind a packet-aware MySQL fault proxy, with independent SQL assertions. It
+checks offline CRUD/recovery, dropped writes before execution, committed writes
+with lost acknowledgements, delayed lookups beyond HTTP deadlines, and repeated
+single-slot pool recovery. The latter reproduces a replaced-baseline history
+mismatch, checks failed startup/migration preservation, and verifies an explicitly
+reviewed equivalent-baseline fake application in its disposable fixture only.
+
+```bash
+npm run test:integration -- test/integration/item-database-faults.test.ts test/integration/migration-history.test.ts
+```
+
+No fixture resets a development database, rewrites a committed migration, or
+changes the application's retry/error behavior. The query proxy is intended for
+unencrypted, default-attribute MySQL test connections; TLS has its own suite.
+See [persistence evidence](../docs/persistence-evidence.md) for outcomes,
+reconciliation prerequisites, rollback limits, and future upgrade/concurrency
+evidence. New migrations still need representative-data upgrade tests when
+their schema and backfill contracts are implemented.
