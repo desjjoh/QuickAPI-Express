@@ -28,6 +28,13 @@ export default [
   prettier,
   prettierRecommended,
   {
+    files: ['src/**/services/**/*.ts'],
+    rules: {
+      '@typescript-eslint/explicit-member-accessibility': 'error',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
+    },
+  },
+  {
     files: ['**/*.{js,cjs,mjs,ts}'],
     languageOptions: { globals: globals.node },
     rules: { 'prettier/prettier': ['error', { endOfLine: 'auto' }] },

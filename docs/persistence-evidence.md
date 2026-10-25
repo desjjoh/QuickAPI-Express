@@ -5,7 +5,7 @@
 ## What the tests establish
 
 Integration tests use guarded disposable MySQL. The item fault suite runs the real
-HTTP middleware, controllers, DTOs, TypeORM repository, and bounded pool. A
+HTTP middleware, controllers, item service, DTOs, TypeORM repository, and bounded pool. A
 test-only TCP proxy frames MySQL COM_QUERY packets and can withhold a selected
 query or its response. An independent connection bypasses the proxy to inspect
 committed rows and server-side connection cleanup. This transport fixture uses
@@ -16,7 +16,8 @@ unencrypted MySQL; [TLS verification](database-settings.md) has separate evidenc
 | Database offline before item create/read/list/update/delete         | The request fails, existing rows remain unchanged, readiness becomes unavailable, and liveness remains responsive. The same application/pool recovers and the operation succeeds afterward. |
 | Connection dropped before INSERT/UPDATE/DELETE reaches MySQL        | No item mutation persists; the failed connection disappears and the single-slot pool serves further work.                                                                                   |
 | COMMIT forwarded, acknowledgement withheld, then connection dropped | Independent reads establish that the mutation committed before the client receives an error. Persisted rows remain committed; the application does not automatically replay the mutation.   |
-| Lookup result withheld beyond the HTTP response deadline            | PUT/PATCH/DELETE return 408; after the real lookup finishes, no subsequent mutation begins.                                                                                                 |
+| Lookup result withheld beyond the HTTP response deadline            | PUT/PATCH/DELETE return 408; the workflow finishes inside its transaction, then rolls back before commit, preserving existing data.                                                         |
+| Mutation result withheld beyond a deadline or client disconnect     | POST/PUT/PATCH/DELETE keep the transaction leased until SQL settles, then roll back; independent reads show unchanged rows and the pool remains usable.                                     |
 | Repeated failed writes                                              | Server-side failed connections disappear and a one-slot pool repeatedly accepts queued checks and a later successful write.                                                                 |
 | SQL already running when HTTP expires                               | Existing database-drain tests establish that accepted SQL can finish after a 408 and remains tracked during shutdown.                                                                       |
 

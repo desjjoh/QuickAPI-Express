@@ -1,7 +1,12 @@
 import type os from 'node:os';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LC } from '@/common/handlers/lifecycle.handler';
+import { env } from '@/config/env.config';
+import { metricsRegistry } from '@/config/metrics.config';
 
 import { SystemService } from '@/api/app/services/system.service';
+
+afterEach(() => vi.restoreAllMocks());
 
 const runtime = {
   version: 'v24.10.0',
@@ -31,6 +36,45 @@ const operatingSystem = {
 };
 
 describe('system service runtime information', () => {
+  it('supports direct endpoint method references and keeps health independent of readiness', async () => {
+    const checks = vi.spyOn(LC, 'checkDependencies').mockResolvedValue([]);
+    vi.spyOn(LC, 'isAlive').mockReturnValue(true);
+    vi.spyOn(LC, 'isReady').mockReturnValue(false);
+    const metrics = vi
+      .spyOn(metricsRegistry, 'metrics')
+      .mockResolvedValue('metric 1\n');
+    const service = new SystemService({
+      runtime,
+      operatingSystem,
+      now: () => 1788192000000,
+    });
+    const { getRoot, getHealth, getReady, getInfo, getMetrics } = service;
+
+    expect(getRoot()).toEqual({
+      message: 'Hello World! Welcome to Express.js',
+    });
+    expect(getHealth()).toEqual({
+      alive: true,
+      uptime: 12.5,
+      timestamp: '2026-08-31T16:00:00.000Z',
+    });
+    expect(checks).not.toHaveBeenCalled();
+    await expect(getReady()).resolves.toEqual({
+      startupComplete: false,
+      timestamp: '2026-08-31T16:00:00.000Z',
+      checks: [],
+    });
+    expect(checks).toHaveBeenCalledTimes(1);
+    expect(getInfo()).toMatchObject({
+      name: env.APP_NAME,
+      version: env.APP_VERSION,
+      environment: env.NODE_ENV,
+      hostname: 'test-host',
+    });
+    await expect(getMetrics()).resolves.toBe('metric 1\n');
+    expect(metrics).toHaveBeenCalledTimes(1);
+  });
+
   it('collects deterministic runtime values from injected dependencies', () => {
     expect(
       new SystemService({
@@ -105,7 +149,8 @@ describe('system diagnostics', () => {
       databaseReady: () => false,
     });
 
-    await expect(service.getSystemDiagnostics()).resolves.toMatchObject({
+    const { getSystemDiagnostics } = service;
+    await expect(getSystemDiagnostics()).resolves.toMatchObject({
       event_loop_lag: 2.5,
       database_status: 'disconnected',
     });

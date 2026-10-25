@@ -1,4 +1,7 @@
 import request from 'supertest';
+import express from 'express';
+import { request as httpRequest } from 'node:http';
+import { deferred, portOf } from '../helpers/http';
 import { createConnection } from 'mysql2/promise';
 import type { RowDataPacket } from 'mysql2';
 import type { EventEmitter } from 'node:events';
@@ -302,7 +305,7 @@ describe('real item persistence across MySQL transport faults', () => {
   );
 
   it.each(['patch', 'put', 'delete'] as const)(
-    'does not begin %s after a real lookup result outlives the HTTP deadline',
+    'rolls back %s after a real lookup result outlives the HTTP deadline',
     async (method) => {
       const before = await rows();
       // Establish the real lease before timing a lookup, not a fresh handshake.
@@ -325,11 +328,99 @@ describe('real item persistence across MySQL transport faults', () => {
         expect(await rows()).toEqual(before);
         expect(
           proxy.queries.some((query) => /^(UPDATE |DELETE FROM)/i.test(query)),
-        ).toBe(false);
+        ).toBe(true);
+        expect(proxy.queries).toContain('ROLLBACK');
+        expect(proxy.queries).not.toContain('COMMIT');
         await recovered();
       } finally {
         gate.resume();
         await delayedWork.drain();
+      }
+    },
+  );
+
+  it.each(
+    (['post', 'patch', 'put', 'delete'] as const).flatMap((method) =>
+      (['timeout', 'disconnect'] as const).map((failure) => ({
+        method,
+        failure,
+      })),
+    ),
+  )(
+    'rolls back $method on $failure while its mutation result is withheld',
+    async ({ method, failure }) => {
+      const before = await rows();
+      const delayedWork = new RequestWorkTracker();
+      const closed = deferred();
+      const outer = express();
+      outer.use((_req, res, next) => {
+        res.once('close', () => closed.resolve());
+        next();
+      });
+      outer.use(
+        createApp(
+          { ...env, REQUEST_TIMEOUT_MS: failure === 'timeout' ? 200 : 2000 },
+          delayedWork,
+        ),
+      );
+      const server = outer.listen(0, '127.0.0.1');
+      await new Promise<void>((resolve) => server.once('listening', resolve));
+      const gate = proxy.intercept(
+        method === 'post'
+          ? /^INSERT INTO/i
+          : method === 'delete'
+            ? /^DELETE FROM/i
+            : /^UPDATE /i,
+        'before-result',
+      );
+      const response = deferred<number>();
+      const payload =
+        method === 'delete'
+          ? ''
+          : JSON.stringify({ name: 'Must roll back', price: 8 });
+      const client = httpRequest(
+        {
+          host: '127.0.0.1',
+          port: portOf(server),
+          method: method.toUpperCase(),
+          path: method === 'post' ? '/api/v1/items' : `/api/v1/items/${id}`,
+          headers:
+            method === 'delete'
+              ? {}
+              : {
+                  'Content-Type': 'application/json',
+                  'Content-Length': String(Buffer.byteLength(payload)),
+                },
+        },
+        (res) => {
+          res.resume();
+          response.resolve(res.statusCode!);
+        },
+      );
+      client.on('error', () => undefined);
+      client.end(payload);
+      try {
+        await observed(
+          gate,
+          response.promise.then((status) => ({ status })),
+        );
+        if (failure === 'timeout') expect(await response.promise).toBe(408);
+        else client.destroy();
+        await closed.promise;
+        // SQL is still outstanding: never release or roll back its connection early.
+        expect(proxy.queries).not.toContain('ROLLBACK');
+        expect(proxy.queries).not.toContain('COMMIT');
+        gate.resume();
+        await delayedWork.drain();
+        expect(proxy.queries).toContain('ROLLBACK');
+        expect(proxy.queries).not.toContain('COMMIT');
+        expect(await rows()).toEqual(before);
+        await recovered();
+      } finally {
+        client.destroy();
+        gate.resume();
+        await delayedWork.drain();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
       }
     },
   );

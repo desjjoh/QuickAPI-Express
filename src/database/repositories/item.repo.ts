@@ -1,5 +1,6 @@
-import { Brackets, type SelectQueryBuilder } from 'typeorm';
+import { Brackets, type EntityManager, type SelectQueryBuilder } from 'typeorm';
 
+import { runInTransaction } from '@/common/helpers/transaction.helper';
 import { AppDataSource } from '@/config/database.config';
 import type { ListDTOParams } from '@/common/library/models/pagination.model';
 import type { Base } from '@/common/library/models/base.model';
@@ -22,11 +23,22 @@ type ItemPaginationQuery = {
 export class ItemRepository {
   private repo = AppDataSource.getRepository(ItemEntity);
 
-  // CREATE
-  public async create(data: Base<ItemEntity>): Promise<ItemEntity> {
-    const item: ItemEntity = this.repo.create(data);
+  transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+    return runInTransaction(this.repo.manager, work);
+  }
 
-    await this.repo.save(item);
+  private repository(manager?: EntityManager) {
+    return manager ? manager.getRepository(ItemEntity) : this.repo;
+  }
+
+  // CREATE
+  public async create(
+    data: Base<ItemEntity>,
+    manager?: EntityManager,
+  ): Promise<ItemEntity> {
+    const item: ItemEntity = this.repository(manager).create(data);
+
+    await this.repository(manager).save(item);
 
     return item;
   }
@@ -82,8 +94,13 @@ export class ItemRepository {
     return { items, total, page, limit };
   }
 
-  async get_by_id(id: string): Promise<ItemEntity | null> {
-    const item: ItemEntity | null = await this.repo.findOne({ where: { id } });
+  async get_by_id(
+    id: string,
+    manager?: EntityManager,
+  ): Promise<ItemEntity | null> {
+    const item: ItemEntity | null = await this.repository(manager).findOne({
+      where: { id },
+    });
 
     return item;
   }
@@ -92,19 +109,20 @@ export class ItemRepository {
   async update(
     obj: ItemEntity,
     data: Partial<Base<ItemEntity>>,
+    manager?: EntityManager,
   ): Promise<ItemEntity> {
-    const merged: ItemEntity = this.repo.merge(obj, data);
+    const merged: ItemEntity = this.repository(manager).merge(obj, data);
 
-    await this.repo.save(merged);
+    await this.repository(manager).save(merged);
 
-    return this.repo.findOneOrFail({ where: { id: obj.id } });
+    return this.repository(manager).findOneOrFail({ where: { id: obj.id } });
   }
 
   // DELETE
-  async remove(obj: ItemEntity): Promise<ItemEntity> {
-    const removed: ItemEntity = this.repo.create({ ...obj });
+  async remove(obj: ItemEntity, manager?: EntityManager): Promise<ItemEntity> {
+    const removed: ItemEntity = this.repository(manager).create({ ...obj });
 
-    await this.repo.remove(obj);
+    await this.repository(manager).remove(obj);
 
     return removed;
   }

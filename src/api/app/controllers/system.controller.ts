@@ -1,91 +1,45 @@
+import { Router } from 'express';
 import {
-  trackHandler,
-  canRespond,
-} from '@/common/handlers/request-lifecycle.handler';
-import { Router, type Request, type Response } from 'express';
-
-import { env } from '@/config/env.config';
+  jsonHandler,
+  textHandler,
+} from '@/common/handlers/http-response.handler';
 import { metricsRegistry } from '@/config/metrics.config';
-import { LC } from '@/common/handlers/lifecycle.handler';
-
-import { type HealthResponse, toHealthDTO } from '../models/health.model';
-import { type InfoResponse, toInfoDTO } from '../models/info.model';
-import { type ReadyResponse, toReadyDTO } from '../models/ready.model';
+import { toHealthDTO } from '../models/health.model';
+import { toInfoDTO } from '../models/info.model';
+import { toReadyDTO, type ReadyResponse } from '../models/ready.model';
 import { toSystemDiagnosticsDTO } from '../models/system.model';
-import { toRootDTO, type RootResponse } from '../models/root.model';
+import { toRootDTO } from '../models/root.model';
 import { systemService } from '../services/system.service';
 
 const router: Router = Router();
 
 // GET /
-router.get('/', (_req: Request, res: Response<RootResponse>) => {
-  res.json(toRootDTO({ message: 'Hello World! Welcome to Express.js' }));
-});
+router.get('/', jsonHandler(systemService.getRoot, toRootDTO));
 
-// GET /health
-router.get('/health', (_req: Request, res: Response<HealthResponse>) => {
-  const alive: boolean = LC.isAlive();
-
-  const uptime: number = process.uptime();
-  const timestamp: string = new Date().toISOString();
-
-  res.json(toHealthDTO({ alive, uptime, timestamp }));
-});
+// GET /health: no database dependency.
+router.get('/health', jsonHandler(systemService.getHealth, toHealthDTO));
 
 // GET /ready
 router.get(
   '/ready',
-  trackHandler(async (req: Request, res: Response<ReadyResponse>) => {
-    const checks = await LC.checkDependencies();
-    const response: ReadyResponse = toReadyDTO({
-      startupComplete: LC.isReady(),
-      timestamp: new Date().toISOString(),
-      checks,
-    });
-
-    if (!canRespond(req, res)) return;
-    res.status(response.ready ? 200 : 503).json(response);
+  jsonHandler(systemService.getReady, toReadyDTO, {
+    status: (body: ReadyResponse) => (body.ready ? 200 : 503),
   }),
 );
 
 // GET /info
-router.get(
-  '/info',
-  trackHandler(async (req: Request, res: Response<InfoResponse>) => {
-    if (!canRespond(req, res)) return;
-    res.json(
-      toInfoDTO({
-        name: env.APP_NAME,
-        version: env.APP_VERSION,
-        environment: env.NODE_ENV,
-        ...systemService.collectRuntimeInfo(),
-      }),
-    );
-  }),
-);
+router.get('/info', jsonHandler(systemService.getInfo, toInfoDTO));
 
 // GET /system
 router.get(
   '/system',
-  trackHandler(async (req: Request, res: Response) => {
-    const diagnostics = await systemService.getSystemDiagnostics();
-
-    if (!canRespond(req, res)) return;
-    res.json(toSystemDiagnosticsDTO(diagnostics));
-  }),
+  jsonHandler(systemService.getSystemDiagnostics, toSystemDiagnosticsDTO),
 );
 
 // GET /metrics
 router.get(
   '/metrics',
-  trackHandler(async (req: Request, res: Response) => {
-    const metrics = await metricsRegistry.metrics();
-
-    if (!canRespond(req, res)) return;
-    res.set('Content-Type', metricsRegistry.contentType);
-
-    res.end(metrics);
-  }),
+  textHandler(systemService.getMetrics, metricsRegistry.contentType),
 );
 
 export default router;

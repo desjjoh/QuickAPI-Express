@@ -1,8 +1,14 @@
 import os from 'node:os';
+import { env } from '@/config/env.config';
+import { metricsRegistry } from '@/config/metrics.config';
+import { LC } from '@/common/handlers/lifecycle.handler';
 
 import { getEventLoopLag } from '@/common/helpers/timer.helpers';
 import { isServerInitialized } from '@/config/database.config';
 
+import type { HealthDTOInput } from '../models/health.model';
+import type { ReadyDTOInput } from '../models/ready.model';
+import type { RootResponse } from '../models/root.model';
 import type { InfoResponse } from '../models/info.model';
 import type { SystemDiagnostics } from '../models/system.model';
 
@@ -45,7 +51,7 @@ export class SystemService {
   private readonly eventLoopLag: () => Promise<number>;
   private readonly databaseReady: () => boolean;
 
-  constructor({
+  public constructor({
     runtime = process,
     operatingSystem = os,
     now = Date.now,
@@ -61,8 +67,38 @@ export class SystemService {
     this.databaseReady = databaseReady;
   }
 
+  public getRoot = (): RootResponse => ({
+    message: 'Hello World! Welcome to Express.js',
+  });
+
+  /** Liveness remains independent of database connectivity. */
+  public getHealth = (): HealthDTOInput => ({
+    alive: LC.isAlive(),
+    uptime: this.runtime.uptime(),
+    timestamp: new Date(this.now()).toISOString(),
+  });
+
+  public getReady = async (): Promise<ReadyDTOInput> => {
+    const checks = await LC.checkDependencies();
+
+    return {
+      startupComplete: LC.isReady(),
+      timestamp: new Date(this.now()).toISOString(),
+      checks,
+    };
+  };
+
+  public getInfo = (): InfoResponse => ({
+    name: env.APP_NAME,
+    version: env.APP_VERSION,
+    environment: env.NODE_ENV,
+    ...this.collectRuntimeInfo(),
+  });
+
+  public getMetrics = (): Promise<string> => metricsRegistry.metrics();
+
   /** Collect application and runtime metadata for the information endpoint. */
-  collectRuntimeInfo(): Pick<
+  public collectRuntimeInfo(): Pick<
     InfoResponse,
     | 'hostname'
     | 'pid'
@@ -89,12 +125,12 @@ export class SystemService {
    * Count active runtime resources through Node's documented public API. Resource
    * entries are the supported approximation used for the `active_handles` contract.
    */
-  countActiveHandles(): number {
+  public countActiveHandles(): number {
     return this.runtime.getActiveResourcesInfo().length;
   }
 
   /** Build a diagnostics snapshot from explicit application state. */
-  collectSystemDiagnostics(
+  public collectSystemDiagnostics(
     eventLoopLag: number,
     databaseReady: boolean,
   ): SystemDiagnostics {
@@ -142,12 +178,12 @@ export class SystemService {
   }
 
   /** Collect live application diagnostics for the system endpoint. */
-  async getSystemDiagnostics(): Promise<SystemDiagnostics> {
+  public getSystemDiagnostics = async (): Promise<SystemDiagnostics> => {
     const databaseReady = this.databaseReady();
     const eventLoopLag = await this.eventLoopLag();
 
     return this.collectSystemDiagnostics(eventLoopLag, databaseReady);
-  }
+  };
 }
 
 export const systemService = new SystemService();
