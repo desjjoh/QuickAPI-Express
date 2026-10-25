@@ -28,7 +28,9 @@ returns the JSON error envelope with status 408 if no headers were sent; otherwi
 the incomplete response is closed. Late controller responses are suppressed.
 Server receive deadlines can return a raw 408 before Express handles the request.
 
-Item mutations run in an explicit transaction. Request expiry/disconnect observed
+Item mutations run in an explicit transaction that also covers response DTO
+validation, status selection, and JSON preparation. Those failures roll back the
+mutation; a success response is sent only after commit succeeds. Request expiry/disconnect observed
 before the shared pre-commit check causes rollback after outstanding work settles.
 It does not cancel running SQL. Expiry/disconnect racing the final check or an
 already-started COMMIT cannot guarantee rollback; a lost response can mean the

@@ -21,6 +21,16 @@ unencrypted MySQL; [TLS verification](database-settings.md) has separate evidenc
 | Repeated failed writes                                              | Server-side failed connections disappear and a one-slot pool repeatedly accepts queued checks and a later successful write.                                                                 |
 | SQL already running when HTTP expires                               | Existing database-drain tests establish that accepted SQL can finish after a 408 and remains tracked during shutdown.                                                                       |
 
+`response-transaction.test.ts` additionally verifies rollback of create, update,
+replace, and delete when response DTO validation or JSON serialization fails after
+the service returns. Multiple service calls through separate repository instances
+share one manager and one outer transaction: both writes commit together or both
+roll back. A later service failure also rolls back earlier writes. Independent
+reads verify persisted outcomes and a subsequent write verifies pool usability.
+The suite compares standard transactional JSON preparation with Express's default
+response serialization. Commit ordering/failure unit tests prove
+that the handler never sends success while commit is pending or after it fails.
+
 Raw MySQL transport failures currently return the generic **500 Internal Server
 Error** response. Explicit pool admission/capacity/deadline failures have a
 separate **503 Database temporarily unavailable** contract. Readiness returns

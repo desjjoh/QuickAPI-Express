@@ -272,3 +272,12 @@ acknowledgement evidence: an already-started commit can succeed without a respon
 Cancellation does not interrupt SQL or undo external side effects. Custom streaming
 handlers retain the lower-level tracked-handler boundary rather than using a
 JSON/text adapter.
+
+`handler-transaction.test.ts` checks that response preparation runs once, success
+waits for commit, and commit failure produces an error rather than success.
+`response-transaction.test.ts` uses disposable MySQL to verify rollback after DTO
+and serialization failures for all four item mutations, one transaction across
+multiple service/repository calls, later-step failure rollback, post-failure pool
+reuse, and parity with default Express JSON serialization. Services keep their standalone atomic
+workflows; HTTP mutation handlers extend the same transaction through response
+preparation. Reads and system routes do not acquire handler transactions.

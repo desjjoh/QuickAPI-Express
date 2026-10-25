@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { AppDataSource } from '@/config/database.config';
 import { runInTransaction } from '@/common/helpers/transaction.helper';
 import type { EntityManager } from 'typeorm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -18,7 +19,10 @@ vi.mock('@/database/repositories/item.repo', () => ({
   },
 }));
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+});
 
 describe('item mutations after a response deadline', () => {
   it.each(['patch', 'put', 'delete'] as const)(
@@ -27,19 +31,23 @@ describe('item mutations after a response deadline', () => {
       const commit = vi.fn();
       const rollback = vi.fn();
       const manager = {
-        transaction: async (
-          work: (manager: EntityManager) => Promise<unknown>,
-        ) => {
+        connection: AppDataSource,
+        queryRunner: { isTransactionActive: true },
+      } as unknown as EntityManager;
+      vi.spyOn(AppDataSource.manager, 'transaction').mockImplementation(
+        async (work: unknown) => {
           try {
-            const value = await work(manager as unknown as EntityManager);
+            const result = await (
+              work as (manager: EntityManager) => Promise<unknown>
+            )(manager);
             commit();
-            return value;
+            return result;
           } catch (error) {
             rollback();
             throw error;
           }
         },
-      } as unknown as EntityManager;
+      );
       vi.mocked(itemRepository.transaction).mockImplementation((work) =>
         runInTransaction(manager, work),
       );
