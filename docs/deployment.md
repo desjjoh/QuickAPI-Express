@@ -18,8 +18,9 @@ Base CI then scans the same immutable image for OS and Node vulnerabilities.
 Unexcepted critical findings and invalid/missing evidence block the deployment
 gate; all lower severities remain reported. The production dependency audit is
 an independent base-CI gate. See [security lifecycle](security.md) for exact
-exception rules, retained evidence, and local commands. Release-time revalidation,
-SBOM/provenance, and immutable promotion remain in the [backlog](backlog.md).
+exception rules, retained evidence, and local commands. The [release lifecycle](releases.md)
+builds one unpublished candidate, retains its SBOM/provenance, smoke-tests and scans
+it, then publishes and promotes the verified digest without rebuilding.
 
 ## Proxy and browser access
 
