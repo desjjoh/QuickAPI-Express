@@ -27,8 +27,8 @@ the service returns. Multiple service calls through separate repository instance
 share one manager and one outer transaction: both writes commit together or both
 roll back. A later service failure also rolls back earlier writes. Independent
 reads verify persisted outcomes and a subsequent write verifies pool usability.
-The suite compares transactional JSON preparation with Express's configured
-replacer, spacing, and escaping behavior. Commit ordering/failure unit tests prove
+The suite compares standard transactional JSON preparation with Express's default
+response serialization. Commit ordering/failure unit tests prove
 that the handler never sends success while commit is pending or after it fails.
 
 Raw MySQL transport failures currently return the generic **500 Internal Server

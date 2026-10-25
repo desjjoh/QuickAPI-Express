@@ -25,27 +25,6 @@ type JsonOptions<DTO> = {
   transaction?: boolean;
 };
 
-/** Match Express JSON preparation before committing; sending occurs afterward. */
-function prepareJson(body: unknown, req: Request): string | undefined {
-  const replacer = req.app.get('json replacer');
-  const spaces = req.app.get('json spaces');
-  const json = JSON.stringify(body, replacer, spaces);
-
-  if (req.app.get('json escape') && json)
-    return json.replace(/[<>&]/g, (character) => {
-      switch (character) {
-        case '<':
-          return '\\u003c';
-        case '>':
-          return '\\u003e';
-        default:
-          return '\\u0026';
-      }
-    });
-
-  return json;
-}
-
 /** Transactional mutations prepare their response before the outer commit. */
 export function jsonHandler<R extends object, T, DTO>(
   controller: Controller<R, T>,
@@ -68,7 +47,7 @@ export function jsonHandler<R extends object, T, DTO>(
           if (!Number.isInteger(code) || code < 100 || code > 999)
             throw new RangeError('Invalid HTTP response status.');
 
-          return { code, json: prepareJson(body, req) };
+          return { code, json: JSON.stringify(body) };
         },
       );
 

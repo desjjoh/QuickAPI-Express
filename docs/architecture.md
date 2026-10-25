@@ -101,8 +101,8 @@ jsonHandler(itemService.update, toItemDTO, { transaction: true });
 The handler opens one outer transaction, calls the service, maps/validates the DTO,
 resolves its HTTP status, and prepares the JSON string before the final deadline
 check and commit. It sends those prepared bytes only after commit succeeds. JSON
-preparation honors Express's `json replacer`, `json spaces`, and `json escape`
-settings, and happens once. Invalid output, serialization failure, invalid status,
+preparation uses plain `JSON.stringify()` once. Transactional responses do not
+apply optional Express replacer, spacing, or HTML-character escaping settings. Invalid output, serialization failure, invalid status,
 or a propagated business/persistence failure rolls back the entire transaction.
 
 Service transaction wrappers remain in place. They join the outer transaction

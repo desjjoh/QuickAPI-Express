@@ -278,6 +278,6 @@ waits for commit, and commit failure produces an error rather than success.
 `response-transaction.test.ts` uses disposable MySQL to verify rollback after DTO
 and serialization failures for all four item mutations, one transaction across
 multiple service/repository calls, later-step failure rollback, post-failure pool
-reuse, and Express JSON settings parity. Services keep their standalone atomic
+reuse, and parity with default Express JSON serialization. Services keep their standalone atomic
 workflows; HTTP mutation handlers extend the same transaction through response
 preparation. Reads and system routes do not acquire handler transactions.

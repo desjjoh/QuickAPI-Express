@@ -142,16 +142,11 @@ describe('real MySQL transactional response preparation', () => {
     expect(await rows()).toHaveLength(0);
   });
 
-  it('prepares the same JSON as Express using configured formatting, escaping and replacer', async () => {
+  it('prepares standard JSON matching the default Express response', async () => {
     const { app } = fixture();
-    app.set('json spaces', 2);
-    app.set('json escape', true);
-    app.set('json replacer', (key: string, value: unknown) =>
-      key === 'private' ? undefined : value,
-    );
     const body = {
       name: '<tag>&',
-      private: 'omit',
+      optional: undefined,
       time: new Date('2026-01-01'),
     };
     app.post(
