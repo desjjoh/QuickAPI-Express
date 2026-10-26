@@ -6,7 +6,7 @@ import { IdParams } from '@/common/library/models/parameters.model';
 
 import { CreateItemSchema } from '../models/item-create.model';
 import { ReplaceItemSchema } from '../models/item-replace.model';
-import { ItemVersionInputSchema } from '../models/item-version.model';
+import { VersionInputSchema } from '@/common/library/models/version.model';
 import { UpdateItemSchema } from '../models/item-update.model';
 import {
   ItemListResponseSchema,
@@ -24,7 +24,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Get a list of items',
     description:
-      'Retrieves a paginated list of items. Supports page, limit, sorting, and optional filtering.',
+      'Retrieves a paginated list of items. Sort ties use ID in the same direction; defaults to price ASC, ID ASC. Price bounds are inclusive and accept up to two decimal places. Offset pagination is not a snapshot across requests.',
     request: {
       query: ItemPaginationQuerySchema,
     },
@@ -205,7 +205,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
       params: IdParams,
       body: {
         required: true,
-        content: { 'application/json': { schema: ItemVersionInputSchema } },
+        content: { 'application/json': { schema: VersionInputSchema } },
       },
     },
     responses: {

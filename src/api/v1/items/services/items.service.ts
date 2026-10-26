@@ -11,7 +11,7 @@ import {
 import type { IdRouteParams } from '@/common/library/models/parameters.model';
 import type { CreateItemInput } from '../models/item-create.model';
 import type { ReplaceItemInput } from '../models/item-replace.model';
-import type { ItemVersionInput } from '../models/item-version.model';
+import type { VersionInput } from '@/common/library/models/version.model';
 import type { UpdateItemInput } from '../models/item-update.model';
 import type { ItemPaginationQuery } from '../models/pagination-query.model';
 
@@ -92,7 +92,7 @@ export class ItemService {
     body,
   }: {
     params: IdRouteParams;
-    body: ItemVersionInput;
+    body: VersionInput;
   }): Promise<ItemEntity> =>
     this.repo.transaction(async (manager) => {
       const item = this.requireVersion(

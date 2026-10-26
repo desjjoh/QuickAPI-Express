@@ -80,7 +80,7 @@ describe('item query schema', () => {
   ])('rejects invalid pagination %#', (query) =>
     expect(ItemPaginationQuerySchema.safeParse(query).success).toBe(false),
   );
-  it.each([{ min_price: '1.5' }, { min_price: 'wat' }, { max_price: 'NaN' }])(
+  it.each([{ min_price: '1.555' }, { min_price: 'wat' }, { max_price: 'NaN' }])(
     'rejects invalid price coercion %#',
     (query) =>
       expect(ItemPaginationQuerySchema.safeParse(query).success).toBe(false),

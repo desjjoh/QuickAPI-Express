@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { CreateItemSchema } from './item-create.model';
-import { ItemVersionInputSchema } from './item-version.model';
+import { VersionInputSchema } from '@/common/library/models/version.model';
 
 export const ReplaceItemSchema = CreateItemSchema.extend(
-  ItemVersionInputSchema.shape,
+  VersionInputSchema.shape,
 ).openapi('ReplaceItemInput', {
   description:
     'Full item replacement with required expected_version. Omitted description becomes null.',

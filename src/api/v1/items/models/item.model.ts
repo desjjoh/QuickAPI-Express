@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
-import { ItemVersionSchema } from './item-version.model';
+import { PriceSchema } from '@/common/library/models/price.model';
+import { VersionSchema } from '@/common/library/models/version.model';
 import type { ItemEntity } from '@/database/entities/_item.entity';
 import { BaseSchema } from '@/common/library/models/base.model';
 import { OutputValidationError } from '@/common/exceptions/http.exception';
@@ -13,15 +14,12 @@ import {
 extendZodWithOpenApi(z);
 
 export const ItemSchema = BaseSchema.extend({
-  version: ItemVersionSchema,
+  version: VersionSchema,
   name: z.string().min(1).max(120).openapi({
     description: 'Name of the item. Must be between 1 and 120 characters.',
     example: 'Iron Sword',
   }),
-  price: z.coerce.number().positive().max(99_999_999.99).openapi({
-    description: 'Monetary cost of the item, expressed as a positive number.',
-    example: 49.99,
-  }),
+  price: PriceSchema,
   description: z.string().max(500).nullable().optional().openapi({
     description: 'Optional descriptive text providing additional item details.',
     example: 'A finely crafted steel blade.',
