@@ -136,11 +136,18 @@ function begin(method: Method, target = listener.server) {
   const pending =
     method === 'list'
       ? request(target).get('/api/v1/items')
-      : request(target)[method](
-          method === 'post' ? '/api/v1/items' : `/api/v1/items/${id}`,
+      : request(target)[method === 'delete' ? 'post' : method](
+          method === 'post'
+            ? '/api/v1/items'
+            : `/api/v1/items/${id}${method === 'delete' ? '/delete' : ''}`,
         );
-  if (['post', 'patch', 'put'].includes(method))
-    pending.send({ name: 'Mutation committed', price: 7.5 });
+  if (method === 'delete') pending.send({ expected_version: 1 });
+  else if (['post', 'patch', 'put'].includes(method))
+    pending.send({
+      name: 'Mutation committed',
+      price: 7.5,
+      expected_version: 1,
+    });
   const result = pending.then((response) => response);
   void result.catch(() => undefined);
   return result;
@@ -316,8 +323,14 @@ describe('real item persistence across MySQL transport faults', () => {
         delayedWork,
       );
       const gate = proxy.intercept(/^SELECT .*FROM `items`/i, 'before-result');
-      const response = request(delayedApp)[method](`/api/v1/items/${id}`);
-      if (method !== 'delete') response.send({ name: 'Too late', price: 9 });
+      const response = request(delayedApp)[
+        method === 'delete' ? 'post' : method
+      ](`/api/v1/items/${id}${method === 'delete' ? '/delete' : ''}`);
+      response.send(
+        method === 'delete'
+          ? { expected_version: 1 }
+          : { name: 'Too late', price: 9, expected_version: 1 },
+      );
       const pending = response.then((result) => result);
       void pending.catch(() => undefined);
       try {
@@ -374,23 +387,24 @@ describe('real item persistence across MySQL transport faults', () => {
         'before-result',
       );
       const response = deferred<number>();
-      const payload =
+      const payload = JSON.stringify(
         method === 'delete'
-          ? ''
-          : JSON.stringify({ name: 'Must roll back', price: 8 });
+          ? { expected_version: 1 }
+          : { name: 'Must roll back', price: 8, expected_version: 1 },
+      );
       const client = httpRequest(
         {
           host: '127.0.0.1',
           port: portOf(server),
-          method: method.toUpperCase(),
-          path: method === 'post' ? '/api/v1/items' : `/api/v1/items/${id}`,
-          headers:
-            method === 'delete'
-              ? {}
-              : {
-                  'Content-Type': 'application/json',
-                  'Content-Length': String(Buffer.byteLength(payload)),
-                },
+          method: method === 'delete' ? 'POST' : method.toUpperCase(),
+          path:
+            method === 'post'
+              ? '/api/v1/items'
+              : `/api/v1/items/${id}${method === 'delete' ? '/delete' : ''}`,
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': String(Buffer.byteLength(payload)),
+          },
         },
         (res) => {
           res.resume();

@@ -24,6 +24,7 @@ const info = {
 
 const item = {
   id: 'A1b2C3d4E5f6G7h8',
+  version: 1,
   name: 'Sword',
   price: '12.50',
   description: 'Sharp',

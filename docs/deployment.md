@@ -98,6 +98,28 @@ budgets, and explicitly enable TLS with a trusted CA and certificate-matching DN
 host. Migration jobs need the same CA/settings. Acquisition deadlines do not cancel
 running SQL; the established HTTP drain-before-pool-close ordering remains intact.
 
+## Item revision rollout and rollback
+
+Apply the new `ItemRevisions1792972800000` migration as an explicit deployment step
+before starting this application version. It adds unsigned integer `items.version`
+with default 1, backfilling existing rows without replacing their IDs or item data.
+The existing primary key supports the ID/version condition; no additional revision
+index is required. Startup refuses readiness with this migration pending.
+
+This release intentionally changes the API contract: update clients to retain
+returned versions, send `expected_version` for PUT/PATCH, and replace DELETE calls
+with `POST /api/v1/items/:id/delete` carrying the precondition in JSON. Coordinate
+client/API rollout; old mutation requests will fail validation or route matching.
+
+Stop/drain old writers before enabling revision-enforced writes. Older binaries
+can modify rows without checking or advancing revisions even though the additive
+schema still accepts them. Do not run old and new writers concurrently, and do not
+roll back the application to an unversioned writer while continuing normal writes.
+Prefer forward repair. Any rollback needs an explicit maintenance/write-stop and
+client-compatibility plan. The migration's down operation drops revision history;
+it is an offline schema downgrade, not a safe online application rollback. The
+upgrade/down/re-up rehearsal runs only against disposable MySQL, never the dev DB.
+
 ## Production logging
 
 Production logging writes timestamped JSON. Review [logging behavior](logging.md)

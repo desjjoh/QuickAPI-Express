@@ -14,6 +14,7 @@ vi.mock('@/database/repositories/item.repo', () => ({
   itemRepository: {
     transaction: vi.fn(),
     get_by_id: vi.fn(),
+    get_by_id_for_update: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
   },
@@ -52,16 +53,25 @@ describe('item mutations after a response deadline', () => {
         runInTransaction(manager, work),
       );
       const lookup = deferred<ItemEntity>();
-      vi.mocked(itemRepository.get_by_id).mockReturnValue(lookup.promise);
+      vi.mocked(itemRepository.get_by_id_for_update).mockReturnValue(
+        lookup.promise,
+      );
       const work = new RequestWorkTracker();
       const app = createApp({ ...env, REQUEST_TIMEOUT_MS: 30 }, work);
-      const pending = request(app)[method]('/api/v1/items/abcdefghijklmnop');
-      if (method !== 'delete') pending.send({ name: 'Updated', price: 7 });
+      const pending = request(app)[method === 'delete' ? 'post' : method](
+        '/api/v1/items/abcdefghijklmnop' +
+          (method === 'delete' ? '/delete' : ''),
+      );
+      pending.send(
+        method === 'delete'
+          ? { expected_version: 1 }
+          : { name: 'Updated', price: 7, expected_version: 1 },
+      );
       try {
         expect((await pending.timeout(1_000)).status).toBe(408);
-        expect(itemRepository.get_by_id).toHaveBeenCalledTimes(1);
+        expect(itemRepository.get_by_id_for_update).toHaveBeenCalledTimes(1);
       } finally {
-        lookup.resolve({ id: 'abcdefghijklmnop' } as ItemEntity);
+        lookup.resolve({ id: 'abcdefghijklmnop', version: 1 } as ItemEntity);
         await work.drain();
       }
       expect(commit).not.toHaveBeenCalled();

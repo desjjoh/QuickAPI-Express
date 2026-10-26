@@ -281,3 +281,16 @@ multiple service/repository calls, later-step failure rollback, post-failure poo
 reuse, and parity with default Express JSON serialization. Services keep their standalone atomic
 workflows; HTTP mutation handlers extend the same transaction through response
 preparation. Reads and system routes do not acquire handler transactions.
+
+## Item revision evidence
+
+`item-revisions.test.ts` runs real-MySQL HTTP tests for revisioned reads, no-op
+increments, stale/missing/invalid preconditions, version bounds, conditional SQL,
+and concurrent edit/edit, edit/delete, and delete/delete outcomes. The deletion
+contract is POST `/api/v1/items/:id/delete` with JSON `expected_version`.
+`item-revision-migration.test.ts` verifies upgrades over populated predecessor
+schemas, microsecond timestamp preservation, default/backfill/index behavior,
+pending-migration readiness refusal, and offline schema down/re-up. Existing
+fault/response tests continue to verify revision rollback through timeouts,
+disconnects, invalid DTOs, and failed JSON serialization. Production smoke uses
+the same revisioned mutation contract and compiled migration artifacts.

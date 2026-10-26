@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
+import { ItemVersionSchema } from './item-version.model';
 import type { ItemEntity } from '@/database/entities/_item.entity';
 import { BaseSchema } from '@/common/library/models/base.model';
 import { OutputValidationError } from '@/common/exceptions/http.exception';
@@ -12,6 +13,7 @@ import {
 extendZodWithOpenApi(z);
 
 export const ItemSchema = BaseSchema.extend({
+  version: ItemVersionSchema,
   name: z.string().min(1).max(120).openapi({
     description: 'Name of the item. Must be between 1 and 120 characters.',
     example: 'Iron Sword',

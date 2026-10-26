@@ -64,25 +64,36 @@ describe('ItemRepository with migrated MySQL', () => {
       description: 'remove me',
       price: 12,
     });
-    const patched = await repo.update(created, { price: 15 });
+    const patched = await repo.transaction((manager) =>
+      repo.update(created, { price: 15 }, created.version, manager),
+    );
     expect(patched).toMatchObject({
       name: 'Old',
       description: 'remove me',
       price: '15.00',
     });
 
-    const replaced = await repo.update(patched, {
-      name: 'New',
-      description: null,
-      price: 20,
-    });
+    const replaced = await repo.transaction((manager) =>
+      repo.update(
+        patched,
+        {
+          name: 'New',
+          description: null,
+          price: 20,
+        },
+        patched.version,
+        manager,
+      ),
+    );
     expect(replaced).toMatchObject({
       name: 'New',
       description: null,
       price: '20.00',
     });
 
-    const removed = await repo.remove(replaced);
+    const removed = await repo.transaction((manager) =>
+      repo.remove(replaced, replaced.version, manager),
+    );
     expect(removed).toMatchObject({
       id: created.id,
       name: 'New',

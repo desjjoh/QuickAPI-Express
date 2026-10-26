@@ -12,8 +12,11 @@ describe('item input schemas', () => {
       price: 1.25,
       description: '',
     });
-    expect(UpdateItemSchema.parse({ description: 'updated' })).toEqual({
+    expect(
+      UpdateItemSchema.parse({ description: 'updated', expected_version: 1 }),
+    ).toEqual({
       description: 'updated',
+      expected_version: 1,
     });
   });
 

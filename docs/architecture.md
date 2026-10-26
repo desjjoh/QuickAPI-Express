@@ -109,10 +109,14 @@ Service transaction wrappers remain in place. They join the outer transaction
 through the shared helper, or open their own transaction for standalone calls:
 
 ```ts
-update = ({ params, body }: { params: IdRouteParams; body: UpdateItemInput }) =>
+public update = ({ params, body }: { params: IdRouteParams; body: UpdateItemInput }): Promise<ItemEntity> =>
   this.repo.transaction(async (manager) => {
-    const item = await this.repo.get_by_id(params.id, manager);
-    return this.repo.update(this.requireItem(item), body, manager);
+    const { expected_version, ...changes } = body;
+    const item = this.requireVersion(
+      await this.repo.get_by_id_for_update(params.id, manager),
+      expected_version,
+    );
+    return this.repo.update(item, changes, expected_version, manager);
   });
 ```
 
@@ -124,9 +128,12 @@ Multiple service/repository wrappers on the same data source reuse the same mana
 and have one outer commit. They must propagate failures and use the supplied
 manager for every participating operation. Independently committed transactions,
 other databases, and external side effects are outside that boundary. The wrapper
-does not add locking, optimistic concurrency, or idempotency guarantees.
+does not itself add domain concurrency or idempotency guarantees. Item mutations
+explicitly lock their target row, compare the expected revision, and include the
+revision in UPDATE/DELETE conditions. This supplies stale-write protection while
+retaining the transaction/response lifecycle boundary. Idempotency remains planned.
 
-Only POST/PATCH/PUT/DELETE item routes opt in; reads and system endpoints retain
+Only item creation, PATCH/PUT, and the POST deletion action opt in; reads and system endpoints retain
 their ordinary adapters. Do not enable handler transactions for streaming or
 unbounded work. Response preparation holds database connections/locks until it
 finishes. Successful preparation and commit cannot guarantee network delivery.

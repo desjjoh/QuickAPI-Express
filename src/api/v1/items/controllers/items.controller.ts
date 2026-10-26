@@ -5,6 +5,8 @@ import { IdParams } from '@/common/library/models/parameters.model';
 import { itemService } from '../services/items.service';
 import { toItemDTO, toItemListDTO } from '../models/item.model';
 import { CreateItemSchema } from '../models/item-create.model';
+import { ReplaceItemSchema } from '../models/item-replace.model';
+import { ItemVersionInputSchema } from '../models/item-version.model';
 import { UpdateItemSchema } from '../models/item-update.model';
 import { ItemPaginationQuerySchema } from '../models/pagination-query.model';
 
@@ -44,14 +46,14 @@ router.patch(
 // PUT /items/:id
 router.put(
   '/:id',
-  validateRequest({ params: IdParams, body: CreateItemSchema }),
+  validateRequest({ params: IdParams, body: ReplaceItemSchema }),
   jsonHandler(itemService.replace, toItemDTO, { transaction: true }),
 );
 
-// DELETE /items/:id
-router.delete(
-  '/:id',
-  validateRequest({ params: IdParams }),
+// POST /items/:id/delete
+router.post(
+  '/:id/delete',
+  validateRequest({ params: IdParams, body: ItemVersionInputSchema }),
   jsonHandler(itemService.remove, toItemDTO, { transaction: true }),
 );
 

@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import { ItemVersionInputSchema } from './item-version.model';
 import { CreateItemSchema } from './item-create.model';
 
 extendZodWithOpenApi(z);
 
 export const UpdateItemSchema = CreateItemSchema.partial()
+  .extend(ItemVersionInputSchema.shape)
   .refine(
-    (data: Partial<z.infer<typeof CreateItemSchema>>) =>
-      Object.keys(data).length > 0,
+    (data) => Object.keys(data).some((key) => key !== 'expected_version'),
     {
       message: 'At least one field must be provided for update.',
     },

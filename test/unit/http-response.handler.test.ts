@@ -55,6 +55,7 @@ describe('shared HTTP response adapter', () => {
       create: vi.fn(),
       get_many: vi.fn().mockResolvedValue([]),
       get_by_id: vi.fn(),
+      get_by_id_for_update: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(),
     };
