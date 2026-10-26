@@ -31,7 +31,7 @@ describe('generated OpenAPI contract', () => {
     for (const schema of [
       'UpdateItemInput',
       'ReplaceItemInput',
-      'ItemVersionInput',
+      'VersionInput',
     ]) {
       const fields =
         schemas[schema].allOf?.find(
@@ -50,6 +50,31 @@ describe('generated OpenAPI contract', () => {
       expect(Object.keys(operation.responses)).toEqual(
         expect.arrayContaining(['200', '404', '409', '422']),
       );
+    }
+  });
+
+  it('documents price precision and decimal query bounds', () => {
+    const itemFields = schemas.ItemResponse.allOf.find(
+      (part: JsonObject) => part.properties?.price,
+    );
+    expect(itemFields.properties.price).toMatchObject({
+      type: 'number',
+      minimum: 0.01,
+      maximum: 99999999.99,
+      multipleOf: 0.01,
+    });
+    const parameters = (openApiSpec.paths as JsonObject)['/api/v1/items'].get
+      .parameters;
+    for (const name of ['min_price', 'max_price']) {
+      const parameter = parameters.find(
+        (entry: JsonObject) => entry.name === name,
+      );
+      expect(parameter.schema).toMatchObject({
+        type: 'number',
+        minimum: 0.01,
+        maximum: 99999999.99,
+        multipleOf: 0.01,
+      });
     }
   });
 

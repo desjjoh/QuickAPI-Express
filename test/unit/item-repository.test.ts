@@ -62,7 +62,7 @@ describe('ItemRepository', () => {
     expect(mocks.repo.save).toHaveBeenCalledWith(item);
     expect(await repository.get_all()).toEqual([item]);
     expect(mocks.repo.find).toHaveBeenCalledWith({
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'DESC' },
     });
   });
 
@@ -84,7 +84,10 @@ describe('ItemRepository', () => {
       }),
     ).resolves.toEqual({ items, total: 1, page: 2, limit: 5 });
     expect(mocks.query.andWhere).toHaveBeenCalledTimes(3);
-    expect(mocks.query.orderBy).toHaveBeenCalledWith({ 'item.name': 'DESC' });
+    expect(mocks.query.orderBy).toHaveBeenCalledWith({
+      'item.name': 'DESC',
+      'item.id': 'DESC',
+    });
     expect(mocks.query.skip).toHaveBeenCalledWith(5);
     expect(mocks.query.take).toHaveBeenCalledWith(5);
   });
@@ -92,7 +95,10 @@ describe('ItemRepository', () => {
   it('uses pagination defaults when optional filters are absent', async () => {
     mocks.query.getManyAndCount.mockResolvedValue([[], 0]);
     await repository.get_many({ page: 1, limit: 10 });
-    expect(mocks.query.orderBy).toHaveBeenCalledWith({ 'item.price': 'ASC' });
+    expect(mocks.query.orderBy).toHaveBeenCalledWith({
+      'item.price': 'ASC',
+      'item.id': 'ASC',
+    });
     expect(mocks.query.andWhere).toHaveBeenCalledOnce();
   });
 

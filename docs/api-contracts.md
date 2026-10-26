@@ -55,9 +55,50 @@ requests without `expected_version` now return 422. No ETag/If-Match convention 
 introduced. Versions prevent stale writes, not duplicate creation or uncertain
 commit outcomes. POST creation still has no durable replay protection.
 
+## Price precision and input
+
+Prices use the existing MySQL `DECIMAL(10,2)` column and range from **0.01 through
+99999999.99**. API inputs accept JSON numbers and unsigned plain decimal strings
+such as `12`, `12.5`, and `"12.50"`. They must have at most two decimal places;
+excess precision is rejected with 422 before persistence, never silently rounded.
+The shared price contract also validates returned values and decimal filters.
+Responses remain JSON numbers, so trailing zeros are not formatting guarantees.
+
+Strings must contain digits with an optional decimal point and one or two following
+digits. Blank/whitespace strings, surrounding whitespace, exponent/hex strings,
+leading plus signs, booleans, arrays, objects, and null are rejected. `"1.230"` is
+rejected for excess textual precision. JSON numbers are checked by their parsed
+numeric value; JSON parsing does not retain their original spelling or trailing
+zeros. No binary multiplication/modulo equality check or rounding is used to
+accept values. Rejected create/update inputs leave rows and revisions unchanged.
+
 ## Pagination and filters
 
-`page` defaults to 1; `limit` defaults to 25 and accepts positive integers up to 100. `search` matches item name or description. `sort` accepts `name`, `price`, or `createdAt`; the repository defaults to `price`. `order` accepts `ASC` or `DESC` case-insensitively and defaults to ascending. Optional `min_price` and `max_price` are positive integers; the minimum cannot exceed the maximum.
+`page` defaults to 1; `limit` defaults to 25 and accepts positive integers up to 100.
+The page must be a positive safe integer, and `(page - 1) * limit` must also be a
+safe integer. Unsafe pages/offsets return 422; there is no additional arbitrary page
+cap. These are arithmetic safety limits, not a guarantee that deep pagination is
+cheap.
+
+`search` matches item name or description. `sort` accepts `name`, `price`, or
+`createdAt`; the default is `price`. `order` accepts `ASC` or `DESC`
+case-insensitively and defaults to ascending. ID is always the unique secondary
+sort in the same direction: default ordering is `price ASC, id ASC`.
+
+Optional `min_price` and `max_price` are inclusive bounds using the same positive,
+two-decimal price contract. Omit unused bounds; empty, malformed, repeated, or
+crossed bounds return 422. The minimum cannot exceed the maximum.
+
+This makes adjacent pages deterministic when the underlying data is unchanged.
+Offset pagination is not a shared snapshot across requests: concurrent insertion,
+deletion, or changes to sort values can shift rows and cause repeats/skips. The
+item revision contract does not freeze list results. Cursor/snapshot pagination
+is outside this change.
+
+No schema migration is required for these price/query changes. This intentionally
+narrows formerly broad coercion and excess-precision inputs; review clients that
+relied on those behaviors. Existing valid two-decimal prices and response types
+remain compatible.
 
 ## Response deadlines
 

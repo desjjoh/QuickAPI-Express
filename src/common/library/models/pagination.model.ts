@@ -20,9 +20,10 @@ export const PaginationQuerySchema = z
       .optional()
       .default('1')
       .transform((val) => Number(val))
-      .pipe(z.number().int().positive())
+      .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER))
       .openapi({
-        description: 'Page number to retrieve. Must be a positive integer.',
+        description:
+          'Page number to retrieve. Must be a positive safe integer; the resulting offset must also be a safe integer.',
         example: '1',
       }),
 

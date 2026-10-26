@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-import { ItemVersionInputSchema } from './item-version.model';
+import { VersionInputSchema } from '@/common/library/models/version.model';
 import { CreateItemSchema } from './item-create.model';
 
 extendZodWithOpenApi(z);
 
 export const UpdateItemSchema = CreateItemSchema.partial()
-  .extend(ItemVersionInputSchema.shape)
+  .extend(VersionInputSchema.shape)
   .refine(
     (data) => Object.keys(data).some((key) => key !== 'expected_version'),
     {

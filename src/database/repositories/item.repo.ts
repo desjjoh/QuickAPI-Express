@@ -54,7 +54,7 @@ export class ItemRepository {
   // READ
   public async get_all(): Promise<ItemEntity[]> {
     return this.repo.find({
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'DESC' },
     });
   }
 
@@ -94,7 +94,7 @@ export class ItemRepository {
     }
 
     const [items, total] = await query
-      .orderBy({ [sortColumn[sort]]: order })
+      .orderBy({ [sortColumn[sort]]: order, 'item.id': order })
       .skip((payload.page - 1) * limit)
       .take(limit)
       .getManyAndCount();

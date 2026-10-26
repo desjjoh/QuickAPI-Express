@@ -67,6 +67,17 @@ The down operation drops revisions; re-up starts them at 1 again. This is eviden
 of schema mechanics, not authorization for online application rollback. See the
 [rollout requirements](deployment.md#item-revision-rollout-and-rollback).
 
+## Price and query evidence
+
+`item-data-contracts.test.ts` verifies exact `DECIMAL(10,2)` round trips at boundary
+and representative fractional values, decimal-string updates, invalid inputs
+without writes/revision increments, inclusive decimal filters, and malformed or
+crossed bounds. It inserts deliberately tied name/price/timestamp values out of
+ID order, then checks adjacent pages in both directions for each supported sort.
+Unsafe page/offset requests return 422; ordinary empty pages retain their existing
+response shape. These tests establish ordering on unchanged data, not snapshot
+pagination across concurrent mutations.
+
 ## Shared migrations and branch changes
 
 Applied/shared migrations are immutable history. Add new migration files for new

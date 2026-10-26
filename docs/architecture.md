@@ -148,6 +148,17 @@ Expected `HttpError` values, malformed JSON, and Zod failures are mapped to JSON
 Unexpected failures are logged with request context and returned as a generic 500 so internal error
 details are not disclosed. The error envelope contains `status`, `message`, and `timestamp`.
 
+Reusable price and revision schemas live in `src/common/library/models/price.model.ts`
+and `version.model.ts`. Item contracts compose `PriceSchema`, `VersionSchema`, and
+`VersionInputSchema` from that common library.
+
+Item price payloads, output DTOs, and filters share `PriceSchema`: bounded
+positive two-decimal numbers/plain decimal strings with no implicit rounding or
+boolean/collection coercion. List queries use a unique ID tie-breaker in the same
+sort direction and reject unsafe page offsets before repository dispatch. These
+contracts preserve the existing decimal storage and offset pagination API; they
+do not create a stable multi-request snapshot under concurrent writes.
+
 ### Design Decisions
 
 The application keeps its boundaries explicit: `src/api/` owns transport and routing; item Zod

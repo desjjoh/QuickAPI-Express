@@ -294,3 +294,14 @@ pending-migration readiness refusal, and offline schema down/re-up. Existing
 fault/response tests continue to verify revision rollback through timeouts,
 disconnects, invalid DTOs, and failed JSON serialization. Production smoke uses
 the same revisioned mutation contract and compiled migration artifacts.
+
+## Item price and query evidence
+
+`item-price.test.ts` covers accepted exact decimal spellings, fractional/boundary
+values, rejected types and excess precision, filter rules, and safe page/offset
+arithmetic. OpenAPI tests verify the numeric bounds and cent-sized precision
+metadata. `item-data-contracts.test.ts` verifies MySQL round trips, unchanged
+rows/revisions after invalid writes, decimal filter boundaries, and ID tie-breaking
+across adjacent pages for every sort and direction. No schema change or test
+infrastructure change is needed. Offset pagination remains susceptible to shifts
+between requests when rows are inserted, deleted, or reordered.
