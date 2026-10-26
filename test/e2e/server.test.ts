@@ -247,6 +247,7 @@ describe('real item API', () => {
     expect(created.body).toMatchObject({
       id: expect.stringMatching(/^[A-Za-z0-9]{16}$/),
       name: 'Fixture Alpha',
+      version: 1,
       description: 'first fixture',
       price: 120,
       createdAt: expect.any(String),
@@ -264,14 +265,18 @@ describe('real item API', () => {
     const patched = await request(server)
       .patch(`/api/v1/items/${created.body.id}`)
       .type('json')
-      .send({ price: 125 });
+      .send({ price: 125, expected_version: created.body.version });
     expect(patched.status).toBe(200);
     expect(patched.body).toMatchObject({ name: 'Fixture Alpha', price: 125 });
 
     const replaced = await request(server)
       .put(`/api/v1/items/${created.body.id}`)
       .type('json')
-      .send({ name: 'Fixture Replacement', price: 130 });
+      .send({
+        name: 'Fixture Replacement',
+        price: 130,
+        expected_version: patched.body.version,
+      });
     expect(replaced.status).toBe(200);
     expect(replaced.body).toMatchObject({
       name: 'Fixture Replacement',
@@ -290,9 +295,9 @@ describe('real item API', () => {
       data: [replaced.body],
     });
 
-    const deleted = await request(server).delete(
-      `/api/v1/items/${created.body.id}`,
-    );
+    const deleted = await request(server)
+      .post(`/api/v1/items/${created.body.id}/delete`)
+      .send({ expected_version: replaced.body.version });
     expect(deleted.status).toBe(200);
     expect(deleted.body.id).toBe(created.body.id);
     expectError(

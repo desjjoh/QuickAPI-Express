@@ -6,16 +6,54 @@
 
 The resource is `/api/v1/items`. There is currently no authentication or authorization middleware. Request bodies use JSON.
 
-| Method and route           | Behavior                                                          |
-| -------------------------- | ----------------------------------------------------------------- |
-| `POST /api/v1/items`       | Validate a create payload and return the created item with 201    |
-| `GET /api/v1/items`        | Return paginated items with `data`, `total`, `page`, and `limit`  |
-| `GET /api/v1/items/:id`    | Return one item or 404                                            |
-| `PATCH /api/v1/items/:id`  | Update at least one supplied field or return 404                  |
-| `PUT /api/v1/items/:id`    | Apply a complete create payload; omitted description becomes null |
-| `DELETE /api/v1/items/:id` | Return the removed item's DTO with 200, or 404                    |
+| Method and route                | Behavior                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------- |
+| `POST /api/v1/items`            | Validate a create payload and return the created item with 201              |
+| `GET /api/v1/items`             | Return paginated items with `data`, `total`, `page`, and `limit`            |
+| `GET /api/v1/items/:id`         | Return one item or 404                                                      |
+| `PATCH /api/v1/items/:id`       | Update supplied fields using required `expected_version`                    |
+| `PUT /api/v1/items/:id`         | Replace using required `expected_version`; omitted description becomes null |
+| `POST /api/v1/items/:id/delete` | Delete using required `expected_version`; return the removed DTO with 200   |
 
-The [item schemas](../src/api/v1/items/models) define field validation and response mapping. The [controllers](../src/api/v1/items/controllers/items.controller.ts) validate request locations before calling the [item service](../src/api/v1/items/services/items.service.ts), which coordinates repository operations. Shared HTTP adapters own response mapping and serialization. PUT and PATCH require an existing identifier; neither creates a missing item. There is no optimistic concurrency or idempotency-key contract.
+The [item schemas](../src/api/v1/items/models) define field validation and response mapping. The [controllers](../src/api/v1/items/controllers/items.controller.ts) validate request locations before calling the [item service](../src/api/v1/items/services/items.service.ts), which coordinates repository operations. Shared HTTP adapters own response mapping and serialization. PUT and PATCH require an existing identifier; neither creates a missing item. Optimistic concurrency is required for item mutations; there is no idempotency-key/replay contract.
+
+## Item revisions and mutation preconditions
+
+Every item response, including list entries, includes numeric `version`. Creation
+starts at 1. Send the version from the last read as `expected_version` in the JSON
+body of PUT, PATCH, or `POST /api/v1/items/:id/delete`:
+
+```json
+{ "price": 29, "expected_version": 1 }
+```
+
+```http
+POST /api/v1/items/A1b2C3d4E5f6G7h8/delete
+Content-Type: application/json
+
+{ "expected_version": 2 }
+```
+
+- Versions/preconditions are integers from 1 through 4294967295. JSON strings,
+  fractions, booleans, null, and missing values are invalid and return 422.
+- PATCH must supply at least one editable field in addition to the precondition.
+  PUT requires name and price; omission of description still clears it to null.
+- Every accepted PUT/PATCH advances the revision exactly once, including updates
+  whose submitted values equal stored values. Clients must retain the returned
+  revision for the next mutation. Overflow returns 409 without changing data.
+- A valid request for a missing/deleted item returns 404. An existing item with a
+  stale precondition returns 409 without mutation. Reload before reconciling a
+  stale edit; do not silently replace its precondition and overwrite newer data.
+- Deletion returns the removed item with its last persisted version; it does not
+  increment a revision on a row that no longer exists. A later deletion returns 404.
+- Lookup, SQL revision condition, write, response preparation, and final commit
+  share the mutation transaction. A rollback also restores the previous revision.
+
+This intentionally changes the client contract. The old `DELETE /items/:id` route
+is removed (404); use the POST deletion action with a JSON body. Existing PUT/PATCH
+requests without `expected_version` now return 422. No ETag/If-Match convention is
+introduced. Versions prevent stale writes, not duplicate creation or uncertain
+commit outcomes. POST creation still has no durable replay protection.
 
 ## Pagination and filters
 

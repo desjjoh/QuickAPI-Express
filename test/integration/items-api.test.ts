@@ -39,7 +39,7 @@ describe('items API with real middleware, controller, DTOs, and repository', () 
     const patched = await request(app)
       .patch(`/api/v1/items/${created.body.id}`)
       .type('json')
-      .send({ price: 29 });
+      .send({ price: 29, expected_version: created.body.version });
     expect(patched.status).toBe(200);
     expect(patched.body).toMatchObject({
       name: 'Travel Pack',
@@ -50,7 +50,11 @@ describe('items API with real middleware, controller, DTOs, and repository', () 
     const replaced = await request(app)
       .put(`/api/v1/items/${created.body.id}`)
       .type('json')
-      .send({ name: 'Replacement Pack', price: 31 });
+      .send({
+        name: 'Replacement Pack',
+        price: 31,
+        expected_version: patched.body.version,
+      });
     expect(replaced.status).toBe(200);
     expect(replaced.body).toMatchObject({
       name: 'Replacement Pack',
@@ -65,9 +69,9 @@ describe('items API with real middleware, controller, DTOs, and repository', () 
     expect(listed.body).toMatchObject({ total: 1, page: 1, limit: 10 });
     expect(listed.body.data).toEqual([replaced.body]);
 
-    const deleted = await request(app).delete(
-      `/api/v1/items/${created.body.id}`,
-    );
+    const deleted = await request(app)
+      .post(`/api/v1/items/${created.body.id}/delete`)
+      .send({ expected_version: replaced.body.version });
     expect(deleted.status).toBe(200);
     expect(deleted.body.id).toBe(created.body.id);
     expect(

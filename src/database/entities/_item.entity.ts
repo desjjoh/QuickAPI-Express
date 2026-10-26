@@ -3,6 +3,9 @@ import { BaseEntity } from './_base.entity';
 
 @Entity('items')
 export class ItemEntity extends BaseEntity {
+  @Column({ type: 'int', unsigned: true, default: 1 })
+  public readonly version!: number;
+
   @Column({ type: 'text' })
   public readonly name!: string;
 

@@ -5,6 +5,8 @@ import { ErrorResponseSchema } from '@/common/library/models/exception.model';
 import { IdParams } from '@/common/library/models/parameters.model';
 
 import { CreateItemSchema } from '../models/item-create.model';
+import { ReplaceItemSchema } from '../models/item-replace.model';
+import { ItemVersionInputSchema } from '../models/item-version.model';
 import { UpdateItemSchema } from '../models/item-update.model';
 import {
   ItemListResponseSchema,
@@ -104,7 +106,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Update an item by ID',
     description:
-      'Applies a partial update to an existing item. Only provided fields are modified. Returns the updated resource.',
+      'Applies a partial update to an existing item. Requires expected_version. Only provided fields are modified. Every accepted update advances version once, including no-op edits.',
     request: {
       params: IdParams,
       body: {
@@ -125,6 +127,14 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
           },
         },
       },
+      409: {
+        description: 'Stale item version; reload before retrying.',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      422: {
+        description: 'Invalid input or missing expected_version.',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
       404: {
         description: 'No item exists with the provided identifier.',
         content: {
@@ -143,14 +153,14 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Replace an item by ID',
     description:
-      'Replaces an existing item with the provided data. All fields must be supplied. Returns the updated resource.',
+      'Replaces an existing item with the provided data. Requires expected_version, name, and price; omitted description becomes null. Every accepted replacement advances version once.',
     request: {
       params: IdParams,
       body: {
         required: true,
         content: {
           'application/json': {
-            schema: CreateItemSchema,
+            schema: ReplaceItemSchema,
           },
         },
       },
@@ -163,6 +173,14 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
             schema: ItemResponseSchema,
           },
         },
+      },
+      409: {
+        description: 'Stale item version; reload before retrying.',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      422: {
+        description: 'Invalid input or missing expected_version.',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
       },
       404: {
         description: 'No item exists with the provided identifier.',
@@ -175,16 +193,20 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     },
   });
 
-  // DELETE /items/{id}
+  // POST /items/{id}/delete
   registry.registerPath({
-    method: 'delete',
-    path: apiPath('/items/{id}'),
+    method: 'post',
+    path: apiPath('/items/{id}/delete'),
     tags: [tag],
     summary: 'Delete an item by ID',
     description:
-      'Removes an item by its ID. Returns the deleted resource for confirmation. Returns 404 if the item is not found.',
+      'Requires expected_version in the JSON body. Returns the removed item and its final version; stale versions return 409 and missing items return 404.',
     request: {
       params: IdParams,
+      body: {
+        required: true,
+        content: { 'application/json': { schema: ItemVersionInputSchema } },
+      },
     },
     responses: {
       200: {
@@ -194,6 +216,14 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
             schema: ItemResponseSchema,
           },
         },
+      },
+      409: {
+        description: 'Stale item version; reload before retrying.',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      422: {
+        description: 'Invalid input or missing expected_version.',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
       },
       404: {
         description: 'No item exists with the provided identifier.',

@@ -1,13 +1,22 @@
+import type { EntityManager } from 'typeorm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const query = {
+    update: vi.fn(),
+    set: vi.fn(),
+    where: vi.fn(),
+    delete: vi.fn(),
+    execute: vi.fn(),
     andWhere: vi.fn(),
     orderBy: vi.fn(),
     skip: vi.fn(),
     take: vi.fn(),
     getManyAndCount: vi.fn(),
   };
+  for (const method of ['update', 'set', 'where', 'delete'] as const)
+    query[method].mockReturnValue(query);
+  query.execute.mockResolvedValue({ affected: 1 });
   query.andWhere.mockReturnValue(query);
   query.orderBy.mockReturnValue(query);
   query.skip.mockReturnValue(query);
@@ -87,27 +96,51 @@ describe('ItemRepository', () => {
     expect(mocks.query.andWhere).toHaveBeenCalledOnce();
   });
 
-  it('reads, updates, and removes an item', async () => {
+  it('uses SQL revision conditions and rereads within the supplied manager', async () => {
     const item = Object.assign(new ItemEntity(), {
       id: 'item-id',
       name: 'Old',
       price: 1,
+      version: 1,
     });
-    const merged = Object.assign(item, { name: 'New' });
+    const updated = { ...item, name: 'New', version: 2 };
+    const manager = {
+      getRepository: vi.fn(() => mocks.repo),
+    } as unknown as EntityManager;
     mocks.repo.findOne.mockResolvedValue(item);
-    mocks.repo.merge.mockReturnValue(merged);
-    mocks.repo.findOneOrFail.mockResolvedValue(merged);
+    mocks.repo.findOneOrFail.mockResolvedValue(updated);
     mocks.repo.create.mockImplementation((value) => ({ ...value }));
-
     await expect(repository.get_by_id('item-id')).resolves.toBe(item);
-    await expect(repository.update(item, { name: 'New' })).resolves.toBe(
-      merged,
+    await expect(
+      repository.update(item, { name: 'New' }, 1, manager),
+    ).resolves.toBe(updated);
+    expect(mocks.query.where).toHaveBeenCalledWith(
+      expect.stringContaining('`version` = :version'),
+      { id: item.id, version: 1, maximum: 4294967295 },
     );
-    expect(mocks.repo.save).toHaveBeenCalledWith(merged);
-    await expect(repository.remove(merged)).resolves.toMatchObject({
-      id: 'item-id',
-      name: 'New',
+    expect(mocks.repo.save).not.toHaveBeenCalled();
+    await expect(repository.remove(updated, 2, manager)).resolves.toEqual(
+      updated,
+    );
+    expect(mocks.query.where).toHaveBeenLastCalledWith({
+      id: item.id,
+      version: 2,
     });
-    expect(mocks.repo.remove).toHaveBeenCalledWith(merged);
+  });
+
+  it('rejects failed revision conditions without returning a successful mutation', async () => {
+    const manager = {
+      getRepository: () => mocks.repo,
+    } as unknown as EntityManager;
+    const item = Object.assign(new ItemEntity(), { id: 'item-id', version: 1 });
+    mocks.query.execute.mockResolvedValue({ affected: 0 });
+    await expect(
+      repository.update(item, { price: 2 }, 1, manager),
+    ).rejects.toHaveProperty('status', 409);
+    await expect(repository.remove(item, 1, manager)).rejects.toHaveProperty(
+      'status',
+      409,
+    );
+    expect(mocks.repo.findOneOrFail).not.toHaveBeenCalled();
   });
 });

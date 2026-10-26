@@ -6,6 +6,7 @@ import type { ItemRepository } from '@/database/repositories/item.repo';
 
 const item: ItemEntity = {
   id: 'abcdefghijklmnop',
+  version: 1,
   name: 'Original',
   price: 2,
   description: 'Keep',
@@ -21,6 +22,7 @@ function fixture() {
     create: vi.fn().mockResolvedValue(item),
     get_many: vi.fn(),
     get_by_id: vi.fn().mockResolvedValue(item),
+    get_by_id_for_update: vi.fn().mockResolvedValue(item),
     update: vi.fn().mockResolvedValue(item),
     remove: vi.fn().mockResolvedValue(item),
   };
@@ -30,15 +32,19 @@ function fixture() {
 describe('item application service', () => {
   it('preserves omitted PATCH fields and clears an omitted PUT description', async () => {
     const { service, repository, manager } = fixture();
-    await service.update({ params: { id: item.id }, body: { price: 4 } });
+    await service.update({
+      params: { id: item.id },
+      body: { price: 4, expected_version: 1 },
+    });
     expect(repository.update).toHaveBeenLastCalledWith(
       item,
       { price: 4 },
+      1,
       manager,
     );
     await service.replace({
       params: { id: item.id },
-      body: { name: 'Replacement', price: 5 },
+      body: { name: 'Replacement', price: 5, expected_version: 1 },
     });
     expect(repository.update).toHaveBeenLastCalledWith(
       item,
@@ -47,9 +53,13 @@ describe('item application service', () => {
         price: 5,
         description: null,
       },
+      1,
       manager,
     );
-    expect(repository.get_by_id).toHaveBeenLastCalledWith(item.id, manager);
+    expect(repository.get_by_id_for_update).toHaveBeenLastCalledWith(
+      item.id,
+      manager,
+    );
   });
 
   it.each(['get', 'update', 'replace', 'remove'] as const)(
@@ -57,17 +67,37 @@ describe('item application service', () => {
     async (method) => {
       const { service, repository } = fixture();
       repository.get_by_id.mockResolvedValue(null);
+      repository.get_by_id_for_update.mockResolvedValue(null);
       const pending =
-        method === 'get' || method === 'remove'
+        method === 'get'
           ? service[method]({ params: { id: item.id } })
           : service[method]({
               params: { id: item.id },
-              body: { name: 'Changed', price: 3 },
+              body: { name: 'Changed', price: 3, expected_version: 1 },
             });
       await expect(pending).rejects.toMatchObject({
         status: 404,
         message: 'No item exists with the provided identifier.',
       });
+      expect(repository.update).not.toHaveBeenCalled();
+      expect(repository.remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['update', 'replace', 'remove'] as const)(
+    'rejects stale %s before a write',
+    async (method) => {
+      const { service, repository } = fixture();
+      repository.get_by_id_for_update.mockResolvedValue({
+        ...item,
+        version: 2,
+      });
+      await expect(
+        service[method]({
+          params: { id: item.id },
+          body: { expected_version: 1, name: 'Changed', price: 3 },
+        }),
+      ).rejects.toHaveProperty('status', 409);
       expect(repository.update).not.toHaveBeenCalled();
       expect(repository.remove).not.toHaveBeenCalled();
     },
@@ -80,12 +110,15 @@ describe('item application service', () => {
       { name: 'New', price: 1 },
       manager,
     );
-    await service.remove({ params: { id: item.id } });
-    expect(repository.get_by_id).toHaveBeenCalledExactlyOnceWith(
+    await service.remove({
+      params: { id: item.id },
+      body: { expected_version: 1 },
+    });
+    expect(repository.get_by_id_for_update).toHaveBeenCalledExactlyOnceWith(
       item.id,
       manager,
     );
-    expect(repository.remove).toHaveBeenCalledExactlyOnceWith(item, manager);
+    expect(repository.remove).toHaveBeenCalledExactlyOnceWith(item, 1, manager);
     expect(repository.transaction).toHaveBeenCalledTimes(2);
   });
 });

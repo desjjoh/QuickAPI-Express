@@ -1,11 +1,14 @@
 import { Brackets, type EntityManager, type SelectQueryBuilder } from 'typeorm';
 
+import { ConflictError } from '@/common/exceptions/http.exception';
 import { runInTransaction } from '@/common/helpers/transaction.helper';
 import { AppDataSource } from '@/config/database.config';
 import type { ListDTOParams } from '@/common/library/models/pagination.model';
 import type { Base } from '@/common/library/models/base.model';
 
 import { ItemEntity } from '../entities/_item.entity';
+
+type ItemData = Omit<Base<ItemEntity>, 'version'>;
 
 type ItemPaginationQuery = {
   page: number;
@@ -33,10 +36,15 @@ export class ItemRepository {
 
   // CREATE
   public async create(
-    data: Base<ItemEntity>,
+    data: ItemData,
     manager?: EntityManager,
   ): Promise<ItemEntity> {
-    const item: ItemEntity = this.repository(manager).create(data);
+    const item: ItemEntity = this.repository(manager).create({
+      name: data.name,
+      price: data.price,
+      description: data.description,
+      version: 1,
+    });
 
     await this.repository(manager).save(item);
 
@@ -105,26 +113,68 @@ export class ItemRepository {
     return item;
   }
 
-  // UPDATE
-  async update(
-    obj: ItemEntity,
-    data: Partial<Base<ItemEntity>>,
-    manager?: EntityManager,
-  ): Promise<ItemEntity> {
-    const merged: ItemEntity = this.repository(manager).merge(obj, data);
-
-    await this.repository(manager).save(merged);
-
-    return this.repository(manager).findOneOrFail({ where: { id: obj.id } });
+  /** A current locking read makes missing-vs-stale outcomes deterministic under races. */
+  async get_by_id_for_update(
+    id: string,
+    manager: EntityManager,
+  ): Promise<ItemEntity | null> {
+    return this.repository(manager).findOne({
+      where: { id },
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 
-  // DELETE
-  async remove(obj: ItemEntity, manager?: EntityManager): Promise<ItemEntity> {
-    const removed: ItemEntity = this.repository(manager).create({ ...obj });
+  // UPDATE: always compare the caller's revision in SQL, including unchanged values.
+  async update(
+    obj: ItemEntity,
+    data: Partial<ItemData>,
+    expectedVersion: number,
+    manager: EntityManager,
+  ): Promise<ItemEntity> {
+    const repository = this.repository(manager);
+    const result = await repository
+      .createQueryBuilder()
+      .update(ItemEntity)
+      .set({
+        name: data.name,
+        price: data.price,
+        description: data.description,
+        version: () => '`version` + 1',
+      })
+      .where('`id` = :id AND `version` = :version AND `version` < :maximum', {
+        id: obj.id,
+        version: expectedVersion,
+        maximum: 4294967295,
+      })
+      .execute();
 
-    await this.repository(manager).remove(obj);
+    if (result.affected !== 1)
+      throw new ConflictError(
+        'Item version conflict; reload the item before retrying.',
+      );
 
-    return removed;
+    return repository.findOneOrFail({ where: { id: obj.id } });
+  }
+
+  // DELETE: use the same revision condition, returning the last persisted representation.
+  async remove(
+    obj: ItemEntity,
+    expectedVersion: number,
+    manager: EntityManager,
+  ): Promise<ItemEntity> {
+    const repository = this.repository(manager);
+    const result = await repository
+      .createQueryBuilder()
+      .delete()
+      .where({ id: obj.id, version: expectedVersion })
+      .execute();
+
+    if (result.affected !== 1)
+      throw new ConflictError(
+        'Item version conflict; reload the item before retrying.',
+      );
+
+    return repository.create({ ...obj });
   }
 }
 

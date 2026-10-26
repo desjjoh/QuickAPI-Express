@@ -16,8 +16,8 @@ unencrypted MySQL; [TLS verification](database-settings.md) has separate evidenc
 | Database offline before item create/read/list/update/delete         | The request fails, existing rows remain unchanged, readiness becomes unavailable, and liveness remains responsive. The same application/pool recovers and the operation succeeds afterward. |
 | Connection dropped before INSERT/UPDATE/DELETE reaches MySQL        | No item mutation persists; the failed connection disappears and the single-slot pool serves further work.                                                                                   |
 | COMMIT forwarded, acknowledgement withheld, then connection dropped | Independent reads establish that the mutation committed before the client receives an error. Persisted rows remain committed; the application does not automatically replay the mutation.   |
-| Lookup result withheld beyond the HTTP response deadline            | PUT/PATCH/DELETE return 408; the workflow finishes inside its transaction, then rolls back before commit, preserving existing data.                                                         |
-| Mutation result withheld beyond a deadline or client disconnect     | POST/PUT/PATCH/DELETE keep the transaction leased until SQL settles, then roll back; independent reads show unchanged rows and the pool remains usable.                                     |
+| Lookup result withheld beyond the HTTP response deadline            | PUT/PATCH/deletion return 408; the workflow finishes inside its transaction, then rolls back before commit, preserving existing data.                                                       |
+| Mutation result withheld beyond a deadline or client disconnect     | Creation/PUT/PATCH/deletion keep the transaction leased until SQL settles, then roll back; independent reads show unchanged rows and the pool remains usable.                               |
 | Repeated failed writes                                              | Server-side failed connections disappear and a one-slot pool repeatedly accepts queued checks and a later successful write.                                                                 |
 | SQL already running when HTTP expires                               | Existing database-drain tests establish that accepted SQL can finish after a 408 and remains tracked during shutdown.                                                                       |
 
@@ -42,12 +42,30 @@ particular, a lost COMMIT acknowledgement can leave a successful write whose
 outcome the caller does not know. Our controlled tests can inspect that outcome
 independently; a caller cannot infer it from the error response. Do not blindly
 retry a mutation under the assumption that it never ran. Durable idempotency and
-revision contracts remain separate planned work.
+replay remain planned; revision preconditions now protect stale updates/deletions.
 
 Connection cleanup assertions inspect MySQL's process list, not only mocked
 release calls. They verify disappeared failed connections and renewed use of a
 single-slot pool. They do not claim that arbitrary running SQL has a universal
 deadline or that a response timeout cancels a leased database operation.
+
+## Item revision evidence
+
+`item-revisions.test.ts` exercises the real HTTP/service/repository stack against
+MySQL: versioned reads, accepted no-op updates, missing/stale/invalid preconditions,
+retired DELETE routing, concurrent edit/edit, edit/delete, and delete/delete
+requests, SQL conditions for direct repository writers, and overflow. Race tests
+use a lookup barrier so both request transactions arrive before either proceeds;
+the database handles the actual locking and writes. Existing response-preparation
+and transport-fault tests include revision state in their rollback snapshots.
+
+`item-revision-migration.test.ts` starts from the previous schema with existing
+rows, null/non-null descriptions, boundary prices, and microsecond timestamps.
+It verifies backfill to revision 1, data/timestamp/index preservation, no pending
+schema diff, startup refusal before migration, and offline down/re-up behavior.
+The down operation drops revisions; re-up starts them at 1 again. This is evidence
+of schema mechanics, not authorization for online application rollback. See the
+[rollout requirements](deployment.md#item-revision-rollout-and-rollback).
 
 ## Shared migrations and branch changes
 

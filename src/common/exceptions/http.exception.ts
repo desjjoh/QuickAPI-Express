@@ -24,6 +24,12 @@ export class ForbiddenError extends HttpError {
   }
 }
 
+export class ConflictError extends HttpError {
+  constructor(message = 'Conflict') {
+    super(409, message);
+  }
+}
+
 export class NotFoundError extends HttpError {
   constructor(message = 'Not Found') {
     super(404, message);

@@ -107,3 +107,12 @@ headers, the 429/503 distinction, tracked clients at capacity, recovery after ex
 and untrusted forwarding. Existing
 [client-identity tests](../test/integration/http-policy.test.ts) retain trusted-peer,
 untrusted-peer, and independent forwarded-client coverage.
+
+## Shared enforcement decision
+
+As agreed on 2026-10-25, keep the existing process-local limiter for the current
+scope. Redis is the planned future approach when deployment-wide enforcement is
+needed. No Redis dependency or configuration is introduced now. Before switching,
+define Redis outage behavior and storage/expiry limits, preserve the rolling-window
+contract, and verify enforcement across multiple instances. Until that work ships,
+counters remain independent per process and reset on restart.

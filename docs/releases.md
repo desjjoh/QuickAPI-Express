@@ -41,6 +41,26 @@ The workflow publishes artifacts; it does not deploy a running environment or
 apply migrations to a deployment database. Base CI and release verification build
 separate candidates. Successful base CI alone cannot approve the release image.
 
+## Hosted verification evidence
+
+Reviewed on 2026-10-25 against source commit
+`c555c550ed096492dfeebcbfa6451aba1a5d6d79`:
+
+- [Main push CI run 40233825512](https://github.com/desjjoh/QuickAPI-Express/actions/runs/40233825512) succeeded for that exact commit.
+- [Release run 40233956753](https://github.com/desjjoh/QuickAPI-Express/actions/runs/40233956753) succeeded automatically after CI. Its job completed candidate smoke, scanning, evidence verification, disposable-registry verification, real registry login, and publication; publication was not skipped.
+- The retained `release-evidence-40233956753-1` artifact contains matching source and build/published digest records in `workflow.json`, `candidate.json`, and `publication.json`. Its `release-image.env` records:
+
+```dotenv
+QUICKAPI_IMAGE=ghcr.io/desjjoh/quickapi-express@sha256:cde2c153eb9c6a5f51236967d7e84a1aa294db23c21793b99c153509a0e4bc92
+```
+
+This establishes successful hosted publication and effective push permissions for
+that run. It does not independently audit environment reviewer/branch policies,
+prove a running deployment, or exercise manual dispatch. The available release
+history contains automatic `workflow_run` runs; the manual dry-run path remains
+unverified. Evidence is time-specific; verify a future candidate and its release
+record independently.
+
 ## Registry and permissions
 
 The defaults are GHCR and the lowercase GitHub repository name. Optional repository

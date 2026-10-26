@@ -63,10 +63,17 @@ describe('real MySQL transactional response preparation', () => {
         if (method === 'create')
           return itemService.create({ body: { name: 'New', price: 6 } });
         if (method === 'remove')
-          return itemService.remove({ params: { id: original.id } });
+          return itemService.remove({
+            params: { id: original.id },
+            body: { expected_version: original.version },
+          });
         return itemService[method]({
           params: { id: original.id },
-          body: { name: 'Changed', price: 7 },
+          body: {
+            name: 'Changed',
+            price: 7,
+            expected_version: original.version,
+          },
         });
       };
       const map = vi.fn((item: ItemEntity) => {
@@ -131,7 +138,10 @@ describe('real MySQL transactional response preparation', () => {
       jsonHandler(
         async () => {
           await itemService.create({ body: { name: 'First', price: 1 } });
-          return itemService.remove({ params: { id: 'abcdefghijklmnop' } });
+          return itemService.remove({
+            params: { id: 'abcdefghijklmnop' },
+            body: { expected_version: 1 },
+          });
         },
         toItemDTO,
         { transaction: true },

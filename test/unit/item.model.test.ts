@@ -7,6 +7,7 @@ describe('toItemDTO', () => {
   it('converts the maximum MySQL DECIMAL(10, 2) string to the documented number', () => {
     const entity = {
       id: 'A1b2C3d4E5f6G7h8',
+      version: 1,
       name: 'Precise item',
       price: '99999999.99',
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -22,6 +23,7 @@ describe('toItemDTO', () => {
   it('preserves a null description returned by the database', () => {
     const entity = {
       id: 'A1b2C3d4E5f6G7h8',
+      version: 1,
       name: 'Item without a description',
       price: '12.50',
       description: null,

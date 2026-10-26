@@ -154,13 +154,13 @@ status="$(request GET "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/heade
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.id === '${ITEM_ID}' && body.price === 19.95"
 status="$(request PATCH "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers" \
-  --header 'Content-Type: application/json' --data '{"price":24.5}')"
+  --header 'Content-Type: application/json' --data '{"price":24.5,"expected_version":1}')"
 [[ "$status" == 200 ]]
-json_assert "$TMP_DIR/body" 'body.price === 24.5'
+json_assert "$TMP_DIR/body" 'body.price === 24.5 && body.version === 2'
 status="$(request GET '/api/v1/items?page=1&limit=10' "$TMP_DIR/body" "$TMP_DIR/headers")"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.total === 1 && body.data.some(item => item.id === '${ITEM_ID}')"
-status="$(request DELETE "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers")"
+status="$(request POST "/api/v1/items/${ITEM_ID}/delete" "$TMP_DIR/body" "$TMP_DIR/headers" --header 'Content-Type: application/json' --data '{"expected_version":2}')"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.id === '${ITEM_ID}'"
 

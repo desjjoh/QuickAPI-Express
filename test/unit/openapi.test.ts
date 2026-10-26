@@ -19,6 +19,40 @@ function expectRequired(schema: string, properties: string[]): void {
 }
 
 describe('generated OpenAPI contract', () => {
+  it('requires revisions for item mutations and documents the versioned deletion action', () => {
+    const itemFields = schemas.ItemResponse.allOf.find(
+      (part: JsonObject) => part.properties?.version,
+    );
+    expect(itemFields.required).toContain('version');
+    expect(itemFields.properties.version).toMatchObject({
+      minimum: 1,
+      maximum: 4294967295,
+    });
+    for (const schema of [
+      'UpdateItemInput',
+      'ReplaceItemInput',
+      'ItemVersionInput',
+    ]) {
+      const fields =
+        schemas[schema].allOf?.find(
+          (part: JsonObject) => part.properties?.expected_version,
+        ) ?? schemas[schema];
+      expect(fields.required).toContain('expected_version');
+    }
+    const paths = openApiSpec.paths as JsonObject;
+    expect(paths['/api/v1/items/{id}'].delete).toBeUndefined();
+    for (const operation of [
+      paths['/api/v1/items/{id}'].patch,
+      paths['/api/v1/items/{id}'].put,
+      paths['/api/v1/items/{id}/delete'].post,
+    ]) {
+      expect(operation.requestBody.required).toBe(true);
+      expect(Object.keys(operation.responses)).toEqual(
+        expect.arrayContaining(['200', '404', '409', '422']),
+      );
+    }
+  });
+
   it('publishes every status and operations route with its response codes and schemas', () => {
     expect(Object.keys(openApiSpec.paths)).toEqual(
       expect.arrayContaining([

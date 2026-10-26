@@ -4,15 +4,26 @@ import {
 } from '@/database/repositories/item.repo';
 import type { ListDTOParams } from '@/common/library/models/pagination.model';
 import type { ItemEntity } from '@/database/entities/_item.entity';
-import { NotFoundError } from '@/common/exceptions/http.exception';
+import {
+  ConflictError,
+  NotFoundError,
+} from '@/common/exceptions/http.exception';
 import type { IdRouteParams } from '@/common/library/models/parameters.model';
 import type { CreateItemInput } from '../models/item-create.model';
+import type { ReplaceItemInput } from '../models/item-replace.model';
+import type { ItemVersionInput } from '../models/item-version.model';
 import type { UpdateItemInput } from '../models/item-update.model';
 import type { ItemPaginationQuery } from '../models/pagination-query.model';
 
 type ItemPersistence = Pick<
   ItemRepository,
-  'create' | 'get_many' | 'get_by_id' | 'update' | 'remove' | 'transaction'
+  | 'create'
+  | 'get_many'
+  | 'get_by_id'
+  | 'get_by_id_for_update'
+  | 'update'
+  | 'remove'
+  | 'transaction'
 >;
 
 export class ItemService {
@@ -45,9 +56,13 @@ export class ItemService {
     body: UpdateItemInput;
   }): Promise<ItemEntity> =>
     this.repo.transaction(async (manager) => {
-      const item = await this.repo.get_by_id(params.id, manager);
+      const { expected_version, ...changes } = body;
+      const item = this.requireVersion(
+        await this.repo.get_by_id_for_update(params.id, manager),
+        expected_version,
+      );
 
-      return this.repo.update(this.requireItem(item), body, manager);
+      return this.repo.update(item, changes, expected_version, manager);
     });
 
   public replace = ({
@@ -55,31 +70,52 @@ export class ItemService {
     body,
   }: {
     params: IdRouteParams;
-    body: CreateItemInput;
+    body: ReplaceItemInput;
   }): Promise<ItemEntity> =>
     this.repo.transaction(async (manager) => {
-      const item = await this.repo.get_by_id(params.id, manager);
+      const { expected_version, ...changes } = body;
+      const item = this.requireVersion(
+        await this.repo.get_by_id_for_update(params.id, manager),
+        expected_version,
+      );
 
       return this.repo.update(
-        this.requireItem(item),
-        {
-          ...body,
-          description: body.description ?? null,
-        },
+        item,
+        { ...changes, description: changes.description ?? null },
+        expected_version,
         manager,
       );
     });
 
   public remove = ({
     params,
+    body,
   }: {
     params: IdRouteParams;
+    body: ItemVersionInput;
   }): Promise<ItemEntity> =>
     this.repo.transaction(async (manager) => {
-      const item = await this.repo.get_by_id(params.id, manager);
+      const item = this.requireVersion(
+        await this.repo.get_by_id_for_update(params.id, manager),
+        body.expected_version,
+      );
 
-      return this.repo.remove(this.requireItem(item), manager);
+      return this.repo.remove(item, body.expected_version, manager);
     });
+
+  private requireVersion(
+    item: ItemEntity | null,
+    expectedVersion: number,
+  ): ItemEntity {
+    const current = this.requireItem(item);
+
+    if (current.version !== expectedVersion)
+      throw new ConflictError(
+        'Item version conflict; reload the item before retrying.',
+      );
+
+    return current;
+  }
 
   private requireItem(item: ItemEntity | null): ItemEntity {
     if (!item)
