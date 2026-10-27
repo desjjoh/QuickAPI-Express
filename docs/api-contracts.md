@@ -17,6 +17,10 @@ The resource is `/api/v1/items`. There is currently no authentication or authori
 
 The [item schemas](../src/api/v1/items/models) define field validation and response mapping. The [controllers](../src/api/v1/items/controllers/items.controller.ts) validate request locations before calling the [item service](../src/api/v1/items/services/items.service.ts), which coordinates repository operations. Shared HTTP adapters own response mapping and serialization. PUT and PATCH require an existing identifier; neither creates a missing item. Optimistic concurrency is required for item mutations; there is no idempotency-key/replay contract.
 
+The [planned idempotency contract](idempotency.md) defines the next implementation
+passes, including public scope and 24-hour atomic replay. It is not implemented;
+sending `Idempotency-Key` currently does not provide replay protection.
+
 ## Item revisions and mutation preconditions
 
 Every item response, including list entries, includes numeric `version`. Creation

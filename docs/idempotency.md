@@ -1,0 +1,223 @@
+# Planned request idempotency and atomic replay
+
+[Documentation index](../README.md#documentation)
+
+## Status and scope
+
+Pass 1 defines the implementation contract on 2026-10-26. **This feature is not
+implemented or enabled yet.** Current requests have no idempotency/replay guarantee.
+Passes 2–5 must supply persistence, coordination, HTTP integration, retention, and
+the failure evidence below before the feature is considered complete.
+
+The first supported operation will be POST `/api/v1/items`, operation identifier
+`items.create`. The key is optional. Without it, creation retains today's behavior,
+including the possibility of duplicate creation after an uncertain response.
+Updates, deletion, reads, and system endpoints do not gain replay support merely
+because they receive this header. Item revisions remain independent stale-write
+protection. No authentication, Redis dependency, uploads, or external-provider
+coordination is introduced by this work.
+
+The shared implementation follows Nest's separation of endpoint opt-in, HTTP
+integration, central idempotency service, fingerprinting, and MySQL persistence.
+Express intentionally adapts authenticated scope to an explicit public scope,
+fingerprints validated input, and stores its already-prepared JSON string. Expiry
+will be assigned when completing the response record rather than creating the
+claim. Cleanup will use bounded batches rather than an unbounded delete.
+
+## Key and scope contract
+
+- Accept exactly one `Idempotency-Key` header containing 1–128 printable ASCII
+  characters, excluding whitespace and commas. Empty/invalid keys, duplicate
+  header fields, arrays, and combined header values return 400 before database
+  work. Do not trim, case-fold, or otherwise change an accepted key.
+- Clients generate unpredictable keys, such as UUIDv4 values, before the first
+  attempt and retain the same key for retries of that operation.
+- Scope combines an application/database namespace, explicit caller namespace,
+  stable operation identifier, canonical method/route, and key. Hash this tuple
+  for storage and MySQL lock identity; do not log or retain the raw key.
+- Item creation explicitly uses caller namespace `public`. There is no per-user
+  namespace: two callers using the same key for this operation share its conflict
+  and replay behavior. A key is not authentication or authorization. Do not infer
+  identity from IP, forwarded headers, cookies, or request IDs.
+- Future authenticated domains must supply a trusted actor/tenant scope through
+  shared infrastructure; they must not silently reuse the public namespace.
+- Header sanitization and browser CORS configuration must admit the key on the
+  supported operation. Existing validation, admission, and rate limiting still
+  apply to retries; the header does not bypass them.
+
+## Fingerprint contract
+
+Hash a canonical JSON representation of the validated values relevant to the
+operation: body, route parameters, and semantic query values when applicable.
+Object keys are sorted recursively; array order and string content remain
+significant. Exclude transport noise such as request IDs, host, forwarding headers,
+connection details, and JSON whitespace. Ignored/stripped unknown input fields do
+not change the fingerprint.
+
+For item creation, price normalization means `"12.50"` and `12.5` fingerprint the
+same. Property ordering does not matter. Omitted optional description and explicit
+null remain distinct validated inputs; no additional domain normalization is
+inferred. Changing a meaningful field under the same unexpired key returns 409.
+Changing normalization/fingerprint rules later needs a compatibility plan for
+unexpired records; deployment must not casually invalidate existing replay keys.
+
+## Request and outcome examples
+
+```http
+POST /api/v1/items
+Content-Type: application/json
+Idempotency-Key: 0ba3eb40-c95d-46fd-a9ad-79c079708d28
+
+{"name":"Travel Pack","price":"12.50"}
+```
+
+The first successful response is 201 with the validated item, including its ID,
+revision 1, and timestamps. An identical retry within retention returns that
+original status and prepared JSON without invoking the service again. It does not
+return the item's latest state. Updates or deletion after creation do not change
+the retained creation response or cause replay to recreate the item.
+
+| Condition                                                                                             | Outcome                                                                                              |
+| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| No key                                                                                                | Existing non-replay creation behavior                                                                |
+| Invalid/duplicate key header                                                                          | 400; no claim or item write                                                                          |
+| Invalid request payload                                                                               | Existing 422 validation response; no claim or item write                                             |
+| Same scope/key still executing                                                                        | Immediate 409; retry the same key later; no duplicate execution                                      |
+| Completed, unexpired record with matching fingerprint                                                 | Original status and JSON replay; no item write or revision increment                                 |
+| Completed, unexpired record with a different fingerprint                                              | 409; preserve original item and replay record                                                        |
+| Expired record, even if physically present                                                            | Eligible for a new execution after acquiring the key lock                                            |
+| Business failure, DTO/serialization failure, replay-write failure, or response over the storage limit | Roll back all participating writes; no completed replay result; preserve existing error mapping      |
+| Generic database/coordination failure                                                                 | Fail closed with existing 5xx handling; never silently execute without replay protection             |
+| Pool admission/capacity failure                                                                       | Existing 503 response; no success or unprotected fallback                                            |
+| Timeout/disconnect observed before commit                                                             | Keep tracking work until it settles, then roll back; suppress late response writes                   |
+| Commit succeeds but response/commit acknowledgement is lost                                           | Persist both item and completed replay record; a later matching retry replays the committed response |
+
+Successful 2xx outcomes are stored. Error responses are not cached as successful
+replays; participating writes must roll back on unsuccessful execution. A failed
+attempt can execute again with the same key after its transaction and lock settle.
+Fresh request/correlation headers are generated for retries; only the original
+status and JSON body are replayed, not cookies or transport/request-specific headers.
+
+## Shared execution and atomicity
+
+The HTTP handler delegates keyed execution to the common idempotency service before
+opening an application transaction. The service pins one query runner/connection,
+acquires a non-waiting MySQL lock for the scope hash, and owns the outer transaction.
+
+1. Validate the request and key; compute scope and fingerprint.
+2. Acquire the scope/key lock on the pinned connection. Contention returns 409;
+   a database error/null lock result is a coordination failure, not proof of an
+   overlapping request.
+3. Begin the transaction and inspect the replay record using the same manager.
+4. Replay a valid completed record, or replace an expired record and insert a claim.
+5. Invoke the service, map/validate its DTO, select the response status, and prepare
+   JSON once using the existing `JSON.stringify()` response path.
+6. Store that exact response string/status and expiry in the completed record.
+7. Check the request deadline and commit the item and completed record together.
+8. Release the lock and connection, then send the prepared response if possible.
+
+Service transaction wrappers join the outer transaction through the existing
+helper. Every participating repository must use its supplied manager. Multiple
+service/repository calls commit together; an independent transaction, another
+database, or an external side effect is outside this guarantee. The item service
+gets no key-handling, replay, response, or request-lifecycle code.
+
+A processing claim is inserted inside the same transaction, not committed separately
+before the item. The MySQL lock fences concurrent requests while that claim is
+uncommitted. Loss of the database connection before commit rolls back unfinished
+work; a client disconnect follows the existing drain/pre-commit deadline checks.
+Neither may leave a separately committed processing claim permanently blocking
+retries. Commit uncertainty still follows the outcome table above. Completed
+records survive API restarts. API instances must coordinate against the same MySQL
+writer; server-local advisory locks are not a multi-writer database protocol.
+
+Never release a connection or attempt rollback while its accepted SQL is still
+running. If lock release fails, discard the connection rather than returning a
+possibly locked session to the pool. Database uncertainty must not be interpreted
+as permission to retry the item write inside the same attempt.
+
+## Retention and bounded storage
+
+Retention is **24 hours**, stored per completed record using the shared database
+clock. Set `expires_at` from the completion timestamp written with the prepared
+response immediately before commit. The window is measured from that timestamp,
+not HTTP delivery; time spent completing commit does not restart the window.
+Nest currently assigns expiry at claim creation; this intentionally avoids charging
+Express's service execution time against its replay retention.
+
+- A record is eligible for replay when database time is strictly before expiry.
+  At equality it is expired. Determine eligibility while coordinating that key.
+- Replays never extend expiry. Restarting an API or adding instances does not
+  reset it. Active key ownership is controlled by the lock, not a 24-hour timer.
+- Expired keys may execute again, even if the old item still exists. Clients must
+  reconcile uncertain outcomes after retention rather than assume indefinite
+  duplicate protection.
+- Logical expiry is independent of physical deletion. An undeleted expired record
+  must not replay; its replacement is coordinated under the same key lock.
+- Run a lifecycle-owned cleanup sweep hourly. Use bounded batches, prevent
+  overlapping sweeps, recheck expiry in deletion conditions, and remove only
+  expired completed records. Stop scheduling on shutdown and track in-flight
+  cleanup before database teardown. Cleanup must not invalidate unexpired replays.
+- Cleanup failure is logged safely and retried later; it does not change expiry,
+  unlock active work, or permit unprotected execution. Delayed deletion does not
+  promise an exact physical-retention upper bound.
+
+Proposed shared storage defaults for review in pass 2 are **64 KiB of UTF-8 prepared
+JSON per response** and **100 records per cleanup batch**. These are proposed
+implementation limits, not existing configuration or measured capacity. An oversized
+result must fail before commit and roll back both mutation and claim. Bound each
+cleanup run as well as each batch. TTL, response size, and bounded cleanup do not
+establish an absolute table-size cap; storage depends on throughput and failed
+cleanup backlog. Database/storage failures must fail closed.
+
+Keep policy and validation centralized. Actual configuration, optional environment
+values, migration, and lifecycle wiring belong to subsequent passes and must be
+reflected in the structured environment examples when introduced.
+
+## Reusable components and implementation passes
+
+| Component                                     | Ownership                                             |
+| --------------------------------------------- | ----------------------------------------------------- |
+| Key/scope/prepared-response contracts         | Common library; no item-specific dependencies         |
+| Canonicalization and hashing                  | Common helpers accepting validated values             |
+| Lock, claim, replay, transaction coordination | Common idempotency service                            |
+| Replay entity/repository and expiry index     | Database layer shared across domains                  |
+| Retention, size and cleanup policy            | Central validated configuration                       |
+| Header/CORS/OpenAPI and handler opt-in        | HTTP infrastructure and endpoint configuration        |
+| Create-item business operation                | Existing item service/repository, with shared manager |
+
+Remaining implementation passes:
+
+- **Pass 2:** shared contracts, policy, entity/repository and migration; no enabled
+  endpoint. Confirm the proposed size/cleanup limits before fixing schema/config.
+- **Pass 3:** coordinated execution, transaction ownership, rollback and resource
+  cleanup with real-MySQL failure tests.
+- **Pass 4:** POST item creation opt-in, headers/CORS/OpenAPI, and HTTP tests;
+  preserve the no-key path.
+- **Pass 5:** bounded retention cleanup, process/multi-instance/recovery evidence,
+  final operational documentation and production smoke.
+
+## Required failure evidence
+
+Each pass adds focused evidence; enabling the endpoint is not the completion gate.
+
+| Boundary          | Required assertions                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header/input      | Key length/characters/duplicate fields; invalid bodies before claims; header sanitization and browser preflight                                                                     |
+| Fingerprint       | Key-order stability, normalized price equivalence, meaningful differences, omitted/null distinction, array order, no transport-noise influence                                      |
+| Storage/migration | Populated predecessor upgrade, unchanged item data, unique scope/hash enforcement, expiry index, response byte bounds and offline rollback expectations                             |
+| Concurrency       | Barriers for simultaneous duplicates/conflicts; separate processes sharing MySQL; exactly one item/result; no service execution on replay                                           |
+| Failure/atomicity | Acquisition/lock errors, SQL/business failures, DTO/JSON failures, oversized results, replay insertion/finalization failures, and commit failure; no partial item/replay success    |
+| Transport         | Timeout/disconnect during work or response preparation; no success before commit; a committed but undelivered result replays without another mutation                               |
+| Recovery          | Restart persistence, lost commit acknowledgement, expired-key reuse, expiry equality, non-extending replay, cleanup/request races, cleanup failures and shutdown during active work |
+| Resource cleanup  | No retained transaction/lock/connection after success or failure; a bounded/single-slot pool can serve later requests; no premature release during pending SQL                      |
+| Replay fidelity   | Original JSON/status after later item update/deletion, dates/numeric prices, response size, and fresh per-attempt request IDs                                                       |
+| Regression        | No-key behavior, existing revision/price contracts, fail-closed errors, full suites and actual production-image smoke                                                               |
+
+Use unit tests for pure contracts and orchestration, real MySQL for persistence and
+atomicity, and HTTP/process tests for transport/restart/multi-instance behavior.
+Prefer barriers and controlled fault injection to sleep-based races. Inspect
+persisted outcomes independently: at creation commit there is one matching item
+and replay result; rolled-back creation has neither. Later item deletion does not
+remove the retained replay result or make replay recreate the item. Do not claim running-SQL cancellation,
+exactly-once network delivery, or duplicate protection beyond retention.

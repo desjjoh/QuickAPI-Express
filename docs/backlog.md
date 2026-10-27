@@ -40,17 +40,26 @@ Start this work after the system/server review. These items intentionally change
 ### Agreed direction and decisions still required
 
 - Start optional `Idempotency-Key` support with POST item creation. Extend to other mutations only after defining a concrete replay benefit and contract for each operation.
-- Define idempotency scope for this public API before implementation. NestJS's authenticated-actor scope cannot be copied unchanged; do not introduce authentication or use an IP address as client identity implicitly.
+- Follow the [pass-1 idempotency contract](idempotency.md): explicit public scope by operation/route, validated-input fingerprints, original response replay, and database-clock 24-hour retention. Do not introduce authentication or infer client identity from IP.
 - Keep concurrency and replay protection independent. Versions prevent stale writes; idempotency prevents duplicate execution. An identical completed keyed retry replays its original response without another mutation or version increment.
 
-### Item mutation and query safety
+### Atomic POST idempotency and replay
 
-| Area                                     | Current gap                                                                                                                                                                                       | Follow-up and completion criteria                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Request idempotency                      | There is no durable claim, request fingerprint, or replay store. Retrying creation can create another item.                                                                                       | Implement opt-in POST creation replay with validated opaque keys, an explicit public-API scope, request fingerprints, original status/body replay, conflicting-payload and in-flight conflict behavior, expiry, and cleanup. Coordinate across API instances using persistence, not an in-memory map. Test concurrent duplicates, lost-response retries, restart/replay, failure rollback, and expiry. |
-| Replay transaction and response snapshot | Manager-based mutation transactions exist, but no replay record participates in them. Update rereads the row within its transaction after saving; there is no durable original-response snapshot. | Build on the existing transactional response-validation boundary. Commit the item and validated replay snapshot together using the same manager. Return/replay the accepted operation's representation, not a projection of later item state. Test replay-record failures without partial commits.                                                                                                     |
+Implement phases 3 and 4 together using the [shared contract and failure matrix](idempotency.md).
+No endpoint is enabled yet. Remaining work is deliberately split into small passes:
 
-For keyed operations, a completed identical retry returns the original response snapshot, not a projection of the current item. A changed payload under the same unexpired key must conflict. Failed validation or a rolled-back transaction must not leave a successful replay record. Expiry and physical cleanup are separate concerns; define retention and bound response storage.
+- **Pass 2:** common contracts/configuration and durable storage/migration. Confirm
+  proposed 64 KiB response and 100-record cleanup-batch limits before fixing them.
+- **Pass 3:** shared lock/claim/replay execution and transaction/resource ownership.
+- **Pass 4:** POST item opt-in with key-header handling, CORS and OpenAPI; unchanged
+  unkeyed behavior.
+- **Pass 5:** lifecycle-owned bounded cleanup, expiry/restart/multi-instance/failure
+  evidence, complete documentation and production-image smoke.
+
+Item mutation, validated prepared response, and replay record must commit together.
+Expired records do not replay, matching retries do not extend retention, and error
+or rollback paths must not leave a completed replay record. Keep reusable machinery
+outside the item domain; preserve current revision and price contracts.
 
 ### Migration upgrade and rollback evidence
 
