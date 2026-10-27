@@ -93,6 +93,29 @@ describe('bounded cleanup with disposable MySQL', () => {
       await AppDataSource.query(`KILL CONNECTION ${connectionId}`);
       finish.resolve();
       expect(await outcome).toBe(true);
+      // KILL acknowledgement/client failure can precede server rollback and lock release.
+      // Observe cleanup rather than retrying the mutation while its old session owns the key.
+      const scopeHash = idempotencyScopeHash(scope, 'disconnect');
+      await expect
+        .poll(
+          async () => {
+            const sessions: { Id: number | string }[] =
+              await AppDataSource.query('SHOW PROCESSLIST');
+            const [lock] = await AppDataSource.query(
+              'SELECT IS_FREE_LOCK(?) AS free',
+              [scopeHash],
+            );
+
+            return {
+              sessionPresent: sessions.some(
+                (session) => Number(session.Id) === connectionId,
+              ),
+              lockFree: Number(lock.free),
+            };
+          },
+          { timeout: 2000, interval: 20 },
+        )
+        .toEqual({ sessionPresent: false, lockFree: 1 });
       expect(await count()).toBe(0);
       const [items] = await AppDataSource.query(
         'SELECT COUNT(*) AS count FROM items',
