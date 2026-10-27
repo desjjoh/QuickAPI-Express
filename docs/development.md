@@ -151,6 +151,23 @@ Startup now refuses unapplied migrations. Run migrations explicitly before start
 the API; readiness probes never apply them. Initial database connection/ORM setup
 retains its existing driver timeout behavior.
 
+## Shared idempotency policy (endpoint not enabled)
+
+Optional settings are documented as comments in `.env.example`, `.env`, and
+`.env.test`. Omit them to use these defaults:
+
+| Setting                           | Default | Valid range                  |
+| --------------------------------- | ------- | ---------------------------- |
+| `IDEMPOTENCY_MAX_RESPONSE_BYTES`  | `65536` | Integer UTF-8 bytes, 1–65536 |
+| `IDEMPOTENCY_CLEANUP_BATCH_SIZE`  | `100`   | Integer rows, 1–1000         |
+| `IDEMPOTENCY_CLEANUP_MAX_BATCHES` | `10`    | Integer batches, 1–100       |
+
+Batch size multiplied by batch count must not exceed 10000 rows per sweep. Empty
+values fail validation. Retention is fixed at 24 hours, assigned on completion
+using MySQL UTC time; the planned cleanup interval is one hour. Pass 2 adds policy
+and storage only: no scheduler or HTTP key handling is active. See the
+[idempotency lifecycle](idempotency.md) for the remaining passes and boundaries.
+
 ## Local MySQL, migrations, and development
 
 The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user

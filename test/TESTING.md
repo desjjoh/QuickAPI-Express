@@ -305,3 +305,27 @@ rows/revisions after invalid writes, decimal filter boundaries, and ID tie-break
 across adjacent pages for every sort and direction. No schema change or test
 infrastructure change is needed. Offset pagination remains susceptible to shifts
 between requests when rows are inserted, deleted, or reordered.
+
+## Shared idempotency foundation evidence
+
+`idempotency-contracts.test.ts` covers opaque keys, scope separation, stable
+canonical fingerprints of normalized input, unsupported values, policy bounds,
+successful response/body rules, and exact UTF-8 size boundaries. Environment tests
+reject malformed configuration and excessive per-sweep row counts.
+
+`idempotency-storage.test.ts` uses disposable MySQL to check unique claims, exact
+JSON storage through the full 64 KiB limit, database-clock 24-hour expiry, expiry
+equality, conditional deletion, transaction-local processing claims, and bodyless
+responses. Invalid/oversized responses, duplicate SQL claims, and later failures
+roll back item writes and replay state together. Completed records cannot be
+completed again or have retention extended.
+
+`idempotency-migration.test.ts` upgrades a populated predecessor schema, preserves
+item data and migration history, verifies required indexes/schema metadata, checks
+pending-migration startup refusal, and exercises offline down/re-up. The existing
+revision migration test rolls back successor migrations before testing its older
+schema, then restores them.
+
+These are storage primitives exercised in explicit transactions. HTTP idempotency,
+key locks, coordinated execution, scheduled cleanup, and restart/multi-instance
+guarantees remain unimplemented and are not claimed by this evidence.

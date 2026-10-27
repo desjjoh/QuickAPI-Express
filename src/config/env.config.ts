@@ -8,6 +8,11 @@ import { yellow, red, green, dim, bold } from 'colorette';
 
 import { rootPath } from '@/common/helpers/path.helpers';
 import {
+  IdempotencyPolicySchema,
+  defaultIdempotencyPolicy,
+  MAX_IDEMPOTENCY_CLEANUP_ROWS,
+} from '@/common/library/models/idempotency-policy.model';
+import {
   RateLimitPolicySchema,
   defaultRateLimitPolicy,
   MAX_RATE_LIMIT_TIMESTAMP_SLOTS,
@@ -116,6 +121,16 @@ export const EnvSchema = z
       RateLimitPolicySchema.shape.maxClients.unwrap(),
     ),
 
+    IDEMPOTENCY_MAX_RESPONSE_BYTES: duration(
+      defaultIdempotencyPolicy.maxResponseBytes,
+    ).pipe(IdempotencyPolicySchema.shape.maxResponseBytes.unwrap()),
+    IDEMPOTENCY_CLEANUP_BATCH_SIZE: duration(
+      defaultIdempotencyPolicy.cleanupBatchSize,
+    ).pipe(IdempotencyPolicySchema.shape.cleanupBatchSize.unwrap()),
+    IDEMPOTENCY_CLEANUP_MAX_BATCHES: duration(
+      defaultIdempotencyPolicy.cleanupMaxBatches,
+    ).pipe(IdempotencyPolicySchema.shape.cleanupMaxBatches.unwrap()),
+
     TRUST_PROXY: commaSeparated.pipe(z.array(trustedProxy)).default([]),
     CORS_ORIGINS: commaSeparated
       .pipe(z.array(corsOrigin).min(1))
@@ -195,6 +210,16 @@ export const EnvSchema = z
     {
       message: `Rate limiter storage must not exceed ${MAX_RATE_LIMIT_TIMESTAMP_SLOTS} timestamp slots`,
       path: ['RATE_LIMIT_MAX_CLIENTS'],
+    },
+  )
+  .refine(
+    (value) =>
+      value.IDEMPOTENCY_CLEANUP_BATCH_SIZE *
+        value.IDEMPOTENCY_CLEANUP_MAX_BATCHES <=
+      MAX_IDEMPOTENCY_CLEANUP_ROWS,
+    {
+      message: 'Idempotency cleanup must not exceed 10000 rows per sweep.',
+      path: ['IDEMPOTENCY_CLEANUP_MAX_BATCHES'],
     },
   )
   .refine(({ NODE_ENV, PORT }) => NODE_ENV === 'test' || PORT !== 0, {

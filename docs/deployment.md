@@ -22,6 +22,19 @@ exception rules, retained evidence, and local commands. The [release lifecycle](
 builds one unpublished candidate, retains its SBOM/provenance, smoke-tests and scans
 it, then publishes and promotes the verified digest without rebuilding.
 
+## Replay-storage migration (endpoint not enabled)
+
+Apply `RequestIdempotency1793059200000` through the normal explicit migration step
+before starting this version. Startup still rejects pending migrations, even
+though HTTP idempotency is not enabled yet. This additive migration creates
+`request_idempotency` and its expiry index; it does not change existing item data.
+Records have no item foreign key because a future replay must survive item deletion.
+
+The down migration drops replay history. It is an offline schema downgrade, not a
+safe online rollback once keyed operations are enabled. Preserve verified replay
+history during application rollback; do not regenerate baselines or reset a
+development database to apply this migration. No cleanup timer starts in this pass.
+
 ## Proxy and browser access
 
 `TRUST_PROXY` now defaults to empty (no proxy trust), replacing the old hardcoded

@@ -4,10 +4,11 @@
 
 ## Status and scope
 
-Pass 1 defines the implementation contract on 2026-10-26. **This feature is not
-implemented or enabled yet.** Current requests have no idempotency/replay guarantee.
-Passes 2–5 must supply persistence, coordination, HTTP integration, retention, and
-the failure evidence below before the feature is considered complete.
+Pass 1 defined the implementation contract on 2026-10-26. Pass 2 implements shared
+schemas, canonical fingerprints, validated policy, and replay storage/migration.
+**No endpoint is enabled yet.** Current requests have no idempotency/replay guarantee.
+Passes 3–5 must supply coordination, HTTP integration, scheduled cleanup, and the
+remaining failure evidence below before the feature is considered complete.
 
 The first supported operation will be POST `/api/v1/items`, operation identifier
 `items.create`. The key is optional. Without it, creation retains today's behavior,
@@ -162,17 +163,29 @@ Express's service execution time against its replay retention.
   unlock active work, or permit unprotected execution. Delayed deletion does not
   promise an exact physical-retention upper bound.
 
-Proposed shared storage defaults for review in pass 2 are **64 KiB of UTF-8 prepared
-JSON per response** and **100 records per cleanup batch**. These are proposed
-implementation limits, not existing configuration or measured capacity. An oversized
-result must fail before commit and roll back both mutation and claim. Bound each
-cleanup run as well as each batch. TTL, response size, and bounded cleanup do not
-establish an absolute table-size cap; storage depends on throughput and failed
-cleanup backlog. Database/storage failures must fail closed.
+Confirmed shared defaults are **64 KiB of UTF-8 prepared JSON per response**,
+**100 records per cleanup batch**, and **at most 10 batches per hourly sweep**.
+The response limit may be reduced but cannot exceed 65536 bytes. Batch size must be
+1–1000, batch count 1–100, and their product at most 10000. Empty, fractional,
+non-finite, and out-of-range configuration fails validation. Retention remains fixed
+at 24 hours; the planned sweep interval is fixed at one hour. Optional settings are
+listed in the structured environment files and [development guide](development.md).
+No cleanup timer is started in pass 2.
 
-Keep policy and validation centralized. Actual configuration, optional environment
-values, migration, and lifecycle wiring belong to subsequent passes and must be
-reflected in the structured environment examples when introduced.
+The repository requires an active transaction manager for writes and stores the
+prepared JSON string unchanged in MEDIUMTEXT, which accommodates the full 65536-byte
+boundary. Successful completion sets both timestamps using MySQL UTC time; only a
+processing record can be completed. Expiry reads and conditional deletion also use
+database time. A 204/205 result has no JSON body; other successful statuses require
+valid JSON. Oversized or invalid responses reject completion rather than truncate.
+The later execution pass must connect these primitives to the shared transaction.
+
+Canonicalization accepts validated plain JSON values, omits undefined object fields,
+and rejects cycles, sparse/undefined array entries, non-finite numbers, and class
+instances. Domains using dates or richer values must normalize them before hashing.
+TTL, response size, and bounded cleanup do not establish an absolute table-size cap;
+storage depends on throughput and cleanup backlog. Database/storage failures must
+fail closed.
 
 ## Reusable components and implementation passes
 
@@ -188,8 +201,6 @@ reflected in the structured environment examples when introduced.
 
 Remaining implementation passes:
 
-- **Pass 2:** shared contracts, policy, entity/repository and migration; no enabled
-  endpoint. Confirm the proposed size/cleanup limits before fixing schema/config.
 - **Pass 3:** coordinated execution, transaction ownership, rollback and resource
   cleanup with real-MySQL failure tests.
 - **Pass 4:** POST item creation opt-in, headers/CORS/OpenAPI, and HTTP tests;

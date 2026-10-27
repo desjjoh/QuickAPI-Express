@@ -18,6 +18,7 @@ export async function resetTestDatabase(): Promise<void> {
   if (!AppDataSource.isInitialized)
     throw new Error('Test database is not connected');
 
+  await AppDataSource.query('DELETE FROM `request_idempotency`');
   await AppDataSource.query('DELETE FROM `items`');
 }
 

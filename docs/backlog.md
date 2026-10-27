@@ -48,8 +48,6 @@ Start this work after the system/server review. These items intentionally change
 Implement phases 3 and 4 together using the [shared contract and failure matrix](idempotency.md).
 No endpoint is enabled yet. Remaining work is deliberately split into small passes:
 
-- **Pass 2:** common contracts/configuration and durable storage/migration. Confirm
-  proposed 64 KiB response and 100-record cleanup-batch limits before fixing them.
 - **Pass 3:** shared lock/claim/replay execution and transaction/resource ownership.
 - **Pass 4:** POST item opt-in with key-header handling, CORS and OpenAPI; unchanged
   unkeyed behavior.
@@ -63,7 +61,7 @@ outside the item domain; preserve current revision and price contracts.
 
 ### Migration upgrade and rollback evidence
 
-Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. The revision upgrade now has representative-data and offline downgrade evidence. Add equivalent evidence alongside future replay migrations when their schemas and contracts are defined:
+Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. Revision and replay-storage upgrades now have representative-data and offline downgrade evidence. Add equivalent evidence alongside future migrations:
 
 - Exercise upgrades against representative existing rows; verify data preservation, defaults/backfills, and required indexes.
 - Define deployment ordering and compatibility. Preserve the existing revision enforcement when adding replay state; old writers that bypass the contract must not coexist with new writers.
