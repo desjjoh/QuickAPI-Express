@@ -22,6 +22,39 @@ exception rules, retained evidence, and local commands. The [release lifecycle](
 builds one unpublished candidate, retains its SBOM/provenance, smoke-tests and scans
 it, then publishes and promotes the verified digest without rebuilding.
 
+## Replay-storage migration and keyed mutations
+
+Apply `RequestIdempotency1793059200000` through the normal explicit migration step
+before starting this version. Startup still rejects pending migrations. This additive migration creates
+`request_idempotency` and its expiry index; it does not change existing item data.
+Records have no item foreign key because replay survives item deletion. Optional
+keyed item creation, PATCH, PUT and deletion are enabled; no-key behavior is unchanged. Replicas
+must share the MySQL writer, stable `APP_NAME`/`DB_DATABASE`, and the same scope and
+fingerprint contract. Release rollback must retain that contract for unexpired keys.
+PATCH/PUT/deletion replay extends the original creation-only contract. Upgrade all
+API replicas before clients rely on those keys: older versions ignore the header
+on those operations. The controller option rename to `scope` does not change stored
+caller scope or existing creation hashes, and requires no new migration.
+Include `idempotency-key` in any custom CORS request-header list and preserve the
+header through ingress without duplicating or rewriting its value.
+
+The down migration drops replay history. It is an offline schema downgrade, not a
+safe online rollback while keyed operations are enabled. Preserve verified replay
+history during application rollback; do not regenerate baselines or reset a
+development database to apply this migration. Each API process runs non-overlapping
+hourly cleanup: defaults are 100 rows per batch, at most 10 batches per sweep. Only
+expired completed records are deleted, using database UTC time. Cleanup quiesces
+immediately on shutdown and drains after HTTP work, before MySQL closes. The overall
+shutdown watchdog bounds stuck cleanup; running SQL is not cancelled. See the
+[cleanup lifecycle](idempotency.md#cleanup-lifecycle) for exact ordering and failures.
+
+Logical expiry is independent of physical deletion. Failed/delayed sweeps cannot
+extend replay eligibility. Monitor table growth: bounded batches, response size,
+and 24-hour expiry do not impose an absolute storage cap at arbitrary throughput.
+There is no distributed leader; replicas can safely issue their own conditional
+deletes against the shared writer. Independent MySQL writers remain outside this
+advisory-lock coordination contract.
+
 ## Proxy and browser access
 
 `TRUST_PROXY` now defaults to empty (no proxy trust), replacing the old hardcoded

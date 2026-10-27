@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, MigrationExecutor } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppDataSource, initializeDatabase } from '@/config/database.config';
 import {
@@ -12,6 +12,20 @@ assertSafeTestDatabase();
 beforeAll(connectTestDatabase);
 afterAll(disconnectTestDatabase);
 
+/** Rehearse this historical upgrade even when newer additive migrations exist. */
+async function undoRevisionAndSuccessors(source: DataSource): Promise<void> {
+  const executed = await new MigrationExecutor(source).getExecutedMigrations();
+
+  for (const migration of executed) {
+    await source.undoLastMigration();
+    if (migration.name === 'ItemRevisions1792972800000') return;
+  }
+
+  throw new Error(
+    'Expected the item revision migration in disposable history.',
+  );
+}
+
 describe('item revision upgrade over representative existing data', () => {
   it('backfills revisions, preserves data/timestamps, refuses pending startup, and rehearses an offline schema downgrade', async () => {
     await resetTestDatabase();
@@ -19,7 +33,7 @@ describe('item revision upgrade over representative existing data', () => {
     await source.initialize();
     try {
       expect(await source.showMigrations()).toBe(false);
-      await source.undoLastMigration();
+      await undoRevisionAndSuccessors(source);
       expect(await source.showMigrations()).toBe(true);
       await source.query(`INSERT INTO items (id, name, price, description, createdAt, updatedAt) VALUES
         ('upgradefixture01', 'Existing item', 12.34, NULL, '2026-01-01 00:00:00.123456', '2026-02-01 00:00:00.654321'),
@@ -53,7 +67,7 @@ describe('item revision upgrade over representative existing data', () => {
       const beforeDowngrade = await source.query(
         'SELECT id, name, price, description, createdAt, updatedAt FROM items ORDER BY id',
       );
-      await source.undoLastMigration();
+      await undoRevisionAndSuccessors(source);
       expect(await source.query('SELECT * FROM items ORDER BY id')).toEqual(
         beforeDowngrade,
       );

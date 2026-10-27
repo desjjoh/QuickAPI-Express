@@ -131,7 +131,13 @@ other databases, and external side effects are outside that boundary. The wrappe
 does not itself add domain concurrency or idempotency guarantees. Item mutations
 explicitly lock their target row, compare the expected revision, and include the
 revision in UPDATE/DELETE conditions. This supplies stale-write protection while
-retaining the transaction/response lifecycle boundary. Idempotency remains planned.
+retaining the transaction/response lifecycle boundary. Optional keyed item mutations add
+shared MySQL lock/claim/replay coordination through `jsonHandler`; its outer
+transaction includes the item and exact prepared response record. The controller
+supplies operation/scope metadata; business services remain unaware of keys and
+request lifecycles. See [idempotency](idempotency.md) for scope and failure behavior.
+A lifecycle-owned hourly cleanup service starts after MySQL, quiesces on shutdown,
+and drains after HTTP but before database teardown.
 
 Only item creation, PATCH/PUT, and the POST deletion action opt in; reads and system endpoints retain
 their ordinary adapters. Do not enable handler transactions for streaming or

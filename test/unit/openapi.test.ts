@@ -19,6 +19,51 @@ function expectRequired(schema: string, properties: string[]): void {
 }
 
 describe('generated OpenAPI contract', () => {
+  it('documents optional idempotency on every item mutation and leaves reads without opt-in', () => {
+    const paths = openApiSpec.paths as JsonObject;
+    const operation = paths['/api/v1/items'].post;
+    const header = operation.parameters.find(
+      (parameter: JsonObject) => parameter.name === 'Idempotency-Key',
+    );
+    expect(header).toMatchObject({
+      in: 'header',
+      required: false,
+      schema: { type: 'string', minLength: 1, maxLength: 128 },
+    });
+    expect(new RegExp(header.schema.pattern).test('abc-123')).toBe(true);
+    expect(new RegExp(header.schema.pattern).test('a,b')).toBe(false);
+    expect(Object.keys(operation.responses)).toEqual(
+      expect.arrayContaining(['201', '400', '409', '422', '408', '500', '503']),
+    );
+    for (const other of [
+      paths['/api/v1/items/{id}'].patch,
+      paths['/api/v1/items/{id}'].put,
+      paths['/api/v1/items/{id}/delete'].post,
+    ]) {
+      expect(
+        other.parameters?.some(
+          (parameter: JsonObject) => parameter.name === 'Idempotency-Key',
+        ),
+      ).toBe(true);
+      expect(Object.keys(other.responses)).toEqual(
+        expect.arrayContaining([
+          '200',
+          '400',
+          '404',
+          '409',
+          '422',
+          '408',
+          '500',
+          '503',
+        ]),
+      );
+    }
+    expect(
+      paths['/api/v1/items'].get.parameters?.some(
+        (parameter: JsonObject) => parameter.name === 'Idempotency-Key',
+      ) ?? false,
+    ).toBe(false);
+  });
   it('requires revisions for item mutations and documents the versioned deletion action', () => {
     const itemFields = schemas.ItemResponse.allOf.find(
       (part: JsonObject) => part.properties?.version,

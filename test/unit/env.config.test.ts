@@ -21,6 +21,41 @@ const valid = {
 } satisfies NodeJS.ProcessEnv;
 
 describe('environment configuration', () => {
+  it('defaults to bounded, inactive idempotency policy settings', () => {
+    expect(parseEnv(valid)).toMatchObject({
+      IDEMPOTENCY_MAX_RESPONSE_BYTES: 65536,
+      IDEMPOTENCY_CLEANUP_BATCH_SIZE: 100,
+      IDEMPOTENCY_CLEANUP_MAX_BATCHES: 10,
+    });
+    expect(
+      parseEnv({ ...valid, IDEMPOTENCY_MAX_RESPONSE_BYTES: '1024' })
+        .IDEMPOTENCY_MAX_RESPONSE_BYTES,
+    ).toBe(1024);
+  });
+  it.each(['', '0', '-1', '1.5', 'NaN', 'Infinity'])(
+    'rejects invalid idempotency limits %j',
+    (value) => {
+      for (const key of [
+        'IDEMPOTENCY_MAX_RESPONSE_BYTES',
+        'IDEMPOTENCY_CLEANUP_BATCH_SIZE',
+        'IDEMPOTENCY_CLEANUP_MAX_BATCHES',
+      ])
+        expect(() => parseEnv({ ...valid, [key]: value })).toThrow();
+    },
+  );
+  it('rejects excessive per-response and aggregate cleanup capacity', () => {
+    for (const overrides of [
+      { IDEMPOTENCY_MAX_RESPONSE_BYTES: '65537' },
+      { IDEMPOTENCY_CLEANUP_BATCH_SIZE: '1001' },
+      { IDEMPOTENCY_CLEANUP_MAX_BATCHES: '101' },
+      {
+        IDEMPOTENCY_CLEANUP_BATCH_SIZE: '1000',
+        IDEMPOTENCY_CLEANUP_MAX_BATCHES: '11',
+      },
+    ])
+      expect(() => parseEnv({ ...valid, ...overrides })).toThrow();
+  });
+
   it('defaults to bounded database capacity, separate deadlines, and local non-TLS operation', () => {
     expect(parseEnv(valid)).toMatchObject({
       DB_POOL_CONNECTION_LIMIT: 10,
@@ -197,6 +232,7 @@ describe('environment configuration', () => {
         'content-type',
         'authorization',
         'x-requested-with',
+        'idempotency-key',
       ],
       CORS_EXPOSED_HEADERS: ['authorization', 'set-cookie'],
       CORS_CREDENTIALS: true,

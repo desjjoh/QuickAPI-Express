@@ -15,7 +15,22 @@ The resource is `/api/v1/items`. There is currently no authentication or authori
 | `PUT /api/v1/items/:id`         | Replace using required `expected_version`; omitted description becomes null |
 | `POST /api/v1/items/:id/delete` | Delete using required `expected_version`; return the removed DTO with 200   |
 
-The [item schemas](../src/api/v1/items/models) define field validation and response mapping. The [controllers](../src/api/v1/items/controllers/items.controller.ts) validate request locations before calling the [item service](../src/api/v1/items/services/items.service.ts), which coordinates repository operations. Shared HTTP adapters own response mapping and serialization. PUT and PATCH require an existing identifier; neither creates a missing item. Optimistic concurrency is required for item mutations; there is no idempotency-key/replay contract.
+The [item schemas](../src/api/v1/items/models) define field validation and response mapping. The [controllers](../src/api/v1/items/controllers/items.controller.ts) validate request locations before calling the [item service](../src/api/v1/items/services/items.service.ts), which coordinates repository operations. Shared HTTP adapters own response mapping and serialization. PUT and PATCH require an existing identifier; neither creates a missing item. Optimistic concurrency is required for item updates/deletion. All four item mutation routes support optional durable idempotency.
+
+Optional `Idempotency-Key` on POST creation, PATCH, PUT and the POST deletion action provides [24-hour atomic replay](idempotency.md).
+Send one opaque case-sensitive key of 1–128 printable ASCII characters without
+whitespace or commas. Matching validated input replays the original successful
+status/JSON; changed input or an in-flight key returns 409. Invalid/duplicate keys
+return 400, invalid input returns 422, and unsuccessful attempts are not cached.
+The scope is public: callers sharing a key share replay/conflict behavior. Keys
+are not authorization. Replay does not extend expiry or reflect later edits/deletion.
+Expired keys may execute again; retention is not indefinite duplicate protection.
+Reads/system routes ignore this header. Without a key, existing mutation behavior is unchanged.
+For update/delete retries, keep the original `expected_version`: completed replay
+skips current-version/existence checks. A new attempt still enforces them. Changing
+the ID, version or validated payload under the same operation/key returns 409.
+Browser preflight requires `idempotency-key` in custom CORS allowed headers; defaults
+include it. Scheduled cleanup removes only expired completed replay records.
 
 ## Item revisions and mutation preconditions
 
@@ -53,7 +68,7 @@ This intentionally changes the client contract. The old `DELETE /items/:id` rout
 is removed (404); use the POST deletion action with a JSON body. Existing PUT/PATCH
 requests without `expected_version` now return 422. No ETag/If-Match convention is
 introduced. Versions prevent stale writes, not duplicate creation or uncertain
-commit outcomes. POST creation still has no durable replay protection.
+commit outcomes. Use a retained idempotency key and original payload for mutation retries within the replay window.
 
 ## Price precision and input
 
@@ -113,8 +128,8 @@ mutation; a success response is sent only after commit succeeds. Request expiry/
 before the shared pre-commit check causes rollback after outstanding work settles.
 It does not cancel running SQL. Expiry/disconnect racing the final check or an
 already-started COMMIT cannot guarantee rollback; a lost response can mean the
-write succeeded. Item operations
-still have no idempotency contract; reconcile uncertain results before retrying.
+write succeeded. Only opted-in keyed item mutations have replay protection; reconcile other
+uncertain mutation outcomes before retrying.
 New requests reaching the shutdown admission guard receive 503 with connection
 closure; once the listener closes, connections are refused instead.
 
@@ -139,6 +154,6 @@ See [database readiness and recovery](database-lifecycle.md) for caching, outage
 timing, migration checks, and connection cleanup. Business writes are not retried
 automatically after a database disconnection.
 
-Errors use `{ status, message, timestamp }`. Schema validation and malformed JSON return 400; missing items return 404. Unexpected failures return a generic 500 while internal details are logged. Body limits, content-type restrictions, header policies, and rate limiting apply before routes; see [middleware ordering](architecture.md#createapp-middleware-ordering).
+Errors use `{ status, message, timestamp }`. Request schema validation returns 422; malformed JSON returns 400; missing items return 404. Unexpected failures return a generic 500 while internal details are logged. Body limits, content-type restrictions, header policies, and rate limiting apply before routes; see [middleware ordering](architecture.md#createapp-middleware-ordering).
 
 Swagger at `/docs`, JSON at `/docs-json`, and ReDoc at `/redoc` expose the generated schemas. CORS defaults to `http://localhost:3000` and is configurable through the validated [HTTP policy settings](development.md#proxy-and-cors-configuration). See [backlog](backlog.md) for remaining runtime gaps.

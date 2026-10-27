@@ -35,26 +35,9 @@ See [deployment](deployment.md), [database lifecycle](database-lifecycle.md), [d
 
 ## 2. Business/API logic
 
-Start this work after the system/server review. These items intentionally change item contracts and need separate discussion before implementation.
-
-### Agreed direction and decisions still required
-
-- Start optional `Idempotency-Key` support with POST item creation. Extend to other mutations only after defining a concrete replay benefit and contract for each operation.
-- Define idempotency scope for this public API before implementation. NestJS's authenticated-actor scope cannot be copied unchanged; do not introduce authentication or use an IP address as client identity implicitly.
-- Keep concurrency and replay protection independent. Versions prevent stale writes; idempotency prevents duplicate execution. An identical completed keyed retry replays its original response without another mutation or version increment.
-
-### Item mutation and query safety
-
-| Area                                     | Current gap                                                                                                                                                                                       | Follow-up and completion criteria                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Request idempotency                      | There is no durable claim, request fingerprint, or replay store. Retrying creation can create another item.                                                                                       | Implement opt-in POST creation replay with validated opaque keys, an explicit public-API scope, request fingerprints, original status/body replay, conflicting-payload and in-flight conflict behavior, expiry, and cleanup. Coordinate across API instances using persistence, not an in-memory map. Test concurrent duplicates, lost-response retries, restart/replay, failure rollback, and expiry. |
-| Replay transaction and response snapshot | Manager-based mutation transactions exist, but no replay record participates in them. Update rereads the row within its transaction after saving; there is no durable original-response snapshot. | Build on the existing transactional response-validation boundary. Commit the item and validated replay snapshot together using the same manager. Return/replay the accepted operation's representation, not a projection of later item state. Test replay-record failures without partial commits.                                                                                                     |
-
-For keyed operations, a completed identical retry returns the original response snapshot, not a projection of the current item. A changed payload under the same unexpired key must conflict. Failed validation or a rolled-back transaction must not leave a successful replay record. Expiry and physical cleanup are separate concerns; define retention and bound response storage.
-
 ### Migration upgrade and rollback evidence
 
-Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. The revision upgrade now has representative-data and offline downgrade evidence. Add equivalent evidence alongside future replay migrations when their schemas and contracts are defined:
+Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. Revision and replay-storage upgrades now have representative-data and offline downgrade evidence. Add equivalent evidence alongside future migrations:
 
 - Exercise upgrades against representative existing rows; verify data preservation, defaults/backfills, and required indexes.
 - Define deployment ordering and compatibility. Preserve the existing revision enforcement when adding replay state; old writers that bypass the contract must not coexist with new writers.

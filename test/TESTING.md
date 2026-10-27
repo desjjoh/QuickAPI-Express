@@ -305,3 +305,83 @@ rows/revisions after invalid writes, decimal filter boundaries, and ID tie-break
 across adjacent pages for every sort and direction. No schema change or test
 infrastructure change is needed. Offset pagination remains susceptible to shifts
 between requests when rows are inserted, deleted, or reordered.
+
+## Shared idempotency foundation evidence
+
+`idempotency-contracts.test.ts` covers opaque keys, scope separation, stable
+canonical fingerprints of normalized input, unsupported values, policy bounds,
+successful response/body rules, and exact UTF-8 size boundaries. Environment tests
+reject malformed configuration and excessive per-sweep row counts.
+
+`idempotency-storage.test.ts` uses disposable MySQL to check unique claims, exact
+JSON storage through the full 64 KiB limit, database-clock 24-hour expiry, expiry
+equality, conditional deletion, transaction-local processing claims, and bodyless
+responses. Invalid/oversized responses, duplicate SQL claims, and later failures
+roll back item writes and replay state together. Completed records cannot be
+completed again or have retention extended.
+
+`idempotency-migration.test.ts` upgrades a populated predecessor schema, preserves
+item data and migration history, verifies required indexes/schema metadata, checks
+pending-migration startup refusal, and exercises offline down/re-up. The existing
+revision migration test rolls back successor migrations before testing its older
+schema, then restores them.
+
+`idempotency-service.test.ts` exercises shared orchestration, input validation before
+acquisition, definite versus uncertain lock results, storage failures, malformed
+stored data, delayed acquisition, request abandonment, transaction nesting, commit
+failure, rollback failure, and lock-release failure.
+
+`idempotency-execution.test.ts` uses real MySQL for non-waiting contention across
+separate pools, independent scopes/keys, one outer transaction across service calls,
+exact replay without new writes, and unchanged retention after later item edits or
+deletion. It checks rollback after business/SQL/DTO/JSON/size/finalization failures,
+atomic expired-key replacement, and pool reuse after repeated failures. Controlled
+fault injection verifies failed commit before execution, lost acknowledgement after
+an actual successful commit, and connection disposal after release/rollback failure.
+Barriers verify that abandoned asynchronous work and pending SQL retain their lock
+and connection until settled, followed by rollback. Single-slot pools expose leaked
+leases. Lost acknowledgement is simulated around a real commit; this is not proof
+of every network partition/failover outcome.
+
+`idempotency-header.test.ts` checks absence, opaque values, malformed/combined/array
+values, raw duplicates, and transaction opt-in. OpenAPI tests check optional header
+bounds, pattern and response statuses, and the absence of opt-in on other operations.
+`idempotency-http.test.ts` exercises the actual application stack with disposable
+MySQL: normalized replay with fresh correlation IDs, unchanged retention, later
+edit/delete, no-key behavior, unsupported endpoint behavior, invalid/duplicate raw
+headers, invalid input, semantic conflicts, busy keys, CORS/preflight, custom CORS
+omission, and rate limiting. Handler fixtures cover bodyless replay, DTO/JSON/size
+rollback, timeout and client disconnect, followed by successful retries after drain.
+
+`idempotency-cleanup.test.ts` in the unit suite verifies one unreferenced hourly
+timer, no startup sweep, no overlap, batch/sweep bounds, short-batch exit, safe
+logging/retry, and waiting for the accepted batch on shutdown. The integration file
+with the same name verifies bounded deletion, live/processing-record preservation,
+concurrent sweepers, expiry rechecking after waiting for a replacement transaction,
+failure/recovery, and rollback/retry after a real MySQL session is killed.
+
+`idempotency-process.test.ts` starts separate real API processes against disposable
+MySQL. It checks simultaneous duplicates/conflicts, exact replay after restart,
+logical expired-key reuse, process termination before commit, graceful keyed-work
+drain, cleanup-before-database shutdown, and finite failing exit for stuck cleanup.
+A fixture closes the HTTP socket immediately after actual commit and before send;
+a new process must replay the stored response without another item. Portable IPC
+emits the registered SIGTERM handler on Windows; production container smoke sends
+a real SIGTERM to the compiled process.
+
+Production smoke now verifies keyed creation, normalized exact-byte replay, fresh
+correlation IDs, changed-input conflict, replay after deletion, and replay after
+restarting the same image. Real process/database-session loss and controlled commit
+acknowledgement faults establish these outcomes, not every MySQL writer failover
+or network partition. Hosted ingress, failover and operational checks remain
+deployment-owned.
+
+`item-mutation-replay.test.ts` covers PATCH, PUT and deletion with real MySQL:
+original-result replay after version changes or deletion, explicit route/operation
+identity, different-ID/version/payload conflicts, invalid keys, version validation,
+overlapping requests, no-key/new-key preconditions, DTO-failure rollback and retry,
+and separation across operations. A prior-format creation record verifies hash and
+replay compatibility after renaming the controller option to `scope`. Internal
+caller scope and persisted columns remain unchanged. Reads ignore the header.
+Production smoke also replays PATCH/PUT without another revision increment and
+deletion after removal and restart.
