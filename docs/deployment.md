@@ -22,18 +22,24 @@ exception rules, retained evidence, and local commands. The [release lifecycle](
 builds one unpublished candidate, retains its SBOM/provenance, smoke-tests and scans
 it, then publishes and promotes the verified digest without rebuilding.
 
-## Replay-storage migration (endpoint not enabled)
+## Replay-storage migration and keyed creation
 
 Apply `RequestIdempotency1793059200000` through the normal explicit migration step
-before starting this version. Startup still rejects pending migrations, even
-though HTTP idempotency is not enabled yet. This additive migration creates
+before starting this version. Startup still rejects pending migrations. This additive migration creates
 `request_idempotency` and its expiry index; it does not change existing item data.
-Records have no item foreign key because a future replay must survive item deletion.
+Records have no item foreign key because replay survives item deletion. Optional
+keyed POST item creation is enabled; no-key creation remains unchanged. Replicas
+must share the MySQL writer, stable `APP_NAME`/`DB_DATABASE`, and the same scope and
+fingerprint contract. Release rollback must retain that contract for unexpired keys.
+Include `idempotency-key` in any custom CORS request-header list and preserve the
+header through ingress without duplicating or rewriting its value.
 
 The down migration drops replay history. It is an offline schema downgrade, not a
-safe online rollback once keyed operations are enabled. Preserve verified replay
+safe online rollback while keyed operations are enabled. Preserve verified replay
 history during application rollback; do not regenerate baselines or reset a
-development database to apply this migration. No cleanup timer starts in this pass.
+development database to apply this migration. No cleanup timer starts in this pass;
+expired rows do not replay, but they remain physically stored until key replacement
+or future bounded cleanup. Monitor storage until the pass-5 scheduler is implemented.
 
 ## Proxy and browser access
 

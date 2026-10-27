@@ -343,6 +343,16 @@ and connection until settled, followed by rollback. Single-slot pools expose lea
 leases. Lost acknowledgement is simulated around a real commit; this is not proof
 of every network partition/failover outcome.
 
-HTTP idempotency, scheduled cleanup, and process restart/multi-process evidence
-remain deferred to passes 4–5. Separate-pool contention proves database session
+`idempotency-header.test.ts` checks absence, opaque values, malformed/combined/array
+values, raw duplicates, and transaction opt-in. OpenAPI tests check optional header
+bounds, pattern and response statuses, and the absence of opt-in on other operations.
+`idempotency-http.test.ts` exercises the actual application stack with disposable
+MySQL: normalized replay with fresh correlation IDs, unchanged retention, later
+edit/delete, no-key behavior, unsupported endpoint behavior, invalid/duplicate raw
+headers, invalid input, semantic conflicts, busy keys, CORS/preflight, custom CORS
+omission, and rate limiting. Handler fixtures cover bodyless replay, DTO/JSON/size
+rollback, timeout and client disconnect, followed by successful retries after drain.
+
+Scheduled cleanup and process restart/multi-process evidence remain deferred to
+pass 5. Separate-pool contention proves database session
 coordination, not the complete hosted multi-instance deployment contract.

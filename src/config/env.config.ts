@@ -154,7 +154,12 @@ export const EnvSchema = z
       .default(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']),
     CORS_ALLOWED_HEADERS: commaSeparated
       .pipe(z.array(headerName))
-      .default(['content-type', 'authorization', 'x-requested-with']),
+      .default([
+        'content-type',
+        'authorization',
+        'x-requested-with',
+        'idempotency-key',
+      ]),
     CORS_EXPOSED_HEADERS: commaSeparated
       .pipe(z.array(headerName))
       .default(['authorization', 'set-cookie']),

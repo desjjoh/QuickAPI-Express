@@ -1,9 +1,15 @@
 import { env } from './env.config';
+import { createHash } from 'node:crypto';
 import {
   IdempotencyPolicySchema,
   IDEMPOTENCY_RETENTION_MS,
   IDEMPOTENCY_CLEANUP_INTERVAL_MS,
 } from '@/common/library/models/idempotency-policy.model';
+
+/** Stable across replicas and host aliases; changing it changes the replay namespace. */
+export const idempotencyNamespace = createHash('sha256')
+  .update(JSON.stringify([env.APP_NAME, env.DB_DATABASE]))
+  .digest('hex');
 
 /** Validated policy only; no timer, execution service, or endpoint is enabled here. */
 export const idempotencyPolicy = Object.freeze({

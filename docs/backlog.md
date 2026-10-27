@@ -45,11 +45,9 @@ Start this work after the system/server review. These items intentionally change
 
 ### Atomic POST idempotency and replay
 
-Implement phases 3 and 4 together using the [shared contract and failure matrix](idempotency.md).
-No endpoint is enabled yet. Remaining work is deliberately split into small passes:
+Optional POST item creation is enabled using the [shared contract and failure matrix](idempotency.md).
+Remaining work:
 
-- **Pass 4:** POST item opt-in with key-header handling, CORS and OpenAPI; unchanged
-  unkeyed behavior.
 - **Pass 5:** lifecycle-owned bounded cleanup, expiry/restart/multi-instance/failure
   evidence, complete documentation and production-image smoke.
 

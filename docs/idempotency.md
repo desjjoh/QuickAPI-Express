@@ -1,4 +1,4 @@
-# Planned request idempotency and atomic replay
+# Request idempotency and atomic replay
 
 [Documentation index](../README.md#documentation)
 
@@ -7,11 +7,12 @@
 Pass 1 defined the implementation contract on 2026-10-26. Pass 2 implements shared
 schemas, canonical fingerprints, validated policy, and replay storage/migration.
 Pass 3 adds shared lock/claim/replay execution and transaction/resource ownership.
-**No endpoint is enabled yet.** Current requests have no idempotency/replay guarantee.
-Passes 4–5 must supply HTTP integration, scheduled cleanup, and the
-remaining failure evidence below before the feature is considered complete.
+Pass 4 enables optional keyed creation through the HTTP handler, with header
+validation, CORS and OpenAPI integration. Pass 5 still needs to supply scheduled
+cleanup and the remaining process/recovery evidence below. Logical expiry already
+works; physical expired-row cleanup is not scheduled yet.
 
-The first supported operation will be POST `/api/v1/items`, operation identifier
+The supported operation is POST `/api/v1/items`, operation identifier
 `items.create`. The key is optional. Without it, creation retains today's behavior,
 including the possibility of duplicate creation after an uncertain response.
 Updates, deletion, reads, and system endpoints do not gain replay support merely
@@ -138,12 +139,12 @@ running. If lock release fails, discard the connection rather than returning a
 possibly locked session to the pool. Database uncertainty must not be interpreted
 as permission to retry the item write inside the same attempt.
 
-### Implemented shared execution boundary (pass 3)
+### Shared execution and HTTP boundary
 
 `src/common/services/idempotency.service.ts` accepts an explicit scope, key,
 fingerprint, and asynchronous callback that returns a prepared successful response.
-It must be called before entering an application transaction. For example, future
-HTTP infrastructure can supply the following callback after request validation:
+It must be called before entering an application transaction. HTTP infrastructure
+supplies response preparation after request validation; conceptually:
 
 ```ts
 const prepared = await idempotency.execute(
@@ -157,8 +158,40 @@ const prepared = await idempotency.execute(
 );
 ```
 
-This illustrates infrastructure usage, not an enabled route. HTTP key extraction,
-DTO/status preparation integration, and sending the result belong to pass 4.
+The controller declares only endpoint policy:
+
+```ts
+jsonHandler(itemService.create, toItemDTO, {
+  status: 201,
+  transaction: true,
+  idempotency: {
+    operation: 'items.create',
+    callerScope: 'public',
+    route: 'POST /api/v1/items',
+  },
+});
+```
+
+`jsonHandler` requires transaction opt-in, validates one key (counting original raw
+header fields), fingerprints `req.validated`, and delegates keyed execution before
+opening any transaction. The callback invokes the existing service, validates the
+DTO, resolves status, and stringifies once before completion/commit. A replay skips
+all three preparation steps. Bodyless 204/205 outcomes store no JSON. The handler
+sends only after execution and session cleanup finish, and suppresses late writes.
+The no-key path retains its previous handler transaction and response behavior.
+
+The shared namespace hashes `[APP_NAME, DB_DATABASE]`; host aliases and app versions
+do not change it. Keep those values and operation/scope/route identifiers stable
+across replicas and releases. Changing them creates a new replay namespace and can
+allow repeated execution of a previously used key.
+
+Sanitization always preserves `Idempotency-Key`. Default browser CORS allows it;
+custom `CORS_ALLOWED_HEADERS` must include it for browser preflight to succeed.
+Omitting it from CORS does not disable server-side enforcement. Node parses normal
+HTTP header whitespace before application code; the application performs no key
+trimming or case conversion. Unsupported endpoints ignore this header. Validation,
+origin policy, rate limiting, and request deadlines still apply to retries.
+
 Services keep their existing transaction wrappers; those wrappers join the pinned
 outer manager through AsyncLocalStorage. Supplying a manager remains mandatory for
 each participating repository operation. Nesting another idempotency execution is
@@ -224,8 +257,8 @@ boundary. Successful completion sets both timestamps using MySQL UTC time; only 
 processing record can be completed. Expiry reads and conditional deletion also use
 database time. A 204/205 result has no JSON body; other successful statuses require
 valid JSON. Oversized or invalid responses reject completion rather than truncate.
-The execution service connects these primitives to the shared transaction; HTTP
-integration remains deferred.
+The execution service connects these primitives to the shared transaction and the
+HTTP adapter prepares the original response inside that boundary.
 
 Canonicalization accepts validated plain JSON values, omits undefined object fields,
 and rejects cycles, sparse/undefined array entries, non-finite numbers, and class
@@ -248,8 +281,6 @@ fail closed.
 
 Remaining implementation passes:
 
-- **Pass 4:** POST item creation opt-in, headers/CORS/OpenAPI, and HTTP tests;
-  preserve the no-key path.
 - **Pass 5:** bounded retention cleanup, process/multi-instance/recovery evidence,
   final operational documentation and production smoke.
 

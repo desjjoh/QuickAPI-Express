@@ -13,6 +13,7 @@ import {
   ItemResponseSchema,
 } from '../models/item.model';
 import { ItemPaginationQuerySchema } from '../models/pagination-query.model';
+import { IdempotencyKeySchema } from '@/common/library/models/idempotency.model';
 
 export function registerItemPaths(registry: OpenAPIRegistry): void {
   const tag = 'Items';
@@ -47,8 +48,17 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Create a new item',
     description:
-      'Creates a new item using validated input. Returns the fully normalized item resource after persistence.',
+      'Creates a new item using validated input. Optional Idempotency-Key replays the original successful status and JSON for 24 hours from database completion time. The scope is public for this operation: callers sharing a key share replay/conflict behavior; keys are not authorization. Fingerprints use normalized validated input. Busy keys and changed input return 409. Replays do not extend retention or create another item. Without a key, retries can create duplicates. Expired keys may execute again. Failed attempts are not cached; a response deadline cannot cancel SQL or undo an already-started commit.',
     request: {
+      headers: [
+        IdempotencyKeySchema.optional().openapi({
+          param: { name: 'Idempotency-Key', in: 'header' },
+          description:
+            'One case-sensitive opaque key, 1–128 printable ASCII characters without whitespace or commas. Duplicate fields are rejected. Retain the same key for retries.',
+          pattern: '^[\\x21-\\x2b\\x2d-\\x7e]+$',
+          example: '0ba3eb40-c95d-46fd-a9ad-79c079708d28',
+        }),
+      ],
       body: {
         required: true,
         content: {
@@ -65,6 +75,31 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
           },
         },
       },
+      ...Object.fromEntries(
+        [
+          [400, 'Invalid or duplicate Idempotency-Key header.'],
+          [
+            409,
+            'Key still processing or previously used with different input.',
+          ],
+          [422, 'Invalid item input; no replay claim or item write.'],
+          [
+            408,
+            'Request deadline exceeded; a commit already in progress may still succeed.',
+          ],
+          [
+            500,
+            'Execution or replay coordination failed; retry the same key to reconcile an uncertain commit.',
+          ],
+          [503, 'Database admission/capacity unavailable.'],
+        ].map(([code, description]) => [
+          code,
+          {
+            description: String(description),
+            content: { 'application/json': { schema: ErrorResponseSchema } },
+          },
+        ]),
+      ),
     },
   });
 

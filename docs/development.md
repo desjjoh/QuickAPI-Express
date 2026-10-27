@@ -97,11 +97,12 @@ server-to-server clients and probes. Responses reaching CORS include `Vary: Orig
 including rejected and no-origin responses; OPTIONS also varies on
 `Access-Control-Request-Method` and `Access-Control-Request-Headers`.
 
-Custom allowed request headers survive sanitization, but adding a name does not
-implement its application semantics. In particular, `Idempotency-Key` can be
-configured later when item idempotency is implemented; this change adds no replay
-behavior. See [deployment proxy requirements](deployment.md#proxy-and-browser-access)
-before trusting any ingress.
+Custom allowed request headers survive sanitization. `Idempotency-Key` is preserved
+independently of that list and is included in default CORS request headers. Custom
+`CORS_ALLOWED_HEADERS` must include it for keyed browser creation. Only POST
+`/api/v1/items` opts into replay; other endpoints ignore the header. See
+[deployment proxy requirements](deployment.md#proxy-and-browser-access) before
+trusting any ingress.
 
 ### HTTP deadlines and shutdown configuration
 
@@ -151,7 +152,7 @@ Startup now refuses unapplied migrations. Run migrations explicitly before start
 the API; readiness probes never apply them. Initial database connection/ORM setup
 retains its existing driver timeout behavior.
 
-## Shared idempotency policy (endpoint not enabled)
+## Shared idempotency policy
 
 Optional settings are documented as comments in `.env.example`, `.env`, and
 `.env.test`. Omit them to use these defaults:
@@ -164,8 +165,10 @@ Optional settings are documented as comments in `.env.example`, `.env`, and
 
 Batch size multiplied by batch count must not exceed 10000 rows per sweep. Empty
 values fail validation. Retention is fixed at 24 hours, assigned on completion
-using MySQL UTC time; the planned cleanup interval is one hour. Pass 2 adds policy
-and storage only: no scheduler or HTTP key handling is active. See the
+using MySQL UTC time; the planned cleanup interval is one hour. Optional keyed POST
+item creation is active; no cleanup scheduler is active yet. Without a key, retries
+retain the existing possibility of duplicate creation. Keep `APP_NAME` and
+`DB_DATABASE` stable because they define the shared replay namespace. See the
 [idempotency lifecycle](idempotency.md) for the remaining passes and boundaries.
 
 ## Local MySQL, migrations, and development

@@ -19,6 +19,11 @@ router.post(
   jsonHandler(itemService.create, toItemDTO, {
     status: 201,
     transaction: true,
+    idempotency: {
+      operation: 'items.create',
+      callerScope: 'public',
+      route: 'POST /api/v1/items',
+    },
   }),
 );
 

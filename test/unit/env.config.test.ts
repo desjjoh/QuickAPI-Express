@@ -232,6 +232,7 @@ describe('environment configuration', () => {
         'content-type',
         'authorization',
         'x-requested-with',
+        'idempotency-key',
       ],
       CORS_EXPOSED_HEADERS: ['authorization', 'set-cookie'],
       CORS_CREDENTIALS: true,
