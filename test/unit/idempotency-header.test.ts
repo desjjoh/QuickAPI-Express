@@ -52,7 +52,7 @@ describe('HTTP idempotency header contract', () => {
         (value) => value,
         {
           idempotency: {
-            callerScope: 'public',
+            scope: 'public',
             operation: 'create',
             route: 'POST /test',
           },

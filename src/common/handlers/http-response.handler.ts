@@ -33,7 +33,9 @@ function responseHandler<R extends object, T>(
 type JsonOptions<DTO> = {
   status?: number | ((body: DTO) => number);
   transaction?: boolean;
-  idempotency?: Omit<IdempotencyScope, 'namespace'>;
+  idempotency?: Pick<IdempotencyScope, 'operation' | 'route'> & {
+    scope: IdempotencyScope['callerScope'];
+  };
 };
 
 /** Transactional mutations prepare their response before the outer commit. */
@@ -47,7 +49,9 @@ export function jsonHandler<R extends object, T, DTO>(
   const scope = idempotency
     ? IdempotencyScopeSchema.parse({
         namespace: idempotencyNamespace,
-        ...idempotency,
+        callerScope: idempotency.scope,
+        operation: idempotency.operation,
+        route: idempotency.route,
       })
     : undefined;
 

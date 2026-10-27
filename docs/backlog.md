@@ -35,27 +35,6 @@ See [deployment](deployment.md), [database lifecycle](database-lifecycle.md), [d
 
 ## 2. Business/API logic
 
-Start this work after the system/server review. These items intentionally change item contracts and need separate discussion before implementation.
-
-### Agreed direction and decisions still required
-
-- Start optional `Idempotency-Key` support with POST item creation. Extend to other mutations only after defining a concrete replay benefit and contract for each operation.
-- Follow the [pass-1 idempotency contract](idempotency.md): explicit public scope by operation/route, validated-input fingerprints, original response replay, and database-clock 24-hour retention. Do not introduce authentication or infer client identity from IP.
-- Keep concurrency and replay protection independent. Versions prevent stale writes; idempotency prevents duplicate execution. An identical completed keyed retry replays its original response without another mutation or version increment.
-
-### Atomic POST idempotency and replay
-
-Optional POST item creation is enabled using the [shared contract and failure matrix](idempotency.md).
-Remaining work:
-
-- **Pass 5:** lifecycle-owned bounded cleanup, expiry/restart/multi-instance/failure
-  evidence, complete documentation and production-image smoke.
-
-Item mutation, validated prepared response, and replay record must commit together.
-Expired records do not replay, matching retries do not extend retention, and error
-or rollback paths must not leave a completed replay record. Keep reusable machinery
-outside the item domain; preserve current revision and price contracts.
-
 ### Migration upgrade and rollback evidence
 
 Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. Revision and replay-storage upgrades now have representative-data and offline downgrade evidence. Add equivalent evidence alongside future migrations:

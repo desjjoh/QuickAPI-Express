@@ -145,24 +145,78 @@ node -e "const fs=require('node:fs'); const expected=fs.readFileSync(process.arg
 # Principal create, read, update, list, and delete flow.
 status="$(request POST /api/v1/items "$TMP_DIR/body" "$TMP_DIR/headers" \
   --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: production-smoke-create' \
   --data '{"name":"Production smoke item","price":19.95,"description":"container flow"}')"
 [[ "$status" == 201 ]]
 json_assert "$TMP_DIR/body" "typeof body.id === 'string' && body.id.length === 16 && body.name === 'Production smoke item'"
 ITEM_ID="$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1])).id" "$TMP_DIR/body")"
+cp "$TMP_DIR/body" "$TMP_DIR/original-create"
+cp "$TMP_DIR/headers" "$TMP_DIR/original-headers"
+status="$(request POST /api/v1/items "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-create' \
+  --data '{"description":"container flow","price":"19.95","name":"Production smoke item"}')"
+[[ "$status" == 201 ]]
+cmp "$TMP_DIR/original-create" "$TMP_DIR/body"
+grep -Eiq '^content-type: application/json' "$TMP_DIR/headers"
+node -e "const fs=require('node:fs'); const id=p=>fs.readFileSync(p,'utf8').match(/^x-request-id:\\s*(.+)$/im)?.[1].trim(); const a=id(process.argv[1]),b=id(process.argv[2]); if(!a||!b||a===b) throw Error('Replay must have a fresh request ID')" "$TMP_DIR/original-headers" "$TMP_DIR/headers"
+expect_error 409 POST /api/v1/items --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: production-smoke-create' --data '{"name":"Different","price":19.95}'
 
 status="$(request GET "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers")"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.id === '${ITEM_ID}' && body.price === 19.95"
 status="$(request PATCH "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers" \
-  --header 'Content-Type: application/json' --data '{"price":24.5,"expected_version":1}')"
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-update' --data '{"price":24.5,"expected_version":1}')"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" 'body.price === 24.5 && body.version === 2'
+cp "$TMP_DIR/body" "$TMP_DIR/original-update"
+status="$(request PUT "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-replace' \
+  --data '{"name":"Replacement","price":24.5,"expected_version":2}')"
+[[ "$status" == 200 ]]
+json_assert "$TMP_DIR/body" 'body.version === 3 && body.name === "Replacement"'
+cp "$TMP_DIR/body" "$TMP_DIR/original-replace"
+status="$(request PUT "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-replace' \
+  --data '{"name":"Replacement","price":24.5,"expected_version":2}')"
+[[ "$status" == 200 ]]
+cmp "$TMP_DIR/original-replace" "$TMP_DIR/body"
+status="$(request PATCH "/api/v1/items/${ITEM_ID}" "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-update' --data '{"price":24.5,"expected_version":1}')"
+[[ "$status" == 200 ]]
+cmp "$TMP_DIR/original-update" "$TMP_DIR/body"
 status="$(request GET '/api/v1/items?page=1&limit=10' "$TMP_DIR/body" "$TMP_DIR/headers")"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.total === 1 && body.data.some(item => item.id === '${ITEM_ID}')"
-status="$(request POST "/api/v1/items/${ITEM_ID}/delete" "$TMP_DIR/body" "$TMP_DIR/headers" --header 'Content-Type: application/json' --data '{"expected_version":2}')"
+status="$(request POST "/api/v1/items/${ITEM_ID}/delete" "$TMP_DIR/body" "$TMP_DIR/headers" --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-delete' --data '{"expected_version":3}')"
 [[ "$status" == 200 ]]
 json_assert "$TMP_DIR/body" "body.id === '${ITEM_ID}'"
+cp "$TMP_DIR/body" "$TMP_DIR/original-delete"
+status="$(request POST "/api/v1/items/${ITEM_ID}/delete" "$TMP_DIR/body" "$TMP_DIR/headers" --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-delete' --data '{"expected_version":3}')"
+[[ "$status" == 200 ]]
+cmp "$TMP_DIR/original-delete" "$TMP_DIR/body"
+
+# Replaying after deletion retains the creation response without recreating the item.
+status="$(request POST /api/v1/items "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-create' \
+  --data '{"name":"Production smoke item","price":19.95,"description":"container flow"}')"
+[[ "$status" == 201 ]]
+cmp "$TMP_DIR/original-create" "$TMP_DIR/body"
+expect_error 404 GET "/api/v1/items/${ITEM_ID}"
+
+# Restart the same compiled artifact; persisted replay must survive without recreating data.
+compose restart api
+retry 45 1 'API readiness after restart' curl --fail --silent --output "$TMP_DIR/readiness" \
+  "http://127.0.0.1:${SMOKE_PORT}/ready"
+status="$(request POST "/api/v1/items/${ITEM_ID}/delete" "$TMP_DIR/body" "$TMP_DIR/headers" --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-delete' --data '{"expected_version":3}')"
+[[ "$status" == 200 ]]
+cmp "$TMP_DIR/original-delete" "$TMP_DIR/body"
+status="$(request POST /api/v1/items "$TMP_DIR/body" "$TMP_DIR/headers" \
+  --header 'Content-Type: application/json' --header 'Idempotency-Key: production-smoke-create' \
+  --data '{"name":"Production smoke item","price":19.95,"description":"container flow"}')"
+[[ "$status" == 201 ]]
+cmp "$TMP_DIR/original-create" "$TMP_DIR/body"
+expect_error 404 GET "/api/v1/items/${ITEM_ID}"
 
 # Invalid input, content-type policy, unknown routes, and common error envelope.
 expect_error 422 POST /api/v1/items --header 'Content-Type: application/json' \

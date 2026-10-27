@@ -99,8 +99,8 @@ including rejected and no-origin responses; OPTIONS also varies on
 
 Custom allowed request headers survive sanitization. `Idempotency-Key` is preserved
 independently of that list and is included in default CORS request headers. Custom
-`CORS_ALLOWED_HEADERS` must include it for keyed browser creation. Only POST
-`/api/v1/items` opts into replay; other endpoints ignore the header. See
+`CORS_ALLOWED_HEADERS` must include it for keyed browser creation. All item mutation routes opt into replay; reads and system endpoints ignore the
+header. PATCH, PUT and the deletion action still require `expected_version`. See
 [deployment proxy requirements](deployment.md#proxy-and-browser-access) before
 trusting any ingress.
 
@@ -165,11 +165,13 @@ Optional settings are documented as comments in `.env.example`, `.env`, and
 
 Batch size multiplied by batch count must not exceed 10000 rows per sweep. Empty
 values fail validation. Retention is fixed at 24 hours, assigned on completion
-using MySQL UTC time; the planned cleanup interval is one hour. Optional keyed POST
-item creation is active; no cleanup scheduler is active yet. Without a key, retries
+using MySQL UTC time; lifecycle-owned cleanup runs hourly after database startup.
+It deletes only expired completed replay records, at most 1000 per default sweep,
+and awaits active cleanup before database shutdown. Without a key, retries
 retain the existing possibility of duplicate creation. Keep `APP_NAME` and
 `DB_DATABASE` stable because they define the shared replay namespace. See the
-[idempotency lifecycle](idempotency.md) for the remaining passes and boundaries.
+[idempotency lifecycle](idempotency.md#cleanup-lifecycle) for scheduling, failures,
+shutdown ordering and retention boundaries.
 
 ## Local MySQL, migrations, and development
 

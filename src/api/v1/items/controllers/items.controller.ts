@@ -21,7 +21,7 @@ router.post(
     transaction: true,
     idempotency: {
       operation: 'items.create',
-      callerScope: 'public',
+      scope: 'public',
       route: 'POST /api/v1/items',
     },
   }),
@@ -45,21 +45,42 @@ router.get(
 router.patch(
   '/:id',
   validateRequest({ params: IdParams, body: UpdateItemSchema }),
-  jsonHandler(itemService.update, toItemDTO, { transaction: true }),
+  jsonHandler(itemService.update, toItemDTO, {
+    transaction: true,
+    idempotency: {
+      operation: 'items.update',
+      scope: 'public',
+      route: 'PATCH /api/v1/items/:id',
+    },
+  }),
 );
 
 // PUT /items/:id
 router.put(
   '/:id',
   validateRequest({ params: IdParams, body: ReplaceItemSchema }),
-  jsonHandler(itemService.replace, toItemDTO, { transaction: true }),
+  jsonHandler(itemService.replace, toItemDTO, {
+    transaction: true,
+    idempotency: {
+      operation: 'items.replace',
+      scope: 'public',
+      route: 'PUT /api/v1/items/:id',
+    },
+  }),
 );
 
 // POST /items/:id/delete
 router.post(
   '/:id/delete',
   validateRequest({ params: IdParams, body: VersionInputSchema }),
-  jsonHandler(itemService.remove, toItemDTO, { transaction: true }),
+  jsonHandler(itemService.remove, toItemDTO, {
+    transaction: true,
+    idempotency: {
+      operation: 'items.delete',
+      scope: 'public',
+      route: 'POST /api/v1/items/:id/delete',
+    },
+  }),
 );
 
 export default router;

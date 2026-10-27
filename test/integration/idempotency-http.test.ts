@@ -66,7 +66,7 @@ function adapter(map = toItemDTO, timeout = 1000, status = 201) {
       status,
       transaction: true,
       idempotency: {
-        callerScope: 'public',
+        scope: 'public',
         operation: 'test.create',
         route: 'POST /test',
       },
@@ -187,15 +187,14 @@ describe('optional item creation idempotency through HTTP', () => {
     ).toEqual(before);
   });
 
-  it('preserves unkeyed creation and ignores keys on mutations without opt-in', async () => {
+  it('preserves unkeyed creation and ignores keys on read endpoints', async () => {
     const app = createApp(policy);
     const first = await request(app).post(path).send(input).expect(201);
     const second = await request(app).post(path).send(input).expect(201);
     expect(first.body.id).not.toBe(second.body.id);
     await request(app)
-      .patch(`${path}/${first.body.id}`)
+      .get(`${path}/${first.body.id}`)
       .set('Idempotency-Key', 'invalid key, ignored')
-      .send({ expected_version: 1, name: 'Changed' })
       .expect(200);
     expect(await counts()).toEqual({ items: 2, replays: 0 });
   });

@@ -17,6 +17,37 @@ import { IdempotencyKeySchema } from '@/common/library/models/idempotency.model'
 
 export function registerItemPaths(registry: OpenAPIRegistry): void {
   const tag = 'Items';
+  const idempotencyHeaders = [
+    IdempotencyKeySchema.optional().openapi({
+      param: { name: 'Idempotency-Key', in: 'header' },
+      description:
+        'One case-sensitive opaque key, 1–128 printable ASCII characters without whitespace or commas. Duplicate fields are rejected. Retain the same key for retries.',
+      pattern: '^[\\x21-\\x2b\\x2d-\\x7e]+$',
+      example: '0ba3eb40-c95d-46fd-a9ad-79c079708d28',
+    }),
+  ];
+  const idempotencyErrors = Object.fromEntries(
+    [
+      [400, 'Invalid or duplicate Idempotency-Key header.'],
+      [409, 'Key still processing or previously used with different input.'],
+      [422, 'Invalid item input; no replay claim or item write.'],
+      [
+        408,
+        'Request deadline exceeded; a commit already in progress may still succeed.',
+      ],
+      [
+        500,
+        'Execution or replay coordination failed; retry the same key to reconcile an uncertain commit.',
+      ],
+      [503, 'Database admission/capacity unavailable.'],
+    ].map(([code, description]) => [
+      code,
+      {
+        description: String(description),
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    ]),
+  );
 
   // GET /items
   registry.registerPath({
@@ -50,15 +81,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     description:
       'Creates a new item using validated input. Optional Idempotency-Key replays the original successful status and JSON for 24 hours from database completion time. The scope is public for this operation: callers sharing a key share replay/conflict behavior; keys are not authorization. Fingerprints use normalized validated input. Busy keys and changed input return 409. Replays do not extend retention or create another item. Without a key, retries can create duplicates. Expired keys may execute again. Failed attempts are not cached; a response deadline cannot cancel SQL or undo an already-started commit.',
     request: {
-      headers: [
-        IdempotencyKeySchema.optional().openapi({
-          param: { name: 'Idempotency-Key', in: 'header' },
-          description:
-            'One case-sensitive opaque key, 1–128 printable ASCII characters without whitespace or commas. Duplicate fields are rejected. Retain the same key for retries.',
-          pattern: '^[\\x21-\\x2b\\x2d-\\x7e]+$',
-          example: '0ba3eb40-c95d-46fd-a9ad-79c079708d28',
-        }),
-      ],
+      headers: idempotencyHeaders,
       body: {
         required: true,
         content: {
@@ -75,31 +98,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
           },
         },
       },
-      ...Object.fromEntries(
-        [
-          [400, 'Invalid or duplicate Idempotency-Key header.'],
-          [
-            409,
-            'Key still processing or previously used with different input.',
-          ],
-          [422, 'Invalid item input; no replay claim or item write.'],
-          [
-            408,
-            'Request deadline exceeded; a commit already in progress may still succeed.',
-          ],
-          [
-            500,
-            'Execution or replay coordination failed; retry the same key to reconcile an uncertain commit.',
-          ],
-          [503, 'Database admission/capacity unavailable.'],
-        ].map(([code, description]) => [
-          code,
-          {
-            description: String(description),
-            content: { 'application/json': { schema: ErrorResponseSchema } },
-          },
-        ]),
-      ),
+      ...idempotencyErrors,
     },
   });
 
@@ -141,9 +140,10 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Update an item by ID',
     description:
-      'Applies a partial update to an existing item. Requires expected_version. Only provided fields are modified. Every accepted update advances version once, including no-op edits.',
+      'Applies a partial update to an existing item. Requires expected_version. Only provided fields are modified. Every first accepted update advances version once, including no-op edits. Optional Idempotency-Key replays the original success without another revision increment, even after later changes. Include the original expected_version on retries.',
     request: {
       params: IdParams,
+      headers: idempotencyHeaders,
       body: {
         required: true,
         content: {
@@ -154,6 +154,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
       },
     },
     responses: {
+      ...idempotencyErrors,
       200: {
         description: 'Successful Response',
         content: {
@@ -163,7 +164,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
         },
       },
       409: {
-        description: 'Stale item version; reload before retrying.',
+        description:
+          'Stale item version, in-flight key, or key reused with different validated input. Retry an uncertain completed attempt with its original key and payload; reload for a genuinely new stale write.',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
       422: {
@@ -188,9 +190,10 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Replace an item by ID',
     description:
-      'Replaces an existing item with the provided data. Requires expected_version, name, and price; omitted description becomes null. Every accepted replacement advances version once.',
+      'Replaces an existing item with the provided data. Requires expected_version, name, and price; omitted description becomes null. Every first accepted replacement advances version once. Optional Idempotency-Key replays the original success without another revision increment. Retain the original expected_version on retries.',
     request: {
       params: IdParams,
+      headers: idempotencyHeaders,
       body: {
         required: true,
         content: {
@@ -201,6 +204,7 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
       },
     },
     responses: {
+      ...idempotencyErrors,
       200: {
         description: 'Successful Response',
         content: {
@@ -210,7 +214,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
         },
       },
       409: {
-        description: 'Stale item version; reload before retrying.',
+        description:
+          'Stale item version, in-flight key, or key reused with different validated input. Retry an uncertain completed attempt with its original key and payload; reload for a genuinely new stale write.',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
       422: {
@@ -235,15 +240,17 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
     tags: [tag],
     summary: 'Delete an item by ID',
     description:
-      'Requires expected_version in the JSON body. Returns the removed item and its final version; stale versions return 409 and missing items return 404.',
+      'Requires expected_version in the JSON body. Returns the removed item and its final version; stale versions return 409 and missing items return 404. Optional Idempotency-Key replays a successful deletion with its original DTO and 200, including after the item is gone. Retain the original expected_version on retries.',
     request: {
       params: IdParams,
+      headers: idempotencyHeaders,
       body: {
         required: true,
         content: { 'application/json': { schema: VersionInputSchema } },
       },
     },
     responses: {
+      ...idempotencyErrors,
       200: {
         description: 'Successful Response',
         content: {
@@ -253,7 +260,8 @@ export function registerItemPaths(registry: OpenAPIRegistry): void {
         },
       },
       409: {
-        description: 'Stale item version; reload before retrying.',
+        description:
+          'Stale item version, in-flight key, or key reused with different validated input. Retry an uncertain completed attempt with its original key and payload; reload for a genuinely new stale write.',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
       422: {

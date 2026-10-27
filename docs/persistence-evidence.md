@@ -41,8 +41,10 @@ An HTTP error, timeout, or disconnect is not proof of database rollback. In
 particular, a lost COMMIT acknowledgement can leave a successful write whose
 outcome the caller does not know. Our controlled tests can inspect that outcome
 independently; a caller cannot infer it from the error response. Do not blindly
-retry a mutation under the assumption that it never ran. Durable idempotency and
-replay remain planned; revision preconditions now protect stale updates/deletions.
+retry an unkeyed mutation under the assumption that it never ran. Optional keyed
+item mutations now have [durable atomic replay](idempotency.md); retain the same key
+and input to reconcile uncertain mutation outcomes within retention. Revision
+preconditions independently protect stale updates/deletions.
 
 Connection cleanup assertions inspect MySQL's process list, not only mocked
 release calls. They verify disappeared failed connections and renewed use of a
@@ -154,8 +156,9 @@ These history fixtures establish handling of an already-existing baseline; they
 do not establish a future upgrade/backfill's safety. With each future migration,
 start from its actual predecessor containing representative rows and test data
 preservation, backfills, defaults, indexes, deployment ordering, and supported
-application-version compatibility. Add concurrency, replay, and cross-write
-rollback tests alongside the item mutation contracts that require them.
+application-version compatibility. Existing revision and idempotency suites add
+concurrency, replay, and cross-write rollback evidence; preserve and extend those
+checks alongside future mutation contracts.
 
 ## Running the evidence
 
@@ -170,5 +173,7 @@ and volumes while preserving failures. See [Testing](../test/TESTING.md) for
 PowerShell, existing local test MySQL, and environment-selection instructions.
 
 These tests do not establish real deployment DNS/TLS rotation, HA failover,
-backup restoration, or orchestrator behavior. They also do not make current item
-writes idempotent or protect concurrent clients from stale writes.
+backup restoration, or orchestrator behavior. Transport/history tests alone do not
+supply mutation safety: the separate revision and idempotency suites establish
+those contracts. See [Testing](../test/TESTING.md#shared-idempotency-foundation-evidence)
+for cleanup, real process/session loss, restart, and replay evidence.

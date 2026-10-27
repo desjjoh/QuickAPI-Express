@@ -11,7 +11,7 @@ export const idempotencyNamespace = createHash('sha256')
   .update(JSON.stringify([env.APP_NAME, env.DB_DATABASE]))
   .digest('hex');
 
-/** Validated policy only; no timer, execution service, or endpoint is enabled here. */
+/** Shared validated policy; the application lifecycle owns the cleanup timer. */
 export const idempotencyPolicy = Object.freeze({
   ...IdempotencyPolicySchema.parse({
     maxResponseBytes: env.IDEMPOTENCY_MAX_RESPONSE_BYTES,

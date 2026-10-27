@@ -10,6 +10,7 @@ import {
 import {
   IDEMPOTENCY_RETENTION_MS,
   defaultIdempotencyPolicy,
+  IdempotencyPolicySchema,
 } from '@/common/library/models/idempotency-policy.model';
 import { validatePreparedResponse } from '@/common/helpers/idempotency.helper';
 
@@ -24,6 +25,27 @@ export class IdempotencyRepository {
 
   public createQueryRunner(): QueryRunner {
     return this.source.createQueryRunner();
+  }
+
+  /** One bounded autocommit statement; the expiry predicate is rechecked by MySQL. */
+  public async purgeExpiredBatch(limit: number): Promise<number> {
+    const batchSize =
+      IdempotencyPolicySchema.shape.cleanupBatchSize.parse(limit);
+    const result = await this.source.query(
+      "DELETE FROM request_idempotency WHERE state = 'completed' AND expires_at <= UTC_TIMESTAMP(3) ORDER BY expires_at, scope_hash LIMIT ?",
+      [batchSize],
+    );
+    const affected: unknown = result.affectedRows;
+
+    if (
+      typeof affected !== 'number' ||
+      !Number.isInteger(affected) ||
+      affected < 0 ||
+      affected > batchSize
+    )
+      throw new Error('Invalid idempotency cleanup result.');
+
+    return affected;
   }
 
   public async findByScope(

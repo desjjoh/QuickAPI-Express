@@ -8,24 +8,32 @@ Pass 1 defined the implementation contract on 2026-10-26. Pass 2 implements shar
 schemas, canonical fingerprints, validated policy, and replay storage/migration.
 Pass 3 adds shared lock/claim/replay execution and transaction/resource ownership.
 Pass 4 enables optional keyed creation through the HTTP handler, with header
-validation, CORS and OpenAPI integration. Pass 5 still needs to supply scheduled
-cleanup and the remaining process/recovery evidence below. Logical expiry already
-works; physical expired-row cleanup is not scheduled yet.
+validation, CORS and OpenAPI integration. Pass 5 supplies lifecycle-owned bounded
+cleanup, process/recovery tests, and keyed production-image smoke. All five passes
+are implemented. The evidence below establishes specific tested outcomes; it does
+not promise cancellation of running SQL, exactly-once delivery, or protection beyond
+retention.
 
-The supported operation is POST `/api/v1/items`, operation identifier
-`items.create`. The key is optional. Without it, creation retains today's behavior,
-including the possibility of duplicate creation after an uncertain response.
-Updates, deletion, reads, and system endpoints do not gain replay support merely
-because they receive this header. Item revisions remain independent stale-write
-protection. No authentication, Redis dependency, uploads, or external-provider
-coordination is introduced by this work.
+All item mutations accept an optional key. Each has an explicit stable method/route
+and separate operation identifier:
+
+| Method and route                | Operation       |
+| ------------------------------- | --------------- |
+| POST `/api/v1/items`            | `items.create`  |
+| PATCH `/api/v1/items/:id`       | `items.update`  |
+| PUT `/api/v1/items/:id`         | `items.replace` |
+| POST `/api/v1/items/:id/delete` | `items.delete`  |
+
+No-key behavior is unchanged. Updates/deletion still require `expected_version`.
+Reads and system endpoints ignore this header. No authentication, Redis dependency,
+uploads or external-provider coordination is introduced by this work.
 
 The shared implementation follows Nest's separation of endpoint opt-in, HTTP
 integration, central idempotency service, fingerprinting, and MySQL persistence.
 Express intentionally adapts authenticated scope to an explicit public scope,
 fingerprints validated input, and stores its already-prepared JSON string. Expiry
-will be assigned when completing the response record rather than creating the
-claim. Cleanup will use bounded batches rather than an unbounded delete.
+is assigned when completing the response record rather than creating the
+claim. Cleanup uses bounded batches rather than an unbounded delete.
 
 ## Key and scope contract
 
@@ -38,7 +46,7 @@ claim. Cleanup will use bounded batches rather than an unbounded delete.
 - Scope combines an application/database namespace, explicit caller namespace,
   stable operation identifier, canonical method/route, and key. Hash this tuple
   for storage and MySQL lock identity; do not log or retain the raw key.
-- Item creation explicitly uses caller namespace `public`. There is no per-user
+- Item mutations explicitly use caller namespace `public`. There is no per-user
   namespace: two callers using the same key for this operation share its conflict
   and replay behavior. A key is not authentication or authorization. Do not infer
   identity from IP, forwarded headers, cookies, or request IDs.
@@ -47,6 +55,34 @@ claim. Cleanup will use bounded batches rather than an unbounded delete.
 - Header sanitization and browser CORS configuration must admit the key on the
   supported operation. Existing validation, admission, and rate limiting still
   apply to retries; the header does not bypass them.
+
+### Configuring another scope
+
+The current HTTP option accepts a fixed string per endpoint. For example:
+
+```ts
+idempotency: {
+  operation: 'items.update',
+  scope: 'inventory-import',
+  route: 'PATCH /api/v1/items/:id',
+}
+```
+
+This is an illustrative alternative, not the current item configuration. With all
+other scope components unchanged, `public` and `inventory-import` treat the same key
+as independent requests. A scope name supplies no authentication or access control.
+Changing an existing endpoint's scope prevents its previous records from matching;
+plan compatibility for unexpired keys before doing so, because creation or other
+side effects may execute again when domain preconditions allow.
+
+Dynamic per-user or per-tenant scopes are not supported by the current controller
+option. A future implementation should resolve trusted identity centrally in the
+HTTP infrastructure, after authentication and authorization, before lock acquisition
+and replay lookup. Controllers would declare the scope policy; business services
+would remain unchanged. Do not use an arbitrary body/query/header value as trusted
+caller identity. Any authenticated replay must still pass current authorization.
+This describes a future extension, not an authentication feature or implementation
+commitment for the current public item service.
 
 ## Fingerprint contract
 
@@ -166,7 +202,7 @@ jsonHandler(itemService.create, toItemDTO, {
   transaction: true,
   idempotency: {
     operation: 'items.create',
-    callerScope: 'public',
+    scope: 'public',
     route: 'POST /api/v1/items',
   },
 });
@@ -179,6 +215,24 @@ DTO, resolves status, and stringifies once before completion/commit. A replay sk
 all three preparation steps. Bodyless 204/205 outcomes store no JSON. The handler
 sends only after execution and session cleanup finish, and suppresses late writes.
 The no-key path retains its previous handler transaction and response behavior.
+
+The controller option is named `scope`; HTTP infrastructure maps it to the existing
+internal `callerScope` field and persisted `caller_scope` column. No migration or
+creation-hash change accompanies this rename. Keep `route` explicit: use a stable
+method plus route template, never a concrete item ID or raw query string. This avoids
+relying on router nesting or mount-path discovery. The validated item ID, semantic
+query values, and body belong to the fingerprint. Reusing a key for a different ID
+under the same operation returns 409; keys are independent across operations.
+
+For updates/deletion, replay precedes service execution and current-version/item
+lookup. Keep the original `expected_version` in a retry. A completed retry returns
+its original 200/DTO without incrementing again or failing because the version
+advanced or the item was deleted. Changing that version or payload under the same
+key returns 409. Missing `expected_version` still fails request validation (422),
+even on a retry. A new key or no key performs a new operation and enforces current
+version/existence, returning 409 or 404 as appropriate. Error responses are not
+cached. After expiry the original version can be stale or the item missing; expiry
+does not reset domain preconditions.
 
 The shared namespace hashes `[APP_NAME, DB_DATABASE]`; host aliases and app versions
 do not change it. Keep those values and operation/scope/route identifiers stable
@@ -247,9 +301,44 @@ Confirmed shared defaults are **64 KiB of UTF-8 prepared JSON per response**,
 The response limit may be reduced but cannot exceed 65536 bytes. Batch size must be
 1–1000, batch count 1–100, and their product at most 10000. Empty, fractional,
 non-finite, and out-of-range configuration fails validation. Retention remains fixed
-at 24 hours; the planned sweep interval is fixed at one hour. Optional settings are
+at 24 hours; the sweep interval is fixed at one hour. Optional settings are
 listed in the structured environment files and [development guide](development.md).
-No cleanup timer is started in pass 2.
+Defaults allow at most 1000 rows per process per sweep; multiple API replicas each
+run their own timer. No distributed scheduler or leader election is needed for
+these conditional deletes.
+
+### Cleanup lifecycle
+
+`src/common/services/idempotency-cleanup.service.ts` owns the timer. The application
+registers database → cleanup → HTTP services in `src/application.ts`:
+
+1. Database initialization and migration verification succeed before cleanup starts.
+   Cleanup starts one unreferenced hourly timer; there is no immediate startup sweep.
+   If later HTTP startup fails, reverse startup cleanup stops that timer.
+2. An hourly tick skips an already-active sweep. Each sweep awaits one batch at a
+   time, stops on a short batch, and never exceeds the configured batch count.
+   Direct internal sweep calls share the in-flight promise. There is no public HTTP
+   cleanup endpoint and no additional timer configuration.
+3. `IdempotencyRepository.purgeExpiredBatch()` issues one autocommit DELETE ordered
+   by expiry/key and limited to the validated batch size. Its predicate requires
+   completed state and `expires_at <= UTC_TIMESTAMP(3)`. MySQL rechecks that predicate
+   after waiting on row locks, so an expired-key replacement that becomes unexpired
+   cannot then be deleted by a waiting sweep. Processing claims and item rows are
+   never cleanup targets. Failed statements do not disable replay protection.
+4. Timer failures are logged safely; the next hourly tick can retry. The sweep's
+   in-flight state is cleared on success or failure. Pool acquisition retains the
+   existing capacity/acquisition limits. Row-count bounds are not a SQL execution
+   deadline: a delete may wait for a database lock, and running SQL is not cancelled.
+5. Shutdown quiesces scheduling immediately. Reverse service shutdown drains HTTP,
+   then awaits the accepted cleanup batch, skips subsequent batches, and closes
+   MySQL afterward. An active cleanup failure propagates to lifecycle shutdown.
+   The existing overall shutdown watchdog forces a failing finite exit for stuck
+   cleanup; it does not close MySQL early and claim the SQL was cancelled.
+
+Logical expiry remains independent of the scheduler. Delayed or failed deletion
+does not extend replay eligibility, and unused expired rows can remain beyond
+24 hours. Expiry/replacement happens under the request key lock even between sweeps.
+Cleanup requires no additional migration; the expiry index shipped in pass 2.
 
 The repository requires an active transaction manager for writes and stores the
 prepared JSON string unchanged in MEDIUMTEXT, which accommodates the full 65536-byte
@@ -277,12 +366,10 @@ fail closed.
 | Replay entity/repository and expiry index     | Database layer shared across domains                  |
 | Retention, size and cleanup policy            | Central validated configuration                       |
 | Header/CORS/OpenAPI and handler opt-in        | HTTP infrastructure and endpoint configuration        |
-| Create-item business operation                | Existing item service/repository, with shared manager |
+| Item business mutations                       | Existing item service/repository, with shared manager |
 
-Remaining implementation passes:
-
-- **Pass 5:** bounded retention cleanup, process/multi-instance/recovery evidence,
-  final operational documentation and production smoke.
+The five implementation passes are complete. Preserve these contracts and add
+equivalent failure evidence before extending opt-in to another operation.
 
 ## Required failure evidence
 
@@ -308,3 +395,19 @@ persisted outcomes independently: at creation commit there is one matching item
 and replay result; rolled-back creation has neither. Later item deletion does not
 remove the retained replay result or make replay recreate the item. Do not claim running-SQL cancellation,
 exactly-once network delivery, or duplicate protection beyond retention.
+
+Implemented evidence includes bounded batches and independent sweepers, live and
+processing-record preservation, a waiting delete racing expired-key replacement,
+cleanup failure/retry, and a real pinned MySQL session disconnect with rollback and
+recovery. Separate API processes exercise simultaneous duplicates/conflicts,
+restart persistence, expired-key reuse, process termination before commit, and
+draining accepted work. A controlled socket close after an actual commit proves
+replay of a committed but undelivered response after restart. Shutdown tests await
+active cleanup before database close and force exit for stuck cleanup. Unit timers
+verify the hourly schedule and non-overlap without waiting an hour in tests.
+
+Production smoke builds the actual image once, verifies exact prepared replay and
+fresh correlation IDs, conflicts, replay after deletion, persistence after API
+restart, and normal SIGTERM. Lost commit acknowledgement is fault-injected around
+a real commit; actual MySQL writer failover and arbitrary network partitions remain
+deployment-owned evidence, not guarantees inferred from these tests.

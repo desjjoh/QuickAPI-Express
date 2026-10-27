@@ -353,6 +353,35 @@ headers, invalid input, semantic conflicts, busy keys, CORS/preflight, custom CO
 omission, and rate limiting. Handler fixtures cover bodyless replay, DTO/JSON/size
 rollback, timeout and client disconnect, followed by successful retries after drain.
 
-Scheduled cleanup and process restart/multi-process evidence remain deferred to
-pass 5. Separate-pool contention proves database session
-coordination, not the complete hosted multi-instance deployment contract.
+`idempotency-cleanup.test.ts` in the unit suite verifies one unreferenced hourly
+timer, no startup sweep, no overlap, batch/sweep bounds, short-batch exit, safe
+logging/retry, and waiting for the accepted batch on shutdown. The integration file
+with the same name verifies bounded deletion, live/processing-record preservation,
+concurrent sweepers, expiry rechecking after waiting for a replacement transaction,
+failure/recovery, and rollback/retry after a real MySQL session is killed.
+
+`idempotency-process.test.ts` starts separate real API processes against disposable
+MySQL. It checks simultaneous duplicates/conflicts, exact replay after restart,
+logical expired-key reuse, process termination before commit, graceful keyed-work
+drain, cleanup-before-database shutdown, and finite failing exit for stuck cleanup.
+A fixture closes the HTTP socket immediately after actual commit and before send;
+a new process must replay the stored response without another item. Portable IPC
+emits the registered SIGTERM handler on Windows; production container smoke sends
+a real SIGTERM to the compiled process.
+
+Production smoke now verifies keyed creation, normalized exact-byte replay, fresh
+correlation IDs, changed-input conflict, replay after deletion, and replay after
+restarting the same image. Real process/database-session loss and controlled commit
+acknowledgement faults establish these outcomes, not every MySQL writer failover
+or network partition. Hosted ingress, failover and operational checks remain
+deployment-owned.
+
+`item-mutation-replay.test.ts` covers PATCH, PUT and deletion with real MySQL:
+original-result replay after version changes or deletion, explicit route/operation
+identity, different-ID/version/payload conflicts, invalid keys, version validation,
+overlapping requests, no-key/new-key preconditions, DTO-failure rollback and retry,
+and separation across operations. A prior-format creation record verifies hash and
+replay compatibility after renaming the controller option to `scope`. Internal
+caller scope and persisted columns remain unchanged. Reads ignore the header.
+Production smoke also replays PATCH/PUT without another revision increment and
+deletion after removal and restart.
