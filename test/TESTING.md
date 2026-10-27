@@ -326,6 +326,23 @@ pending-migration startup refusal, and exercises offline down/re-up. The existin
 revision migration test rolls back successor migrations before testing its older
 schema, then restores them.
 
-These are storage primitives exercised in explicit transactions. HTTP idempotency,
-key locks, coordinated execution, scheduled cleanup, and restart/multi-instance
-guarantees remain unimplemented and are not claimed by this evidence.
+`idempotency-service.test.ts` exercises shared orchestration, input validation before
+acquisition, definite versus uncertain lock results, storage failures, malformed
+stored data, delayed acquisition, request abandonment, transaction nesting, commit
+failure, rollback failure, and lock-release failure.
+
+`idempotency-execution.test.ts` uses real MySQL for non-waiting contention across
+separate pools, independent scopes/keys, one outer transaction across service calls,
+exact replay without new writes, and unchanged retention after later item edits or
+deletion. It checks rollback after business/SQL/DTO/JSON/size/finalization failures,
+atomic expired-key replacement, and pool reuse after repeated failures. Controlled
+fault injection verifies failed commit before execution, lost acknowledgement after
+an actual successful commit, and connection disposal after release/rollback failure.
+Barriers verify that abandoned asynchronous work and pending SQL retain their lock
+and connection until settled, followed by rollback. Single-slot pools expose leaked
+leases. Lost acknowledgement is simulated around a real commit; this is not proof
+of every network partition/failover outcome.
+
+HTTP idempotency, scheduled cleanup, and process restart/multi-process evidence
+remain deferred to passes 4–5. Separate-pool contention proves database session
+coordination, not the complete hosted multi-instance deployment contract.

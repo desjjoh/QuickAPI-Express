@@ -6,8 +6,9 @@
 
 Pass 1 defined the implementation contract on 2026-10-26. Pass 2 implements shared
 schemas, canonical fingerprints, validated policy, and replay storage/migration.
+Pass 3 adds shared lock/claim/replay execution and transaction/resource ownership.
 **No endpoint is enabled yet.** Current requests have no idempotency/replay guarantee.
-Passes 3–5 must supply coordination, HTTP integration, scheduled cleanup, and the
+Passes 4–5 must supply HTTP integration, scheduled cleanup, and the
 remaining failure evidence below before the feature is considered complete.
 
 The first supported operation will be POST `/api/v1/items`, operation identifier
@@ -137,6 +138,51 @@ running. If lock release fails, discard the connection rather than returning a
 possibly locked session to the pool. Database uncertainty must not be interpreted
 as permission to retry the item write inside the same attempt.
 
+### Implemented shared execution boundary (pass 3)
+
+`src/common/services/idempotency.service.ts` accepts an explicit scope, key,
+fingerprint, and asynchronous callback that returns a prepared successful response.
+It must be called before entering an application transaction. For example, future
+HTTP infrastructure can supply the following callback after request validation:
+
+```ts
+const prepared = await idempotency.execute(
+  scope,
+  key,
+  requestFingerprint({ body: validatedBody }),
+  async () => {
+    const item = await itemService.create({ body: validatedBody });
+    return { status: 201, json: JSON.stringify(toItemDTO(item)) };
+  },
+);
+```
+
+This illustrates infrastructure usage, not an enabled route. HTTP key extraction,
+DTO/status preparation integration, and sending the result belong to pass 4.
+Services keep their existing transaction wrappers; those wrappers join the pinned
+outer manager through AsyncLocalStorage. Supplying a manager remains mandatory for
+each participating repository operation. Nesting another idempotency execution is
+rejected before acquiring another connection.
+
+Only a definite `GET_LOCK` result of zero is a busy-key 409. NULL, malformed results,
+and SQL errors fail closed and discard the uncertain session. Completion and commit
+finish before lock release and connection release. An active transaction left after
+failed rollback also causes session destruction. No request timeout races cleanup
+against pending work, including an accepted SQL statement.
+
+Unexpired replay validates the stored response but applies the fixed hard ceiling,
+so lowering the configured size limit does not invalidate already-accepted results.
+Unexpected processing state or corrupt response data fails closed without invoking
+the callback. Expired replacement and its new result are in one transaction: if
+replacement fails, the prior expired row is restored by rollback.
+
+A lock/connection-release failure after commit is reported as a failure even though
+the mutation and response record may already be committed. A later matching retry
+replays that record. Cleanup errors do not replace an earlier business/database
+error. These rules preserve uncertainty rather than claiming every failed attempt
+rolled back. Advisory locks coordinate connections to the same MySQL server; they
+do not coordinate independent database writers.
+
 ## Retention and bounded storage
 
 Retention is **24 hours**, stored per completed record using the shared database
@@ -178,7 +224,8 @@ boundary. Successful completion sets both timestamps using MySQL UTC time; only 
 processing record can be completed. Expiry reads and conditional deletion also use
 database time. A 204/205 result has no JSON body; other successful statuses require
 valid JSON. Oversized or invalid responses reject completion rather than truncate.
-The later execution pass must connect these primitives to the shared transaction.
+The execution service connects these primitives to the shared transaction; HTTP
+integration remains deferred.
 
 Canonicalization accepts validated plain JSON values, omits undefined object fields,
 and rejects cycles, sparse/undefined array entries, non-finite numbers, and class
@@ -201,8 +248,6 @@ fail closed.
 
 Remaining implementation passes:
 
-- **Pass 3:** coordinated execution, transaction ownership, rollback and resource
-  cleanup with real-MySQL failure tests.
 - **Pass 4:** POST item creation opt-in, headers/CORS/OpenAPI, and HTTP tests;
   preserve the no-key path.
 - **Pass 5:** bounded retention cleanup, process/multi-instance/recovery evidence,

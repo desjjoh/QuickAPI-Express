@@ -4,6 +4,10 @@ import { assertRequestActive } from './request-context.helper';
 
 const transactions = new AsyncLocalStorage<EntityManager>();
 
+export function hasApplicationTransaction(): boolean {
+  return transactions.getStore() !== undefined;
+}
+
 /** Await work before rollback/release; request expiry cannot cancel running SQL. */
 export async function runInTransaction<T>(
   manager: EntityManager,
