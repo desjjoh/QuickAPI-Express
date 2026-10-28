@@ -2,17 +2,13 @@
 
 [Documentation index](../README.md#documentation)
 
-## Status and scope
+## Scope and guarantees
 
-Pass 1 defined the implementation contract on 2026-10-26. Pass 2 implements shared
-schemas, canonical fingerprints, validated policy, and replay storage/migration.
-Pass 3 adds shared lock/claim/replay execution and transaction/resource ownership.
-Pass 4 enables optional keyed creation through the HTTP handler, with header
-validation, CORS and OpenAPI integration. Pass 5 supplies lifecycle-owned bounded
-cleanup, process/recovery tests, and keyed production-image smoke. All five passes
-are implemented. The evidence below establishes specific tested outcomes; it does
-not promise cancellation of running SQL, exactly-once delivery, or protection beyond
-retention.
+Item idempotency combines validated keys and fingerprints, durable MySQL replay
+storage, transaction and lock ownership, HTTP integration, and lifecycle-owned
+bounded cleanup. Tests cover storage, concurrency, failure recovery, process
+restart, and the production image. These guarantees do not include cancellation
+of running SQL, exactly-once delivery, or protection beyond retention.
 
 All item mutations accept an optional key. Each has an explicit stable method/route
 and separate operation identifier:
@@ -24,9 +20,10 @@ and separate operation identifier:
 | PUT `/api/v1/items/:id`         | `items.replace` |
 | POST `/api/v1/items/:id/delete` | `items.delete`  |
 
-No-key behavior is unchanged. Updates/deletion still require `expected_version`.
-Reads and system endpoints ignore this header. No authentication, Redis dependency,
-uploads or external-provider coordination is introduced by this work.
+Requests without a key execute without replay protection. Updates/deletion require
+`expected_version`. Reads and system endpoints ignore this header. The item service
+is public; authentication, uploads and external-provider coordination are outside
+its contract. Replay coordination uses MySQL and requires no Redis dependency.
 
 The shared implementation follows Nest's separation of endpoint opt-in, HTTP
 integration, central idempotency service, fingerprinting, and MySQL persistence.
@@ -338,7 +335,8 @@ registers database → cleanup → HTTP services in `src/application.ts`:
 Logical expiry remains independent of the scheduler. Delayed or failed deletion
 does not extend replay eligibility, and unused expired rows can remain beyond
 24 hours. Expiry/replacement happens under the request key lock even between sweeps.
-Cleanup requires no additional migration; the expiry index shipped in pass 2.
+Cleanup uses the expiry index created by `RequestIdempotency1793059200000`; it
+requires no separate schema migration.
 
 The repository requires an active transaction manager for writes and stores the
 prepared JSON string unchanged in MEDIUMTEXT, which accommodates the full 65536-byte
@@ -356,7 +354,7 @@ TTL, response size, and bounded cleanup do not establish an absolute table-size 
 storage depends on throughput and cleanup backlog. Database/storage failures must
 fail closed.
 
-## Reusable components and implementation passes
+## Reusable components
 
 | Component                                     | Ownership                                             |
 | --------------------------------------------- | ----------------------------------------------------- |
@@ -368,12 +366,13 @@ fail closed.
 | Header/CORS/OpenAPI and handler opt-in        | HTTP infrastructure and endpoint configuration        |
 | Item business mutations                       | Existing item service/repository, with shared manager |
 
-The five implementation passes are complete. Preserve these contracts and add
-equivalent failure evidence before extending opt-in to another operation.
+Preserve these contracts and require equivalent failure evidence when extending
+opt-in to another operation.
 
 ## Required failure evidence
 
-Each pass adds focused evidence; enabling the endpoint is not the completion gate.
+Verification covers the following boundaries; endpoint availability alone does not
+establish these guarantees.
 
 | Boundary          | Required assertions                                                                                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

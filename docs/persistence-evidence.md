@@ -42,7 +42,7 @@ particular, a lost COMMIT acknowledgement can leave a successful write whose
 outcome the caller does not know. Our controlled tests can inspect that outcome
 independently; a caller cannot infer it from the error response. Do not blindly
 retry an unkeyed mutation under the assumption that it never ran. Optional keyed
-item mutations now have [durable atomic replay](idempotency.md); retain the same key
+item mutations have [durable atomic replay](idempotency.md); retain the same key
 and input to reconcile uncertain mutation outcomes within retention. Revision
 preconditions independently protect stale updates/deletions.
 

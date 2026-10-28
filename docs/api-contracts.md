@@ -64,10 +64,9 @@ Content-Type: application/json
 - Lookup, SQL revision condition, write, response preparation, and final commit
   share the mutation transaction. A rollback also restores the previous revision.
 
-This intentionally changes the client contract. The old `DELETE /items/:id` route
-is removed (404); use the POST deletion action with a JSON body. Existing PUT/PATCH
-requests without `expected_version` now return 422. No ETag/If-Match convention is
-introduced. Versions prevent stale writes, not duplicate creation or uncertain
+Deletion uses the POST action with a JSON body; `DELETE /items/:id` returns 404.
+PUT/PATCH requests without `expected_version` return 422. Preconditions use the
+JSON version field rather than ETag/If-Match. Versions prevent stale writes, not duplicate creation or uncertain
 commit outcomes. Use a retained idempotency key and original payload for mutation retries within the replay window.
 
 ## Price precision and input
@@ -108,12 +107,11 @@ This makes adjacent pages deterministic when the underlying data is unchanged.
 Offset pagination is not a shared snapshot across requests: concurrent insertion,
 deletion, or changes to sort values can shift rows and cause repeats/skips. The
 item revision contract does not freeze list results. Cursor/snapshot pagination
-is outside this change.
+is outside the current pagination contract.
 
-No schema migration is required for these price/query changes. This intentionally
-narrows formerly broad coercion and excess-precision inputs; review clients that
-relied on those behaviors. Existing valid two-decimal prices and response types
-remain compatible.
+Price/query validation uses the existing schema and requires no additional
+migration. Clients must follow the documented input types and decimal precision;
+broad type coercion and excess-precision values are not accepted.
 
 ## Response deadlines
 

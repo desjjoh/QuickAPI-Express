@@ -84,9 +84,9 @@ accordingly.
 
 ## HTTP and deployment boundaries
 
-Middleware ordering remains unchanged: static assets bypass the API limiter;
+Middleware ordering is fixed: static assets bypass the API limiter;
 operational endpoints, preflights, and other API requests reaching it share the
-same per-client quota. This change introduces no path exemptions. CORS and body
+same per-client quota without path exemptions. CORS and body
 parsing remain downstream. Browser applications needing to read `Retry-After`
 must explicitly include it in `CORS_EXPOSED_HEADERS`.
 
@@ -110,9 +110,8 @@ untrusted-peer, and independent forwarded-client coverage.
 
 ## Shared enforcement decision
 
-As agreed on 2026-10-25, keep the existing process-local limiter for the current
-scope. Redis is the planned future approach when deployment-wide enforcement is
-needed. No Redis dependency or configuration is introduced now. Before switching,
+The limiter uses process-local enforcement. Redis is the planned future approach when deployment-wide enforcement is
+needed. The current application has no Redis dependency or configuration. Before switching,
 define Redis outage behavior and storage/expiry limits, preserve the rolling-window
 contract, and verify enforcement across multiple instances. Until that work ships,
 counters remain independent per process and reset on restart.

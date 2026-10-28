@@ -105,15 +105,15 @@ completion/disconnection, independently of handler promises or database work.
 | `http_request_duration_ms`    | `method`, `route`, `status` | Completed response duration in milliseconds; existing buckets remain unchanged. |
 | `http_requests_aborted_total` | `method`, `route`           | Requests whose response did not finish before disconnection.                    |
 
-Completed metric names, label names, units, and histogram buckets are preserved.
-Aborted requests increment only the new counter and do not enter the completed
-counter or histogram. Each log and metric observer receives the same outcome,
-route, method, and elapsed time.
+Completed metrics use the names, labels, units, and histogram buckets defined above.
+Aborted requests increment only `http_requests_aborted_total` and do not enter the
+completed counter or histogram. Each log and metric observer receives the same
+outcome, route, method, and elapsed time.
 
-Route label **values change** from local paths such as `/:id` to full templates
-such as `/api/v1/items/:id`. The old `unknown_route` value becomes `<unmatched>`.
-Update dashboards/alerts that select these values. Old series remain in the
-monitoring backend until its retention expires; new requests use the new labels.
+Route labels use full templates such as `/api/v1/items/:id`; unmatched requests
+use `<unmatched>`. Dashboards and alerts must select those values. Collectors with
+legacy `/:id` or `unknown_route` series can retain them until monitoring retention
+expires, but current requests use the full-template labels.
 Known methods retain their names, with unsupported methods grouped as `<other>`.
 Request IDs, IPs, query strings, item IDs, and concrete dynamic mount values are
 never metric labels. Series growth is bounded by server-declared route templates,
@@ -135,5 +135,5 @@ and unmatched paths. Distinct mount templates remain distinct metric series.
 Static files/favicon and shutdown admission precede application telemetry. Requests
 rejected there, or by Node's HTTP parser before Express dispatch, are outside
 these Express logs and metrics. A completed response does not prove client
-receipt or cancellation of database work. No new environment settings or database
-migrations are required for either logging/metrics pass.
+receipt or cancellation of database work. Logging and metrics use the documented
+environment settings and do not require database migrations.

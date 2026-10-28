@@ -116,8 +116,8 @@ Coverage thresholds and exclusions are defined in [vitest.config.ts](../vitest.c
 
 ## HTTP lifecycle evidence
 
-The milestone-one completion review adds focused regression cases for credentialed
-CORS and exact origins, controller lookups that outlive a response deadline, a real
+HTTP regression tests cover credentialed CORS and exact origins, controller
+lookups that outlive a response deadline, a real
 MySQL update blocked until after HTTP timeout, probe acquisition after shutdown,
 and concurrent rate-limit bursts. `unit/request-timeout.test.ts` distinguishes
 `writableEnded` from `writableFinished` and checks timer/listener cleanup directly,
@@ -369,7 +369,7 @@ a new process must replay the stored response without another item. Portable IPC
 emits the registered SIGTERM handler on Windows; production container smoke sends
 a real SIGTERM to the compiled process.
 
-Production smoke now verifies keyed creation, normalized exact-byte replay, fresh
+Production smoke verifies keyed creation, normalized exact-byte replay, fresh
 correlation IDs, changed-input conflict, replay after deletion, and replay after
 restarting the same image. Real process/database-session loss and controlled commit
 acknowledgement faults establish these outcomes, not every MySQL writer failover

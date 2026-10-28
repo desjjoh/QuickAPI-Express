@@ -30,7 +30,7 @@ indicator; `/ready` is the endpoint that actively verifies connectivity.
 
 The migration deadline covers pool acquisition and migration inspection after
 TypeORM initialization; it is not an overall initialization deadline. Initial
-connection setup now uses the [explicit connection deadline](database-settings.md).
+connection setup uses the [explicit connection deadline](database-settings.md).
 Later ORM metadata queries retain their existing behavior. Migration
 history verification does not detect arbitrary schema drift, missing manually
 deleted tables, data correctness, or compatibility with another writer version.
@@ -75,7 +75,7 @@ are released normally. A failed or stalled active query connection is destroyed 
 it cannot reenter the pool with unread results; its runner is then released. Other
 requests' connections and the application pool are not destroyed by probe failure.
 
-The application now owns a bounded acquisition queue in front of mysql2's native
+The application owns a bounded acquisition queue in front of mysql2's native
 pool. The readiness deadline can report `down` before the separate acquisition
 deadline; that **one** acquisition remains owned until the adapter expires/removes
 it or a lease arrives. Further checks share its failed result during cleanup. A

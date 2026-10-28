@@ -4,11 +4,11 @@
 
 This backlog contains remaining hardening work for QuickAPI-Express, scaled to the application's existing scope. Remove completed entries; describe implemented behavior and verification boundaries in the relevant guides instead.
 
-The backlog was reorganized against commit `cdd04ca` on 2026-10-25. Recheck the implementation and evidence before starting each item. Passing CI does not establish protection for paths it does not exercise.
+Check the current implementation and evidence before starting each item. Passing CI does not establish protection for paths it does not exercise.
 
 ## Scope and order
 
-Finish the system/server review first, then begin business/API contract work. Keep repository-level checks separate from deployment-owned verification; record unavailable deployment evidence explicitly rather than treating local tests as proof.
+Keep system/server hardening separate from business/API contract work. Keep repository-level checks separate from deployment-owned verification; record unavailable deployment evidence explicitly rather than treating local tests as proof.
 
 Harden existing HTTP policies, persistence infrastructure, diagnostics, release checks, and item operations. New business features, authentication, audit-history functionality, queues, and provider integrations are outside this roadmap. Review behavior changes before implementation.
 
@@ -20,7 +20,7 @@ Harden existing HTTP policies, persistence infrastructure, diagnostics, release 
 
 ### Deployment verification — deferred until hosting is chosen
 
-The application currently runs only in local Docker. The user deferred the following checks on 2026-10-25 until a hosted environment exists. They require that environment and its operations configuration; they are not outstanding application implementation work.
+The application runs only in local Docker. The following checks are deferred until a hosted environment exists. They require that environment and its operations configuration; they are not outstanding application implementation work.
 
 - Verify the real ingress trust boundary, client IP resolution, and browser CORS behavior.
 - Verify authorized diagnostics/metrics access, public denial, and direct-port denial.
@@ -37,7 +37,7 @@ See [deployment](deployment.md), [database lifecycle](database-lifecycle.md), [d
 
 ### Migration upgrade and rollback evidence
 
-Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. Revision and replay-storage upgrades now have representative-data and offline downgrade evidence. Add equivalent evidence alongside future migrations:
+Fresh-schema migration validation does not establish upgrades over existing data, backfill correctness, or compatible rollback. Revision and replay-storage upgrades have representative-data and offline downgrade evidence. Add equivalent evidence alongside future migrations:
 
 - Exercise upgrades against representative existing rows; verify data preservation, defaults/backfills, and required indexes.
 - Define deployment ordering and compatibility. Preserve the existing revision enforcement when adding replay state; old writers that bypass the contract must not coexist with new writers.

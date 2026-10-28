@@ -57,9 +57,9 @@ advisory-lock coordination contract.
 
 ## Proxy and browser access
 
-`TRUST_PROXY` now defaults to empty (no proxy trust), replacing the old hardcoded
-one-hop trust. Deployments behind an ingress must explicitly configure its actual
-IP addresses/CIDRs before relying on forwarded client addresses, protocol, or host.
+`TRUST_PROXY` defaults to empty (no proxy trust). Deployments behind an ingress
+must explicitly configure its actual IP addresses/CIDRs before relying on forwarded
+client addresses, protocol, or host.
 Use the same policy on every API instance and restart after changing environment
 values. For example, if the ingress really connects from `10.20.0.10`:
 
@@ -92,14 +92,14 @@ or authorization for this public item API.
 Before release, verify real ingress requests and browser preflights, the logged
 client IP, and that direct/untrusted forwarding cannot change the rate-limit
 identity. Automated loopback/allowlist tests do not establish the real network
-trust boundary. No schema migration is required for this HTTP policy change.
+trust boundary. HTTP policy configuration requires no schema migration.
 
 ## Liveness, readiness, and operations
 
 Rate limits are enforced independently by each API process. Configure bounded
 client capacity and account for 503 responses when new identities cannot be
-tracked. A cross-replica quota needs separate gateway/shared enforcement; this
-milestone adds no Redis dependency. See the [rate limiting lifecycle](rate-limiting.md).
+tracked. A cross-replica quota needs separate gateway/shared enforcement. The
+application has no Redis dependency. See the [rate limiting lifecycle](rate-limiting.md).
 
 - `GET /health` is **process liveness**. It reports `alive`, uptime, and a timestamp; it does not query
   MySQL and should answer while the process is alive and not shutting down.
@@ -120,8 +120,8 @@ on readiness failure while leaving liveness independent. See the
 pool exhaustion, startup failure, and recovery limits.
 
 The public `/ready` body contains only `ready`, `status`, and `timestamp`. Checks
-still run internally; dependency names and timings are not returned. Consumers
-that previously read `checks` must use readiness status instead.
+run internally; dependency names and timings are not returned. Consumers must use
+readiness status rather than an internal dependency breakdown.
 
 ## Database capacity and TLS
 
@@ -156,15 +156,16 @@ upgrade/down/re-up rehearsal runs only against disposable MySQL, never the dev D
 ## Production logging
 
 Production logging writes timestamped JSON. Review [logging behavior](logging.md)
-when configuring collectors: successful requests are now `debug`, error records
+when configuring collectors: successful requests use `debug`, error records
 use safe diagnostics/fingerprints, and request paths are route templates. No
-migration or new environment variable is required; restart to deploy the change.
+database migration is required for logging configuration; restart after changing
+its environment settings.
 
-Logs now distinguish completed and aborted responses. Monitoring can use
+Logs distinguish completed and aborted responses. Monitoring can use
 `http_requests_aborted_total{method,route}` for interrupted responses; completed
-counter/histogram names, label names, units, and buckets are unchanged. Route label
-values now use full templates, and `<unmatched>` replaces `unknown_route`. Update
-dashboards/alerts selecting the old values. Aborted responses are excluded from
+counter/histogram names, label names, units, and buckets follow the documented
+metrics contract. Route labels use full templates and `<unmatched>`; dashboards
+and alerts must select those values. Aborted responses are excluded from
 completed-request counters and duration histograms, even if headers carried 200.
 See the [metrics contract](logging.md#metrics-contract) and its transport boundaries.
 

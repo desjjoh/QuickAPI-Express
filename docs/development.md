@@ -65,15 +65,14 @@ asset requests. Restart the application after changing settings.
 
 `/health` and `/ready` remain public. Readiness still evaluates dependencies,
 but its public body contains only `ready`, `status`, and `timestamp`; dependency
-names and probe timings are no longer exposed, in any environment.
+names and probe timings are not exposed in any environment.
 See [deployment access restrictions](deployment.md#operational-endpoint-access)
 before enabling metrics or diagnostics outside development.
 
 ### Proxy and CORS configuration
 
 The HTTP policy keys use the same names as QuickAPI-NestJS. They are optional;
-omitting them keeps the existing localhost CORS defaults, while proxy trust is
-now disabled by default. Existing `.env` files are not updated automatically.
+omitting them uses localhost CORS defaults and disables proxy trust. Existing `.env` files are not updated automatically.
 
 | Variable               | Default                                       | Validation and meaning                                                                                                                                                                               |
 | ---------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -148,7 +147,7 @@ three accept integer milliseconds from 1 through 2147483647; empty values fail
 validation. See the [complete database lifecycle](database-lifecycle.md) for pool
 ownership, cache behavior, timeout cleanup, recovery, and shutdown.
 
-Startup now refuses unapplied migrations. Run migrations explicitly before starting
+Startup refuses unapplied migrations. Run migrations explicitly before starting
 the API; readiness probes never apply them. Initial database connection/ORM setup
 retains its existing driver timeout behavior.
 

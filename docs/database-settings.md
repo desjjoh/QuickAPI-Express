@@ -98,11 +98,11 @@ while `/health` stays independent. Startup still checks committed migration hist
 without applying migrations. The connection deadline is not an overall TypeORM
 initialization deadline; later ORM metadata queries have their existing behavior.
 
-Shutdown withdraws readiness and closes admission, drains accepted HTTP/handler work,
-then stops readiness and destroys the data source. Pool closure rejects waiting
+Shutdown withdraws readiness and closes admission, drains accepted HTTP/handler work
+and active replay cleanup, then stops readiness and destroys the data source. Pool closure rejects waiting
 acquisitions and closes unfinished connection attempts. The overall shutdown
-watchdog remains the final bound for stuck work; this change does not reorder pool
-closure ahead of accepted mutations.
+watchdog is the final bound for stuck work; pool closure follows the accepted-work
+drain.
 
 Unit tests verify queue limits, timer cleanup, late leases, idempotent release,
 configuration validation, and CA loading. Real MySQL tests cover exhaustion, generic
