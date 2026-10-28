@@ -19,6 +19,11 @@ npm run test:e2e
 npm run test:migration
 ```
 
+The disposable Compose project is `quickapi-express-test`. Test npm commands select
+it explicitly, independently of the persistent `quickapi-express-dev` project.
+Development `infra:*` commands use port 3309 and retain a named data volume; they
+are not test setup/teardown commands.
+
 The disposable service binds only to `127.0.0.1:3318` and stores MySQL data in `tmpfs`. Destructive
 infrastructure commands first require all of the following:
 

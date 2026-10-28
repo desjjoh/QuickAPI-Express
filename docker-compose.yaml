@@ -1,3 +1,6 @@
+# Local development only. Test infrastructure uses a separate Compose project.
+name: quickapi-express-dev
+
 services:
   api:
     stop_grace_period: 40s
@@ -43,20 +46,19 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
-      - '3307:3306'
-    cpus: 0.5
-    mem_limit: 256m
-    storage_opt:
-      size: 2G
+      - '127.0.0.1:3309:3306'
+    cpus: 1.0
+    mem_limit: 1g
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          'mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD || exit 1',
+          'MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u$$MYSQL_USER -D$$MYSQL_DATABASE --execute="SELECT 1"',
         ]
       interval: 5s
       timeout: 3s
       retries: 20
+      start_period: 10s
     networks:
       - quickapi
 
