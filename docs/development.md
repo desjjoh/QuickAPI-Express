@@ -7,7 +7,7 @@
 - **Node.js:** `>=24 <25` (CI and the production image currently use Node `24.22.1`).
 - **Package manager:** `npm@11.4.2`, as declared by `packageManager` in `package.json`.
 - Use `npm ci` with the committed `package-lock.json`; do not substitute another package manager.
-- Docker with the Compose plugin is required for MySQL-backed tests and container validation.
+- Docker with the Compose plugin is required for the default development database, MySQL-backed tests, and container validation.
 
 Install dependencies with:
 
@@ -17,7 +17,9 @@ npm ci
 
 ## Configuration
 
-Create `.env` for local development. Every variable below is consumed at startup:
+Copy `.env.example` to a gitignored `.env` for local development. Its required
+database values match the persistent development Compose service. Every variable
+below is consumed at startup:
 
 ```dotenv
 NODE_ENV=development
@@ -25,7 +27,7 @@ PORT=3000
 LOG_LEVEL=debug
 
 DB_HOST=127.0.0.1
-DB_PORT=3307
+DB_PORT=3309
 DB_USER=app
 DB_PASSWORD=app
 DB_DATABASE=quickapi
@@ -174,21 +176,51 @@ shutdown ordering and retention boundaries.
 
 ## Local MySQL, migrations, and development
 
-The development Compose file provides MySQL 8.4.6 on host port `3307`, with schema `quickapi`, user
-`app`, password `app`, and a persistent `mysql_data` volume. Start the database, apply migrations
-explicitly using the `.env` above, and then start the source server:
+`docker-compose.yaml` provides MySQL 8.4.6 bound to `127.0.0.1:3309`, with schema
+`quickapi`, user/password `app`, and a persistent named volume
+`quickapi-express-dev_mysql_data`. These credentials are for local development only.
+Port 3309 keeps Express separate from NestJS development MySQL on 3307 and Express
+tests on 3318. MySQL retains its internal port 3306; the containerized API connects
+to `mysql:3306` rather than the published host port.
+
+The fixed development Compose project is `quickapi-express-dev`; disposable tests
+use `quickapi-express-test`. npm infrastructure commands select their project
+explicitly, so test teardown cannot remove development containers or volumes.
+
+Start the database, apply committed migrations, and start the source server:
 
 ```bash
-docker compose up -d mysql
-npm run migration:run
+npm run dev:db
 npm run dev
 ```
 
-Alternatively, after migrations have been applied, `npm run docker:up` builds and starts both the API
-and MySQL. Compose waits for MySQL health before starting the API, but it does **not** apply
-migrations. `docker compose down` stops the stack while retaining data; use
-`docker compose down --volumes --remove-orphans` only when intentionally deleting the development
-database.
+`dev:db` runs `infra:up` followed by the explicit migration command. It does not
+start the API or generate replacement migrations. To manage the database separately:
+
+| Command                 | Behavior                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| `npm run infra:up`      | Start development MySQL and wait for an authenticated query against the schema to succeed. |
+| `npm run infra:status`  | Show development MySQL status.                                                             |
+| `npm run infra:logs`    | Show the latest 200 development MySQL log lines.                                           |
+| `npm run infra:stop`    | Stop MySQL while retaining its container and data.                                         |
+| `npm run infra:down`    | Remove the development stack's containers/network while retaining its named data volume.   |
+| `npm run migration:run` | Apply pending migrations to the database selected in `.env`.                               |
+
+These npm commands work in Bash and PowerShell; use `npm.cmd` in PowerShell when
+forwarding CLI options. `infra:up` does not start test infrastructure or run
+migrations. `test:infra:*` commands remain reserved for disposable tests.
+
+After migrations have been applied, `npm run docker:up` builds and starts both the
+API and MySQL. Compose waits for MySQL health before starting the API, but it does
+not apply migrations. Stop/down/up cycles preserve development data. Do not add
+`--volumes` to development teardown unless intentionally deleting that database.
+MySQL initialization credentials/schema apply only when the data volume is empty;
+changing environment values does not migrate or reconfigure existing volume data.
+
+An existing local MySQL database and older Docker volumes remain separate and are
+not reset or imported automatically. To use an external development database,
+explicitly override the five `DB_*` connection values in `.env` and run migrations
+only after checking that target. Preserve migration history across branch changes.
 
 After changing an entity, use the fixed generation destination, review the generated migration, and
 validate that no uncommitted schema difference remains:

@@ -14,16 +14,19 @@ A TypeScript and Express 5 API with MySQL persistence, explicit migrations, stru
 Use Node.js 24 (`>=24 <25`), npm 11.4.2, Docker Engine, and Docker Compose v2.
 
 1. Run `npm ci`, then copy [.env.example](.env.example) to a gitignored `.env`.
-2. Follow [local configuration](docs/development.md#configuration): the development Compose database uses host port 3307, database `quickapi`, and user/password `app`. The example file needs these overrides for this topology.
-3. Start MySQL and wait for it to become healthy, then apply migrations and start the API:
+2. The example defaults connect to persistent development MySQL at `127.0.0.1:3309`, database `quickapi`, and user/password `app`. See [local configuration](docs/development.md#configuration).
+3. Start the development database, wait for health, apply migrations, and start the API:
 
    ```bash
-   docker compose up -d mysql
-   npm run migration:run
+   npm run dev:db
    npm run dev
    ```
 
 The local API is at `http://localhost:3000`. Swagger is served at `/docs`, OpenAPI JSON at `/docs-json`, and ReDoc at `/redoc`.
+
+`npm run infra:up` starts only development MySQL; `npm run infra:down` removes the
+development containers while retaining database data. Test infrastructure uses
+separate `test:infra:*` commands, project, and disposable storage.
 
 ## Documentation
 
