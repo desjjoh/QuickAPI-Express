@@ -160,6 +160,10 @@ class LifecycleHandler {
     if (this.startupCompleted) return Promise.resolve();
 
     this.startupPromise = (async () => {
+      const start: number = performance.now();
+
+      logger.debug('Starting services…');
+
       try {
         for (const service of this.startupServices) {
           if (this.shutdownStarted) break;
@@ -171,7 +175,13 @@ class LifecycleHandler {
           logger.debug(`Service started → ${service.name}`);
         }
 
-        if (!this.shutdownStarted) this.startupCompleted = true;
+        if (!this.shutdownStarted) {
+          this.startupCompleted = true;
+
+          const duration: string = (performance.now() - start).toFixed(2);
+
+          logger.debug(`All services started in ${duration}ms`);
+        }
       } catch (error) {
         if (await this.stopInitializedServices()) process.exitCode = 1;
 
@@ -213,6 +223,10 @@ class LifecycleHandler {
 
     if (this.shutdownPromise) return this.shutdownPromise;
 
+    const start: number = performance.now();
+
+    logger.debug('Stopping services…');
+
     this.shutdownStarted = true;
     this.startupCompleted = false;
 
@@ -245,7 +259,9 @@ class LifecycleHandler {
         process.exitCode = 1;
       }
 
-      logger.debug('Shutdown cleanup completed.');
+      const duration: string = (performance.now() - start).toFixed(2);
+
+      logger.debug(`Shutdown completed in ${duration}ms`);
     })().finally(() => {
       // A forced/failed drain may leave live work after cleanup returned.
       if (cleanupFailed) watchdog.unref();
