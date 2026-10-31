@@ -10,7 +10,7 @@ bounded cleanup. Tests cover storage, concurrency, failure recovery, process
 restart, and the production image. These guarantees do not include cancellation
 of running SQL, exactly-once delivery, or protection beyond retention.
 
-All item mutations accept an optional key. Each has an explicit stable method/route
+All item mutations accept an optional key. Each uses a request-derived stable method/route
 and separate operation identifier:
 
 | Method and route                | Operation       |
@@ -27,7 +27,7 @@ its contract. Replay coordination uses MySQL and requires no Redis dependency.
 
 The shared implementation follows Nest's separation of endpoint opt-in, HTTP
 integration, central idempotency service, fingerprinting, and MySQL persistence.
-Express intentionally adapts authenticated scope to an explicit public scope,
+Express intentionally adapts authenticated scope to a default public scope,
 fingerprints validated input, and stores its already-prepared JSON string. Expiry
 is assigned when completing the response record rather than creating the
 claim. Cleanup uses bounded batches rather than an unbounded delete.
@@ -40,10 +40,10 @@ claim. Cleanup uses bounded batches rather than an unbounded delete.
   work. Do not trim, case-fold, or otherwise change an accepted key.
 - Clients generate unpredictable keys, such as UUIDv4 values, before the first
   attempt and retain the same key for retries of that operation.
-- Scope combines an application/database namespace, explicit caller namespace,
+- Scope combines an application/database namespace, caller namespace,
   stable operation identifier, canonical method/route, and key. Hash this tuple
   for storage and MySQL lock identity; do not log or retain the raw key.
-- Item mutations explicitly use caller namespace `public`. There is no per-user
+- Item mutations default to `PUBLIC_IDEMPOTENCY_SCOPE` (`public`). There is no per-user
   namespace: two callers using the same key for this operation share its conflict
   and replay behavior. A key is not authentication or authorization. Do not infer
   identity from IP, forwarded headers, cookies, or request IDs.
@@ -55,7 +55,8 @@ claim. Cleanup uses bounded batches rather than an unbounded delete.
 
 ### Configuring another scope
 
-The current HTTP option accepts a fixed string per endpoint. For example:
+The HTTP option defaults to the shared `PUBLIC_IDEMPOTENCY_SCOPE` constant. Override it
+with a fixed string or a synchronous request resolver. For example:
 
 ```ts
 idempotency: {
@@ -72,14 +73,11 @@ Changing an existing endpoint's scope prevents its previous records from matchin
 plan compatibility for unexpired keys before doing so, because creation or other
 side effects may execute again when domain preconditions allow.
 
-Dynamic per-user or per-tenant scopes are not supported by the current controller
-option. A future implementation should resolve trusted identity centrally in the
-HTTP infrastructure, after authentication and authorization, before lock acquisition
-and replay lookup. Controllers would declare the scope policy; business services
-would remain unchanged. Do not use an arbitrary body/query/header value as trusted
-caller identity. Any authenticated replay must still pass current authorization.
-This describes a future extension, not an authentication feature or implementation
-commitment for the current public item service.
+A resolver such as `scope: (req) => trustedActorScope(req)` runs in shared HTTP
+infrastructure before lock acquisition and replay lookup. It must return a nonempty
+string of at most 128 characters from authenticated, authorized server context.
+Authentication must run before this handler, including on replay. Do not trust arbitrary
+body/query/header identity. The public item service does not implement authentication.
 
 ## Fingerprint contract
 
@@ -199,8 +197,6 @@ jsonHandler(itemService.create, toItemDTO, {
   transaction: true,
   idempotency: {
     operation: 'items.create',
-    scope: 'public',
-    route: 'POST /api/v1/items',
   },
 });
 ```
@@ -215,9 +211,14 @@ The no-key path retains its previous handler transaction and response behavior.
 
 The controller option is named `scope`; HTTP infrastructure maps it to the existing
 internal `callerScope` field and persisted `caller_scope` column. No migration or
-creation-hash change accompanies this rename. Keep `route` explicit: use a stable
-method plus route template, never a concrete item ID or raw query string. This avoids
-relying on router nesting or mount-path discovery. The validated item ID, semantic
+hash-format change is required. By default, the handler derives method plus
+`req.baseUrl` and matched `req.route.path`, removes trailing slashes (except root), and
+excludes concrete leaf parameters and query strings. Current item route identities
+remain unchanged. An explicit `route` override remains available for aliases or
+parameterized router mounts: Express baseUrl contains resolved mount values, so these
+mounts require a stable explicit method/template to avoid identity changes across
+callers. Missing or unsupported route metadata fails closed before database work. The
+validated item ID, semantic
 query values, and body belong to the fingerprint. Reusing a key for a different ID
 under the same operation returns 409; keys are independent across operations.
 
@@ -392,7 +393,8 @@ atomicity, and HTTP/process tests for transport/restart/multi-instance behavior.
 Prefer barriers and controlled fault injection to sleep-based races. Inspect
 persisted outcomes independently: at creation commit there is one matching item
 and replay result; rolled-back creation has neither. Later item deletion does not
-remove the retained replay result or make replay recreate the item. Do not claim running-SQL cancellation,
+remove the retained replay result or make replay recreate the item. Do not claim
+running-SQL cancellation,
 exactly-once network delivery, or duplicate protection beyond retention.
 
 Implemented evidence includes bounded batches and independent sweepers, live and

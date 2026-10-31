@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const PUBLIC_IDEMPOTENCY_SCOPE = 'public';
+
 export const IdempotencyKeySchema = z
   .string()
   .min(1)

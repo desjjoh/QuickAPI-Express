@@ -21,8 +21,6 @@ router.post(
     transaction: true,
     idempotency: {
       operation: 'items.create',
-      scope: 'public',
-      route: 'POST /api/v1/items',
     },
   }),
 );
@@ -49,8 +47,6 @@ router.patch(
     transaction: true,
     idempotency: {
       operation: 'items.update',
-      scope: 'public',
-      route: 'PATCH /api/v1/items/:id',
     },
   }),
 );
@@ -63,8 +59,6 @@ router.put(
     transaction: true,
     idempotency: {
       operation: 'items.replace',
-      scope: 'public',
-      route: 'PUT /api/v1/items/:id',
     },
   }),
 );
@@ -77,8 +71,6 @@ router.post(
     transaction: true,
     idempotency: {
       operation: 'items.delete',
-      scope: 'public',
-      route: 'POST /api/v1/items/:id/delete',
     },
   }),
 );
