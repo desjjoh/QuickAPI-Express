@@ -14,40 +14,26 @@ A TypeScript and Express 5 API with MySQL persistence, explicit migrations, stru
 Use Node.js 24 (`>=24 <25`), npm 11.4.2, Docker Engine, and Docker Compose v2.
 
 1. Run `npm ci`, then copy [.env.example](.env.example) to a gitignored `.env`.
-2. The example defaults connect to persistent development MySQL at `127.0.0.1:3309`, database `quickapi`, and user/password `app`. See [local configuration](docs/development.md#configuration).
-3. Start the development database, wait for health, apply migrations, and start the API:
+2. Review [Configuration](docs/configuration.md). The example connects to persistent
+   development MySQL at `127.0.0.1:3309`, schema `quickapi`, using local-only credentials.
+3. Run `npm run dev:db` to start MySQL and apply migrations, then `npm run dev`.
 
-   ```bash
-   npm run dev:db
-   npm run dev
-   ```
-
-The local API is at `http://localhost:3000`. Swagger is served at `/docs`, OpenAPI JSON at `/docs-json`, and ReDoc at `/redoc`.
-
-`npm run infra:up` starts only development MySQL; `npm run infra:down` removes the
-development containers while retaining database data. Test infrastructure uses
-separate `test:infra:*` commands, project, and disposable storage.
+The default API is `http://localhost:3000`. Documentation defaults to enabled in
+development/test and disabled in production. When enabled, Swagger is at `/docs`,
+OpenAPI JSON at `/docs-json`, and ReDoc at `/redoc`. See [Setup](docs/setup.md)
+for native/container workflows and [Security](docs/security.md) for exposure limits.
 
 ## Documentation
 
-See [Bounded rate limiting](docs/rate-limiting.md) for rolling-window quotas, capacity behavior, retry timing, and deployment limits.
-
-See [Database readiness and recovery](docs/database-lifecycle.md) for startup migration checks, runtime probes, and outage/shutdown behavior.
-
-| Guide                                                | Contents                                                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [Development](docs/development.md)                   | Setup, configuration, migrations, commands, and readability conventions                                  |
-| [Architecture](docs/architecture.md)                 | Layer boundaries, middleware ordering, startup, and shutdown                                             |
-| [API contracts](docs/api-contracts.md)               | Item routes, validation, pagination, and errors                                                          |
-| [Testing](test/TESTING.md)                           | Test categories, database safety, PowerShell commands, coverage, and CI                                  |
-| [Deployment and operations](docs/deployment.md)      | Production image, operational endpoints, and container smoke validation                                  |
-| [Logging and metrics](docs/logging.md)               | NestJS-style output, privacy, request outcomes, and metric contracts                                     |
-| [Database settings](docs/database-settings.md)       | Pool bounds, connection deadlines, TLS, and lifecycle guarantees                                         |
-| [Dependency and image security](docs/security.md)    | Critical-only gates, exact exceptions, reports, and release boundaries                                   |
-| [Immutable releases](docs/releases.md)               | Candidate verification, registry permissions, evidence, and digest rollback                              |
-| [Persistence evidence](docs/persistence-evidence.md) | Database failure outcomes, migration history, and rollback boundaries                                    |
-| [Request idempotency](docs/idempotency.md)           | Optional item mutation replay, transaction atomicity, retention, cleanup lifecycle, and failure evidence |
-| [Technical backlog](docs/backlog.md)                 | Verified gaps and follow-up work                                                                         |
+| Guide                                  | Contents                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| [Setup](docs/setup.md)                 | Installation, local MySQL, development commands, and readability conventions    |
+| [Architecture](docs/architecture.md)   | Layer boundaries, middleware order, transactions, startup, and shutdown         |
+| [Configuration](docs/configuration.md) | Environment loading, validation, HTTP policy, and environment targets           |
+| [Testing](docs/testing.md)             | Test layers, disposable database safety, coverage, and CI                       |
+| [Security](docs/security.md)           | Public API boundaries, proxy/CORS trust, operational access, and security gates |
+| [Deployment](docs/deployment.md)       | Runtime requirements, migration ordering, access, and rollback constraints      |
+| [Backlog](docs/backlog.md)             | Known limitations and deferred work                                             |
 
 Configuration is defined by [.env.example](.env.example) and [environment validation](src/config/env.config.ts). Commands are defined in [package.json](package.json).
 
@@ -61,7 +47,7 @@ Configuration is defined by [.env.example](.env.example) and [environment valida
 | Application and system information | `/info`, `/system` |
 | Prometheus metrics                 | `/metrics`         |
 
-See [API contracts](docs/api-contracts.md) for implemented behavior and [deployment](docs/deployment.md) for operational access. The item API currently has no authentication or authorization layer.
+See [API contracts](docs/architecture.md#api-contracts) for implemented behavior and [deployment](docs/deployment.md) for operational access. The item API currently has no authentication or authorization layer.
 
 ## Quality checks
 
@@ -70,7 +56,7 @@ npm run check
 npm run test:unit:coverage
 ```
 
-`check` verifies formatting, lint, types, unit tests, and build without requiring MySQL. Read [Testing](test/TESTING.md) before running database-backed tests. CI separately checks integration, E2E, migration drift, and production topology; a green run does not establish readiness for every deployment environment.
+`check` verifies formatting, lint, types, unit tests, and build without requiring MySQL. Read [Testing](docs/testing.md) before running database-backed tests. CI separately checks integration, E2E, migration drift, and production topology; a green run does not establish readiness for every deployment environment.
 
 ## License
 
