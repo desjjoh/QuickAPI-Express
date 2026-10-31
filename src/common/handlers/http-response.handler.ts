@@ -7,6 +7,7 @@ import { IdempotencyService } from '@/common/services/idempotency.service';
 import { idempotencyNamespace } from '@/config/idempotency.config';
 import {
   IdempotencyScopeSchema,
+  PUBLIC_IDEMPOTENCY_SCOPE,
   type IdempotencyScope,
 } from '@/common/library/models/idempotency.model';
 import { readIdempotencyKey } from '@/common/helpers/idempotency-header.helper';
@@ -33,8 +34,9 @@ function responseHandler<R extends object, T>(
 type JsonOptions<DTO> = {
   status?: number | ((body: DTO) => number);
   transaction?: boolean;
-  idempotency?: Pick<IdempotencyScope, 'operation' | 'route'> & {
-    scope: IdempotencyScope['callerScope'];
+  idempotency?: Pick<IdempotencyScope, 'operation'> & {
+    route?: string;
+    scope?: string | ((req: Request) => string);
   };
 };
 
@@ -46,18 +48,23 @@ export function jsonHandler<R extends object, T, DTO>(
 ): RequestHandler {
   if (idempotency && !transaction)
     throw new Error('Idempotency requires a transactional JSON handler.');
-  const scope = idempotency
-    ? IdempotencyScopeSchema.parse({
-        namespace: idempotencyNamespace,
-        callerScope: idempotency.scope,
-        operation: idempotency.operation,
-        route: idempotency.route,
-      })
-    : undefined;
+  if (idempotency) {
+    IdempotencyScopeSchema.shape.operation.parse(idempotency.operation);
+    if (idempotency.route !== undefined)
+      IdempotencyScopeSchema.shape.route.parse(idempotency.route);
+    if (typeof idempotency.scope !== 'function')
+      IdempotencyScopeSchema.shape.callerScope.parse(
+        idempotency.scope ?? PUBLIC_IDEMPOTENCY_SCOPE,
+      );
+  }
 
   if (transaction) {
     return trackHandler(async (req: Request, res: Response) => {
-      const key = scope ? readIdempotencyKey(req) : undefined;
+      const key = idempotency ? readIdempotencyKey(req) : undefined;
+      const scope =
+        idempotency && key !== undefined
+          ? resolveIdempotencyScope(req, idempotency)
+          : undefined;
       const input = req.validated ?? { params: null, query: null, body: null };
 
       if (key !== undefined && !req.validated)
@@ -112,6 +119,36 @@ export function jsonHandler<R extends object, T, DTO>(
         .json(body);
     },
   );
+}
+
+/** Resolve identity from routing metadata, never concrete IDs or query strings. */
+export function resolveIdempotencyScope(
+  req: Request,
+  policy: NonNullable<JsonOptions<unknown>['idempotency']>,
+): IdempotencyScope {
+  let route = policy.route;
+
+  if (route === undefined) {
+    if (typeof req.route?.path !== 'string')
+      throw new Error(
+        'Automatic idempotency requires a matched route template.',
+      );
+
+    const path =
+      `${req.baseUrl ?? ''}${req.route.path}`.replace(/\/+$/, '') || '/';
+
+    route = `${req.method} ${path}`;
+  }
+
+  return IdempotencyScopeSchema.parse({
+    namespace: idempotencyNamespace,
+    callerScope:
+      typeof policy.scope === 'function'
+        ? policy.scope(req)
+        : (policy.scope ?? PUBLIC_IDEMPOTENCY_SCOPE),
+    operation: policy.operation,
+    route,
+  });
 }
 
 export function textHandler<R extends object>(
